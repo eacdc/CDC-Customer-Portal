@@ -1,0 +1,48 @@
+{
+  "suggestions": {
+    "Popular Searches": [
+      {
+        "name": "Analytics",
+        "icon": "tabler-smart-home",
+        "url": "index.html"
+      },
+      {
+        "name": "Products",
+        "icon": "custom-envelope-icon-products",
+        "url": "product.html"
+      },
+      {
+        "name": "OTIF",
+        "icon": "custom-folder-icon-otif",
+        "url": "otif.html"
+      },
+      {
+        "name": "Approvals",
+        "icon": "custom-order-icon-approval",
+        "url": "approvals.html"
+      }
+    ],
+    "Apps & Pages": [
+      {
+        "name": "Approvals",
+        "icon": "custom-order-icon-approval",
+        "url": "approvals.html"
+      },
+      {
+        "name": "Orders",
+        "icon": "custom-orders",
+        "url": "all-orders.html"
+      },
+      {
+        "name": "Dispatches",
+        "icon": "custom-bars-icon-dispatches",
+        "url": "dispatches.html"
+      },
+      {
+        "name": "Paper Statement",
+        "icon": "custom-edit-icon-paper-statement",
+        "url": "paper-statement.html"
+      }
+    ]
+  }
+}

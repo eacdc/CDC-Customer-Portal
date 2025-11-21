@@ -1,0 +1,1308 @@
+.custom-tl div.card-datatable {
+    padding-block-end: 0rem;
+}
+
+.custom-tl div.dt-container table.dataTable {
+    margin-block: 0 0rem;
+}
+
+.dispatches-table table.dataTable {
+    width: 130% !important;
+}
+
+.dispatches-table div.card-datatable {
+    overflow-x: scroll;
+}
+
+.dispatches-international-table table.dataTable {
+    width: 150% !important;
+}
+
+/* .international-arrival thead th {
+    white-space: nowrap;
+} */
+
+.dispatches-international-table table.all-data-orders.dataTable,
+.dispatches-international-table table.pending-orders.dataTable,
+.dispatches-international-table table.completed-orders.dataTable {
+    width: 100% !important;
+}
+
+.dispatches-international-table table.all-data-orders.dataTable thead,
+.dispatches-international-table table.pending-orders.dataTable thead,
+.dispatches-international-table table.completed-orders.dataTable thead,
+.dispatches-international-table table.all-data-orders.dataTable tbody td:nth-child(3),
+.dispatches-international-table table.pending-orders.dataTable tbody td:nth-child(3),
+.dispatches-international-table table.completed-orders.dataTable tbody td:nth-child(3) {
+    display: none;
+}
+
+.dispatches-international-table div.card-datatable {
+    overflow-x: scroll;
+}
+
+/* OTIF Table - No scroll for testing */
+.dispatches-table table.otif-data.dataTable {
+    width: 100% !important;
+    table-layout: auto !important;
+}
+
+.dispatches-table div.card-datatable {
+    overflow-x: auto;
+}
+
+.dispatches-table table.product-data.dataTable {
+    width: 100% !important;
+}
+
+.custom-table-pagination-layout,
+.custom-table-pagination-layout-two,
+.custom-table-pagination-layout-three,
+.custom-table-pagination-layout-dispatch,
+.custom-table-pagination-layout-dispatch-international,
+.custom-table-pagination-layout-otif,
+.custom-table-pagination-layout-arrival-international,
+.custom-table-pagination-layout-bl-date-international,
+.custom-table-pagination-layout-product,
+.custom-table-pagination-layout-all-orders,
+.custom-table-pagination-layout-pending-orders,
+.custom-table-pagination-layout-completed-orders {
+    margin-top: 24px;
+    padding: 0 12px;
+}
+
+.custom-table-pagination-layout .dt-length,
+.custom-table-pagination-layout-two .dt-length,
+.custom-table-pagination-layout-three .dt-length,
+.custom-table-pagination-layout-dispatch .dt-length,
+.custom-table-pagination-layout-dispatch-international .dt-length,
+.custom-table-pagination-layout-otif .dt-length,
+.custom-table-pagination-layout-arrival-international .dt-length,
+.custom-table-pagination-layout-bl-date-international .dt-length,
+.custom-table-pagination-layout-product .dt-length,
+.custom-table-pagination-layout-all-orders .dt-length,
+.custom-table-pagination-layout-pending-orders .dt-length,
+.custom-table-pagination-layout-completed-orders .dt-length {
+    margin: 0;
+}
+
+.custom-table-pagination-layout .dt-length select,
+.custom-table-pagination-layout-two .dt-length select,
+.custom-table-pagination-layout-three .dt-length select,
+.custom-table-pagination-layout-dispatch .dt-length select,
+.custom-table-pagination-layout-dispatch-international .dt-length select,
+.custom-table-pagination-layout-otif .dt-length select,
+.custom-table-pagination-layout-arrival-international .dt-length select,
+.custom-table-pagination-layout-bl-date-international .dt-length select,
+.custom-table-pagination-layout-product .dt-length select,
+.custom-table-pagination-layout-all-orders .dt-length select,
+.custom-table-pagination-layout-pending-orders .dt-length select,
+.custom-table-pagination-layout-completed-orders .dt-length select {
+    color: rgba(47, 43, 61, 0.4);
+}
+
+.custom-table-pagination-layout .dt-length label,
+.custom-table-pagination-layout-two .dt-length label,
+.custom-table-pagination-layout-three .dt-length label,
+.custom-table-pagination-layout-dispatch .dt-length label,
+.custom-table-pagination-layout-dispatch-international .dt-length label,
+.custom-table-pagination-layout-otif .dt-length label,
+.custom-table-pagination-layout-arrival-international .dt-length label,
+.custom-table-pagination-layout-bl-date-international .dt-length label,
+.custom-table-pagination-layout-product .dt-length label,
+.custom-table-pagination-layout-all-orders .dt-length label,
+.custom-table-pagination-layout-pending-orders .dt-length label,
+.custom-table-pagination-layout-completed-orders .dt-length label {
+    display: none;
+}
+
+.custom-table-pagination-layout .bottom-all,
+.custom-table-pagination-layout-two .bottom-pf,
+.custom-table-pagination-layout-three .bottom-pa,
+.custom-table-pagination-layout-dispatch .bottom-dispatch,
+.custom-table-pagination-layout-dispatch-international .bottom-dispatch-international,
+.custom-table-pagination-layout .bottom-received,
+.custom-table-pagination-layout-two .bottom-issued,
+.custom-table-pagination-layout-three .bottom-summary,
+.custom-table-pagination-layout-otif .bottom-otif,
+.custom-table-pagination-layout-arrival-international .bottom-arrival,
+.custom-table-pagination-layout-bl-date-international .bottom-bl-date,
+.custom-table-pagination-layout-product .bottom-product,
+.custom-table-pagination-layout-all-orders .bottom-all-orders,
+.custom-table-pagination-layout-pending-orders .bottom-pending-orders,
+.custom-table-pagination-layout-completed-orders .bottom-completed-orders {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.custom-table-pagination-layout .bottom-all .dt-info,
+.custom-table-pagination-layout-two .bottom-pf .dt-info,
+.custom-table-pagination-layout-three .bottom-pa .dt-info,
+.custom-table-pagination-layout-dispatch .bottom-dispatch .dt-info,
+.custom-table-pagination-layout-dispatch-international .bottom-dispatch-international .dt-info,
+.custom-table-pagination-layout .bottom-received .dt-info,
+.custom-table-pagination-layout-two .bottom-issued .dt-info,
+.custom-table-pagination-layout-three .bottom-summary .dt-info,
+.custom-table-pagination-layout-otif .bottom-otif .dt-info,
+.custom-table-pagination-layout-arrival-international .bottom-arrival .dt-info,
+.custom-table-pagination-layout-bl-date-international .bottom-bl-date .dt-info,
+.custom-table-pagination-layout-product .bottom-product .dt-info,
+.custom-table-pagination-layout-all-orders .bottom-all-orders .dt-info,
+.custom-table-pagination-layout-pending-orders .bottom-pending-orders .dt-info,
+.custom-table-pagination-layout-completed-orders .bottom-completed-orders .dt-info {
+    margin-right: auto;
+    color: rgba(47, 43, 61, 0.4);
+}
+
+.custom-tl span.input-group-text {
+    border-right: none;
+}
+
+.custom-tl input[type="search"] {
+    border-left: none;
+    padding-left: 0;
+}
+
+.custom-tl .cus-search-here {
+    width: 320px;
+}
+
+.dispatches-table div.card-datatable table.otif-data.dataTable thead tr th,
+.dispatches-table div.card-datatable table.otif-data.dataTable tbody tr td {
+    white-space: nowrap;
+}
+
+/* Ensure OTIF table headers are always visible */
+.dispatches-table table.otif-data thead {
+    display: table-header-group !important;
+    visibility: visible !important;
+}
+
+.dispatches-table table.otif-data thead tr {
+    display: table-row !important;
+    visibility: visible !important;
+}
+
+.dispatches-table table.otif-data thead th {
+    display: table-cell !important;
+    visibility: visible !important;
+}
+
+/* Ensure DataTables scroll header is visible for OTIF */
+.dispatches-table .dt-scroll-head {
+    display: table !important;
+    visibility: visible !important;
+    width: 100% !important;
+}
+
+.dispatches-table .dt-scroll-headInner {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+}
+
+.dispatches-table .dt-scroll-head table.otif-data {
+    display: table !important;
+    visibility: visible !important;
+    margin-bottom: 0 !important;
+}
+
+.dispatches-table .dt-scroll-head table.otif-data thead {
+    display: table-header-group !important;
+    visibility: visible !important;
+}
+
+.dispatches-table .dt-scroll-head table.otif-data thead tr {
+    display: table-row !important;
+    visibility: visible !important;
+}
+
+.dispatches-table .dt-scroll-head table.otif-data thead tr th {
+    display: table-cell !important;
+    visibility: visible !important;
+    padding: 0.625rem 1.25rem !important;
+    background-color: transparent !important;
+    border-bottom: 1px solid rgba(47, 43, 61, 0.12) !important;
+}
+
+.nav-tabs .nav-link {
+    box-shadow: none !important;
+}
+
+.nav-tabs .nav-link:hover {
+    background-color: transparent;
+    color: #7367f0;
+}
+
+.nav-tabs .nav-link.active {
+    background: #7367f0;
+    border-radius: 6px;
+    color: #fff !important;
+}
+
+.nav-tabs .nav-link:focus {
+    color: #fff !important;
+}
+
+.dispatches-international-table table.all-data-orders.dataTable tbody td:nth-child(2),
+.dispatches-international-table table.pending-orders.dataTable tbody td:nth-child(2),
+.dispatches-international-table table.completed-orders.dataTable tbody td:nth-child(2) {
+    width: 12%;
+    margin: 0 auto;
+}
+
+.dispatches-international-table table.all-data-orders.dataTable tbody td:nth-child(2),
+.dispatches-international-table table.pending-orders.dataTable tbody td:nth-child(2),
+.dispatches-international-table table.completed-orders.dataTable tbody td:nth-child(2) {
+    max-width: 100px;
+}
+
+.dispatches-international-table table.all-data-orders.dataTable tbody td:nth-child(3),
+.dispatches-international-table table.pending-orders.dataTable tbody td:nth-child(3),
+.dispatches-international-table table.completed-orders.dataTable tbody td:nth-child(3) {
+    padding-left: 0;
+}
+
+/* dashboard css starts here */
+
+.dashboard-custom-cards .col-lg-3.cus-col:first-child .card {
+    background: linear-gradient(70deg, #7367F0 2.58%, #897EF8 96.33%);
+    box-shadow: 0 2px 6px 0 rgba(144, 146, 148, 0.20);
+}
+
+.dashboard-custom-cards .col-lg-3.cus-col:nth-child(2) .card {
+    background: linear-gradient(70deg, #67C9F0 2.58%, #77DAFF 97.93%);
+    box-shadow: 0 2px 6px 0 rgba(144, 146, 148, 0.20);
+}
+
+.dashboard-custom-cards .col-lg-3.cus-col:nth-child(3) .card {
+    background: linear-gradient(70deg, #28C76F 2.58%, #37E183 96.33%);
+    box-shadow: 0 2px 6px 0 rgba(144, 146, 148, 0.20);
+}
+
+.dashboard-custom-cards .col-lg-3.cus-col:nth-child(4) .card {
+    background: linear-gradient(70deg, #FF9F43 2.58%, #FFAD5E 96.33%);
+    box-shadow: 0 2px 6px 0 rgba(144, 146, 148, 0.20);
+}
+
+/* .dashboard-custom-cards .col-lg-3 {
+    padding: 0;
+} */
+
+.dashboard-custom-cards .card.cus-card {
+    background-color: transparent;
+    box-shadow: none;
+}
+
+.dashboard-custom-cards .card.cus-card:hover {
+    box-shadow: none !important;
+}
+
+.dashboard-custom-cards .card.cus-card .card-body {
+    padding: 20px;
+    color: #fff !important;
+}
+
+.dashboard-custom-cards .card.cus-card .card-body * {
+    color: #fff !important;
+}
+
+.dashboard-custom-cards .line {
+    width: 1px;
+    height: 52px;
+    background-color: white;
+}
+
+.dashboard-custom-cards .card.cus-card small {
+    font-size: 10px;
+}
+
+.dashboard-custom-cards .card.cus-card span.growth {
+    background-color: white;
+    border-radius: 90px;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 600;
+    line-height: normal;
+    text-transform: uppercase;
+    color: #5655D7 !important;
+    padding: 4px 8px;
+    min-width: 78px;
+    text-align: center;
+}
+
+.dashboard-custom-cards .card.cus-card.kpi-loading span.growth,
+.dashboard-custom-cards .card.cus-card.kpi-loading [data-kpi-qty],
+.dashboard-custom-cards .card.cus-card.kpi-loading [data-kpi-value],
+.dashboard-custom-cards .card.cus-card.kpi-loading [data-kpi-change] {
+    opacity: 0.6;
+}
+.dashboard-custom-cards .card.cus-card.kpi-loading .card-body {
+    position: relative;
+}
+.dashboard-custom-cards .card.cus-card.kpi-loading .card-body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 255, 255, 0) 100%);
+    animation: kpi-sheen 1.5s infinite;
+}
+@keyframes kpi-sheen {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.kpi-loading-chart {
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-loading-chart::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 255, 255, 0) 100%);
+    animation: kpi-sheen 1.5s infinite;
+}
+
+.dashboard-custom-cards .card.cus-card [data-kpi-change]:not(.text-success):not(.text-danger) {
+    color: inherit !important;
+}
+
+.dashboard-custom-cards .card.cus-card .kpi-arrow {
+    font-size: 13px;
+    line-height: 1;
+    display: inline-block;
+}
+
+.dashboard-custom-cards .card.cus-card [data-kpi-change].kpi-state-neutral,
+.dashboard-custom-cards .card.cus-card .kpi-arrow.kpi-state-neutral {
+    color: inherit !important;
+}
+
+.dashboard-custom-cards .card.cus-card [data-kpi-change].kpi-state-up,
+.dashboard-custom-cards .card.cus-card .kpi-arrow.kpi-state-up {
+    color: #71dd37 !important;
+}
+
+.dashboard-custom-cards .card.cus-card [data-kpi-change].kpi-state-down,
+.dashboard-custom-cards .card.cus-card .kpi-arrow.kpi-state-down {
+    color: #ff5b5c !important;
+}
+
+.dashboard-custom-cards .col-lg-3:nth-child(2) .card.cus-card span.growth {
+    color: #62CCF4 !important;
+}
+
+.dashboard-custom-cards .col-lg-3:nth-child(2) .card.cus-card span.growth .kpi-arrow {
+    color: #62CCF4 !important;
+}
+
+.dashboard-custom-cards .col-lg-3:nth-child(3) .card.cus-card span.growth {
+    color: #02B090 !important;
+}
+
+.dashboard-custom-cards .col-lg-3:nth-child(3) .card.cus-card span.growth .kpi-arrow {
+    color: #02B090 !important;
+}
+
+.dashboard-custom-cards .col-lg-3:nth-child(4) .card.cus-card span.growth {
+    color: #FCAF49 !important;
+}
+
+.dashboard-custom-cards .col-lg-3:nth-child(4) .card.cus-card span.growth .kpi-arrow {
+    color: #FCAF49 !important;
+}
+
+.dashboard-custom-cards .card.cus-card,
+.dashboard-custom-cards .card.cus-card .card-body,
+.dashboard-custom-cards .card.cus-card:hover,
+.dashboard-custom-cards .card.cus-card .card-body:hover {
+    border: none;
+    box-shadow: none;
+}
+
+/* dashboard css ends here */
+
+div.dt-container table.dataTable thead th:not(:first-child)::after {
+    content: "";
+    width: 2px;
+    height: 14px;
+    background-color: rgba(47, 43, 61, 0.12);
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+div.dt-container table.dataTable thead th:first-child::after,
+div.dt-container table.dataTable thead th:nth-child(2)::after {
+    /* border: none; */
+    content: "";
+    width: 0;
+    height: 0;
+    background-color: rgba(47, 43, 61, 0.12);
+}
+
+.cus-dis-color-first {
+    color: rgba(47, 43, 61, 0.6) !important;
+}
+
+.cus-dis-color {
+    color: rgba(47, 43, 61, 0.4) !important;
+}
+
+/* div.dt-container table.dataTable thead th:nth-child(2),
+div.dt-container table.dataTable tbody td:nth-child(2) {
+    max-width: 65px;
+    width: 65px;
+} */
+
+/* .menu-vertical .menu-inner > .menu-item .menu-link > div {
+    color: #434050 !important;
+} */
+
+table.product-data a {
+    color: unset !important;
+}
+
+.custom-order-icon-approval {
+    --svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'%3E%3Cpath d='M8.25 9C8.25 8.80109 8.32902 8.61032 8.46967 8.46967C8.61032 8.32902 8.80109 8.25 9 8.25H15C15.1989 8.25 15.3897 8.32902 15.5303 8.46967C15.671 8.61032 15.75 8.80109 15.75 9C15.75 9.19891 15.671 9.38968 15.5303 9.53033C15.3897 9.67098 15.1989 9.75 15 9.75H9C8.80109 9.75 8.61032 9.67098 8.46967 9.53033C8.32902 9.38968 8.25 9.19891 8.25 9ZM9 12.75H15C15.1989 12.75 15.3897 12.671 15.5303 12.5303C15.671 12.3897 15.75 12.1989 15.75 12C15.75 11.8011 15.671 11.6103 15.5303 11.4697C15.3897 11.329 15.1989 11.25 15 11.25H9C8.80109 11.25 8.61032 11.329 8.46967 11.4697C8.32902 11.6103 8.25 11.8011 8.25 12C8.25 12.1989 8.32902 12.3897 8.46967 12.5303C8.61032 12.671 8.80109 12.75 9 12.75ZM12 14.25H9C8.80109 14.25 8.61032 14.329 8.46967 14.4697C8.32902 14.6103 8.25 14.8011 8.25 15C8.25 15.1989 8.32902 15.3897 8.46967 15.5303C8.61032 15.671 8.80109 15.75 9 15.75H12C12.1989 15.75 12.3897 15.671 12.5303 15.5303C12.671 15.3897 12.75 15.1989 12.75 15C12.75 14.8011 12.671 14.6103 12.5303 14.4697C12.3897 14.329 12.1989 14.25 12 14.25ZM21 4.5V14.6897C21.0006 14.8867 20.9621 15.082 20.8866 15.264C20.8111 15.446 20.7002 15.6112 20.5603 15.75L15.75 20.5603C15.6112 20.7002 15.446 20.8111 15.264 20.8866C15.082 20.9621 14.8867 21.0006 14.6897 21H4.5C4.10218 21 3.72064 20.842 3.43934 20.5607C3.15804 20.2794 3 19.8978 3 19.5V4.5C3 4.10218 3.15804 3.72064 3.43934 3.43934C3.72064 3.15804 4.10218 3 4.5 3H19.5C19.8978 3 20.2794 3.15804 20.5607 3.43934C20.842 3.72064 21 4.10218 21 4.5ZM4.5 19.5H14.25V15C14.25 14.8011 14.329 14.6103 14.4697 14.4697C14.6103 14.329 14.8011 14.25 15 14.25H19.5V4.5H4.5V19.5ZM15.75 15.75V18.4406L18.4397 15.75H15.75Z' fill='%234D5154'/%3E%3C/svg%3E");
+}
+
+.custom-bars-icon-dispatches {
+    --svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M21.75 4.5V8.25C21.75 8.44891 21.671 8.63968 21.5303 8.78033C21.3897 8.92098 21.1989 9 21 9C20.8011 9 20.6103 8.92098 20.4697 8.78033C20.329 8.63968 20.25 8.44891 20.25 8.25V5.25H17.25C17.0511 5.25 16.8603 5.17098 16.7197 5.03033C16.579 4.88968 16.5 4.69891 16.5 4.5C16.5 4.30109 16.579 4.11032 16.7197 3.96967C16.8603 3.82902 17.0511 3.75 17.25 3.75H21C21.1989 3.75 21.3897 3.82902 21.5303 3.96967C21.671 4.11032 21.75 4.30109 21.75 4.5ZM6.75 18.75H3.75V15.75C3.75 15.5511 3.67098 15.3603 3.53033 15.2197C3.38968 15.079 3.19891 15 3 15C2.80109 15 2.61032 15.079 2.46967 15.2197C2.32902 15.3603 2.25 15.5511 2.25 15.75V19.5C2.25 19.6989 2.32902 19.8897 2.46967 20.0303C2.61032 20.171 2.80109 20.25 3 20.25H6.75C6.94891 20.25 7.13968 20.171 7.28033 20.0303C7.42098 19.8897 7.5 19.6989 7.5 19.5C7.5 19.3011 7.42098 19.1103 7.28033 18.9697C7.13968 18.829 6.94891 18.75 6.75 18.75ZM21 15C20.8011 15 20.6103 15.079 20.4697 15.2197C20.329 15.3603 20.25 15.5511 20.25 15.75V18.75H17.25C17.0511 18.75 16.8603 18.829 16.7197 18.9697C16.579 19.1103 16.5 19.3011 16.5 19.5C16.5 19.6989 16.579 19.8897 16.7197 20.0303C16.8603 20.171 17.0511 20.25 17.25 20.25H21C21.1989 20.25 21.3897 20.171 21.5303 20.0303C21.671 19.8897 21.75 19.6989 21.75 19.5V15.75C21.75 15.5511 21.671 15.3603 21.5303 15.2197C21.3897 15.079 21.1989 15 21 15ZM3 9C3.19891 9 3.38968 8.92098 3.53033 8.78033C3.67098 8.63968 3.75 8.44891 3.75 8.25V5.25H6.75C6.94891 5.25 7.13968 5.17098 7.28033 5.03033C7.42098 4.88968 7.5 4.69891 7.5 4.5C7.5 4.30109 7.42098 4.11032 7.28033 3.96967C7.13968 3.82902 6.94891 3.75 6.75 3.75H3C2.80109 3.75 2.61032 3.82902 2.46967 3.96967C2.32902 4.11032 2.25 4.30109 2.25 4.5V8.25C2.25 8.44891 2.32902 8.63968 2.46967 8.78033C2.61032 8.92098 2.80109 9 3 9ZM7.5 7.5C7.30109 7.5 7.11032 7.57902 6.96967 7.71967C6.82902 7.86032 6.75 8.05109 6.75 8.25V15.75C6.75 15.9489 6.82902 16.1397 6.96967 16.2803C7.11032 16.421 7.30109 16.5 7.5 16.5C7.69891 16.5 7.88968 16.421 8.03033 16.2803C8.17098 16.1397 8.25 15.9489 8.25 15.75V8.25C8.25 8.05109 8.17098 7.86032 8.03033 7.71967C7.88968 7.57902 7.69891 7.5 7.5 7.5ZM17.25 15.75V8.25C17.25 8.05109 17.171 7.86032 17.0303 7.71967C16.8897 7.57902 16.6989 7.5 16.5 7.5C16.3011 7.5 16.1103 7.57902 15.9697 7.71967C15.829 7.86032 15.75 8.05109 15.75 8.25V15.75C15.75 15.9489 15.829 16.1397 15.9697 16.2803C16.1103 16.421 16.3011 16.5 16.5 16.5C16.6989 16.5 16.8897 16.421 17.0303 16.2803C17.171 16.1397 17.25 15.9489 17.25 15.75ZM13.5 7.5C13.3011 7.5 13.1103 7.57902 12.9697 7.71967C12.829 7.86032 12.75 8.05109 12.75 8.25V15.75C12.75 15.9489 12.829 16.1397 12.9697 16.2803C13.1103 16.421 13.3011 16.5 13.5 16.5C13.69891 16.5 13.8897 16.421 14.0303 16.2803C14.171 16.1397 14.25 15.9489 14.25 15.75V8.25C14.25 8.05109 14.171 7.86032 14.0303 7.71967C13.8897 7.57902 13.69891 7.5 13.5 7.5ZM10.5 7.5C10.3011 7.5 10.1103 7.57902 9.96967 7.71967C9.82902 7.86032 9.75 8.05109 9.75 8.25V15.75C9.75 15.9489 9.82902 16.1397 9.96967 16.2803C10.1103 16.421 10.3011 16.5 10.5 16.5C10.69891 16.5 10.8897 16.421 11.0303 16.2803C11.171 16.1397 11.25 15.9489 11.25 15.75V8.25C11.25 8.05109 11.171 7.86032 11.0303 7.71967C10.8897 7.57902 10.69891 7.5 10.5 7.5Z' fill='%232F2B3D'/%3E%3C/svg%3E");
+}
+
+.custom-envelope-icon-products {
+    --svg: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 21.73C11.304 21.9056 11.6489 21.998 12 21.998C12.3511 21.998 12.6959 21.9056 13 21.73L20 17.73C20.3037 17.5547 20.556 17.3025 20.7315 16.9989C20.907 16.6952 20.9996 16.3508 21 16V8.00002C20.9996 7.6493 20.907 7.30483 20.7315 7.00119C20.556 6.69754 20.3037 6.44539 20 6.27002L13 2.27002C12.6959 2.09449 12.3511 2.00208 12 2.00208C11.6489 2.00208 11.304 2.09449 11 2.27002L3.99998 6.27002C3.69624 6.44539 3.44396 6.69754 3.26844 7.00119C3.09292 7.30483 3.00034 7.6493 2.99998 8.00002V16C3.00034 16.3508 3.09292 16.6952 3.26844 16.9989C3.44396 17.3025 3.69624 17.5547 3.99998 17.73L11 21.73Z' stroke='%234D5154' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M12 22V12' stroke='%234D5154' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M3.29 7L12 12L20.71 7' stroke='%234D5154' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M7.5 4.27002L16.5 9.42002' stroke='%234D5154' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.custom-edit-icon-paper-statement {
+    --svg: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M21.5306 5.46935L18.5306 2.46935C18.461 2.39962 18.3783 2.3443 18.2872 2.30656C18.1962 2.26882 18.0986 2.24939 18 2.24939C17.9014 2.24939 17.8038 2.26882 17.7128 2.30656C17.6217 2.3443 17.539 2.39962 17.4694 2.46935L8.46937 11.4694C8.39975 11.5391 8.34454 11.6218 8.3069 11.7128C8.26926 11.8039 8.24992 11.9015 8.25 12V15C8.25 15.1989 8.32902 15.3897 8.46967 15.5303C8.61032 15.671 8.80109 15.75 9 15.75H12C12.0985 15.7501 12.1961 15.7307 12.2871 15.6931C12.3782 15.6554 12.4609 15.6002 12.5306 15.5306L21.5306 6.53061C21.6004 6.46095 21.6557 6.37823 21.6934 6.28718C21.7312 6.19614 21.7506 6.09854 21.7506 5.99998C21.7506 5.90142 21.7312 5.80382 21.6934 5.71277C21.6557 5.62173 21.6004 5.53901 21.5306 5.46935ZM11.6897 14.25H9.75V12.3103L15.75 6.31029L17.6897 8.24998L11.6897 14.25ZM18.75 7.18967L16.8103 5.24998L18 4.06029L19.9397 5.99998L18.75 7.18967ZM21 11.25V19.5C21 19.8978 20.842 20.2793 20.5607 20.5606C20.2794 20.8419 19.8978 21 19.5 21H4.5C4.10218 21 3.72064 20.8419 3.43934 20.5606C3.15804 20.2793 3 19.8978 3 19.5V4.49998C3 4.10215 3.15804 3.72062 3.43934 3.43932C3.72064 3.15801 4.10218 2.99998 4.5 2.99998H12.75C12.9489 2.99998 13.1397 3.079 13.2803 3.21965C13.421 3.3603 13.5 3.55107 13.5 3.74998C13.5 3.94889 13.421 4.13966 13.2803 4.28031C13.1397 4.42096 12.9489 4.49998 12.75 4.49998H4.5V19.5H19.5V11.25C19.5 11.0511 19.579 10.8603 19.7197 10.7197C19.8603 10.579 20.0511 10.5 20.25 10.5C20.4489 10.5 20.6397 10.579 20.7803 10.7197C20.921 10.8603 21 11.0511 21 11.25Z' fill='%234D5154'/%3E%3C/svg%3E");
+}
+
+.custom-folder-icon-otif {
+    --svg: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20.25 6.75H12.2503L9.64969 4.8C9.38967 4.60599 9.07411 4.5008 8.74969 4.5H3.75C3.35218 4.5 2.97064 4.65804 2.68934 4.93934C2.40804 5.22064 2.25 5.60218 2.25 6V18.75C2.25 19.1478 2.40804 19.5294 2.68934 19.8107C2.97064 20.092 3.35218 20.25 3.75 20.25H20.25C20.6478 20.25 21.0294 20.092 21.3107 19.8107C21.592 19.5294 21.75 19.1478 21.75 18.75V8.25C21.75 7.85218 21.592 7.47064 21.3107 7.18934C21.0294 6.90804 20.6478 6.75 20.25 6.75ZM3.75 6H8.74969L10.7503 7.5L8.74969 9H3.75V6ZM20.25 18.75H3.75V10.5H8.74969C9.07411 10.4992 9.38967 10.394 9.64969 10.2L12.2503 8.25H20.25V18.75Z' fill='%234D5154'/%3E%3C/svg%3E");
+}
+
+.custom-tools-icon-keyline {
+    --svg: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7.5 16.8751C7.5 17.0976 7.43402 17.3151 7.3104 17.5001C7.18679 17.6851 7.01109 17.8293 6.80552 17.9144C6.59995 17.9996 6.37375 18.0219 6.15552 17.9785C5.93729 17.935 5.73684 17.8279 5.5795 17.6706C5.42217 17.5132 5.31502 17.3128 5.27162 17.0946C5.22821 16.8763 5.25049 16.6501 5.33564 16.4446C5.42078 16.239 5.56498 16.0633 5.74998 15.9397C5.93499 15.8161 6.1525 15.7501 6.375 15.7501C6.67337 15.7501 6.95952 15.8686 7.1705 16.0796C7.38147 16.2906 7.5 16.5767 7.5 16.8751ZM21.75 14.6429V19.5001C21.75 19.8979 21.592 20.2794 21.3107 20.5607C21.0294 20.842 20.6478 21.0001 20.25 21.0001H6.375C6.12551 21.0002 5.87646 20.9789 5.63063 20.9363C4.55815 20.7407 3.60674 20.1284 2.98434 19.2333C2.36194 18.3383 2.11916 17.2333 2.30906 16.1598L4.65281 2.74132C4.68613 2.54743 4.7574 2.36203 4.86254 2.19575C4.96767 2.02946 5.10461 1.88558 5.26549 1.77235C5.42637 1.65911 5.60802 1.57876 5.80003 1.5359C5.99203 1.49304 6.19061 1.48851 6.38438 1.52257L11.5163 2.43757C11.9067 2.50795 12.2534 2.73016 12.4804 3.05556C12.7074 3.38097 12.7963 3.78306 12.7275 4.17383L11.595 10.6426L17.9522 8.34383C18.3248 8.20922 18.7356 8.22753 19.0948 8.39475C19.454 8.56197 19.7325 8.86451 19.8694 9.23632L21.6563 14.1273C21.7137 14.2933 21.7453 14.4672 21.75 14.6429ZM8.90625 17.3316L11.25 3.9132L6.13688 3.00007L3.79312 16.4157C3.67076 17.0981 3.8233 17.8011 4.21744 18.3714C4.61158 18.9417 5.21531 19.333 5.89688 19.4598C6.23052 19.5196 6.57273 19.5125 6.90362 19.439C7.23452 19.3654 7.54749 19.2269 7.82438 19.0313C8.10833 18.8338 8.35021 18.5819 8.53593 18.2901C8.72166 17.9983 8.84754 17.6725 8.90625 17.3316ZM10.1981 18.2813L20.25 14.6354L18.4613 9.75008L11.2969 12.3469L10.38 17.5894C10.3392 17.8248 10.2784 18.0563 10.1981 18.2813ZM20.25 16.2301L11.2256 19.5001H20.25V16.2301Z' fill='%234D5154'/%3E%3C/svg%3E");
+}
+
+.custom-tools-icon-howto {
+    --svg: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 7.50004C11.11 7.50004 10.24 7.76396 9.49993 8.25843C8.75991 8.7529 8.18314 9.4557 7.84254 10.278C7.50195 11.1002 7.41283 12.005 7.58647 12.8779C7.7601 13.7509 8.18868 14.5527 8.81802 15.182C9.44736 15.8114 10.2492 16.2399 11.1221 16.4136C11.995 16.5872 12.8998 16.4981 13.7221 16.1575C14.5443 15.8169 15.2471 15.2401 15.7416 14.5001C16.2361 13.7601 16.5 12.8901 16.5 12C16.4988 10.807 16.0243 9.66308 15.1806 8.81943C14.337 7.97579 13.1931 7.50128 12 7.50004ZM12 15C11.4067 15 10.8266 14.8241 10.3333 14.4945C9.83994 14.1648 9.45542 13.6963 9.22836 13.1481C9.0013 12.5999 8.94189 11.9967 9.05764 11.4148C9.1734 10.8328 9.45912 10.2983 9.87868 9.87872C10.2982 9.45917 10.8328 9.17344 11.4147 9.05769C11.9967 8.94193 12.5999 9.00134 13.1481 9.2284C13.6962 9.45547 14.1648 9.83999 14.4944 10.3333C14.8241 10.8267 15 11.4067 15 12C15 12.7957 14.6839 13.5588 14.1213 14.1214C13.5587 14.684 12.7957 15 12 15ZM20.25 12.2025C20.2538 12.0675 20.2538 11.9325 20.25 11.7975L21.6488 10.05C21.7221 9.95829 21.7729 9.8506 21.797 9.73563C21.8211 9.62067 21.8178 9.50165 21.7875 9.38817C21.5582 8.52623 21.2152 7.69865 20.7675 6.92723C20.7089 6.82628 20.6275 6.7404 20.5299 6.67644C20.4322 6.61248 20.321 6.57219 20.205 6.55879L17.9813 6.31129C17.8888 6.21379 17.795 6.12004 17.7 6.03004L17.4375 3.80067C17.424 3.68462 17.3836 3.57333 17.3194 3.47567C17.2553 3.37801 17.1693 3.29668 17.0681 3.23817C16.2964 2.79131 15.4689 2.44864 14.6072 2.21911C14.4936 2.18891 14.3746 2.18583 14.2596 2.21009C14.1446 2.23435 14.037 2.28529 13.9453 2.35879L12.2025 3.75004C12.0675 3.75004 11.9325 3.75004 11.7975 3.75004L10.05 2.35411C9.95825 2.28076 9.85055 2.23 9.73559 2.2059C9.62063 2.1818 9.50161 2.18504 9.38813 2.21536C8.52633 2.44507 7.6988 2.78806 6.92719 3.23536C6.82624 3.29397 6.74036 3.37535 6.6764 3.473C6.61243 3.57065 6.57215 3.68189 6.55875 3.79786L6.31125 6.02536C6.21375 6.11848 6.12 6.21223 6.03 6.30661L3.80063 6.56254C3.68457 6.57605 3.57328 6.61647 3.47562 6.6806C3.37796 6.74473 3.29664 6.83079 3.23813 6.93192C2.79126 7.70363 2.44859 8.53114 2.21906 9.39286C2.18887 9.50641 2.18578 9.62547 2.21005 9.74044C2.23431 9.8554 2.28525 9.96306 2.35875 10.0547L3.75 11.7975C3.75 11.9325 3.75 12.0675 3.75 12.2025L2.35406 13.95C2.28072 14.0418 2.22995 14.1495 2.20585 14.2645C2.18175 14.3794 2.18499 14.4984 2.21531 14.6119C2.44462 15.4739 2.78763 16.3014 3.23531 17.0729C3.29393 17.1738 3.3753 17.2597 3.47296 17.3236C3.57061 17.3876 3.68185 17.4279 3.79781 17.4413L6.02156 17.6888C6.11469 17.7863 6.20844 17.88 6.30281 17.97L6.5625 20.1994C6.576 20.3155 6.61643 20.4268 6.68056 20.5244C6.74469 20.6221 6.83075 20.7034 6.93188 20.7619C7.70359 21.2088 8.5311 21.5515 9.39281 21.781C9.50637 21.8112 9.62543 21.8143 9.74039 21.79C9.85536 21.7657 9.96302 21.7148 10.0547 21.6413L11.7975 20.25C11.9325 20.2538 12.0675 20.2538 12.2025 20.25L13.95 21.6488C14.0418 21.7221 14.1494 21.7729 14.2644 21.797C14.3794 21.8211 14.4984 21.8179 14.6119 21.7875C15.4738 21.5582 16.3014 21.2152 17.0728 20.7675C17.1738 20.7089 17.2596 20.6276 17.3236 20.5299C17.3876 20.4322 17.4279 20.321 17.4413 20.205L17.6888 17.9813C17.7863 17.8888 17.88 17.795 17.97 17.7L20.1994 17.4375C20.3154 17.424 20.4267 17.3836 20.5244 17.3195C20.622 17.2554 20.7034 17.1693 20.7619 17.0682C21.2087 16.2965 21.5514 15.4689 21.7809 14.6072C21.8111 14.4937 21.8142 14.3746 21.79 14.2597C21.7657 14.1447 21.7148 14.037 21.6413 13.9454L20.25 12.2025ZM18.7406 11.5932C18.7566 11.8642 18.7566 12.1359 18.7406 12.4069C18.7295 12.5925 18.7876 12.7756 18.9038 12.9207L20.2341 14.5829C20.0814 15.068 19.886 15.5386 19.65 15.9891L17.5313 16.2291C17.3467 16.2496 17.1764 16.3378 17.0531 16.4766C16.8727 16.6796 16.6805 16.8718 16.4775 17.0522C16.3387 17.1755 16.2505 17.3458 16.23 17.5304L15.9947 19.6472C15.5442 19.8833 15.0736 20.0788 14.5884 20.2313L12.9253 18.901C12.7922 18.7946 12.6269 18.7368 12.4566 18.7369H12.4116C12.1405 18.7529 11.8688 18.7529 11.5978 18.7369C11.4123 18.7257 11.2292 18.7839 11.0841 18.9L9.41719 20.2313C8.93206 20.0786 8.46146 19.8832 8.01094 19.6472L7.77094 17.5313C7.75046 17.3468 7.66227 17.1764 7.52344 17.0532C7.32048 16.8727 7.12827 16.6805 6.94781 16.4775C6.82456 16.3387 6.6542 16.2505 6.46969 16.23L4.35281 15.9938C4.11674 15.5433 3.92128 15.0727 3.76875 14.5875L5.09906 12.9244C5.21522 12.7793 5.27336 12.5962 5.26219 12.4107C5.24625 12.1397 5.24625 11.8679 5.26219 11.5969C5.27336 11.4114 5.21522 11.2283 5.09906 11.0832L3.76875 9.41723C3.9214 8.93211 4.11685 8.4615 4.35281 8.01098L6.46875 7.77098C6.65326 7.7505 6.82363 7.66231 6.94688 7.52348C7.12734 7.32052 7.31954 7.12832 7.5225 6.94786C7.66188 6.82452 7.75043 6.65377 7.77094 6.46879L8.00625 4.35286C8.45672 4.11679 8.92733 3.92132 9.4125 3.76879L11.0756 5.09911C11.2207 5.21527 11.4038 5.2734 11.5894 5.26223C11.8604 5.24629 12.1321 5.24629 12.4031 5.26223C12.5887 5.2734 12.7718 5.21527 12.9169 5.09911L14.5828 3.76879C15.0679 3.92144 15.5385 4.1169 15.9891 4.35286L16.2291 6.46879C16.2495 6.65331 16.3377 6.82367 16.4766 6.94692C16.6795 7.12738 16.8717 7.31958 17.0522 7.52254C17.1754 7.66138 17.3458 7.74956 17.5303 7.77004L19.6472 8.00536C19.8833 8.45583 20.0787 8.92644 20.2313 9.41161L18.9009 11.0747C18.7837 11.2211 18.7255 11.406 18.7378 11.5932H18.7406Z' fill='%234D5154'/%3E%3C/svg%3E");
+}
+
+.custom-orders {
+    --svg: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M22.5 5.25V11.25C22.5 11.4489 22.421 11.6397 22.2803 11.7803C22.1397 11.921 21.9489 12 21.75 12C21.5511 12 21.3603 11.921 21.2197 11.7803C21.079 11.6397 21 11.4489 21 11.25V7.06031L13.2806 14.7806C13.211 14.8504 13.1283 14.9057 13.0372 14.9434C12.9462 14.9812 12.8486 15.0006 12.75 15.0006C12.6514 15.0006 12.5538 14.9812 12.4628 14.9434C12.3717 14.9057 12.289 14.8504 12.2194 14.7806L9 11.5603L2.78062 17.7806C2.63989 17.9214 2.44902 18.0004 2.25 18.0004C2.05098 18.0004 1.86011 17.9214 1.71937 17.7806C1.57864 17.6399 1.49958 17.449 1.49958 17.25C1.49958 17.051 1.57864 16.8601 1.71937 16.7194L8.46937 9.96937C8.53903 9.89964 8.62175 9.84432 8.71279 9.80658C8.80384 9.76884 8.90144 9.74941 9 9.74941C9.09856 9.74941 9.19616 9.76884 9.28721 9.80658C9.37825 9.84432 9.46097 9.89964 9.53062 9.96937L12.75 13.1897L19.9397 6H15.75C15.5511 6 15.3603 5.92098 15.2197 5.78033C15.079 5.63968 15 5.44891 15 5.25C15 5.05109 15.079 4.86032 15.2197 4.71967C15.3603 4.57902 15.5511 4.5 15.75 4.5H21.75C21.9489 4.5 22.1397 4.57902 22.2803 4.71967C22.421 4.86032 22.5 5.05109 22.5 5.25Z' fill='%234D5154'/%3E%3C/svg%3E");
+}
+
+.custom-dashboards {
+    --svg: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M19 8.71001L13.667 4.56201C12.7042 3.81299 11.3558 3.81299 10.393 4.56201L5.05903 8.71001C4.40943 9.21518 4.02964 9.99211 4.03003 10.815V18.015C4.03003 19.1196 4.92546 20.015 6.03003 20.015H18.03C19.1346 20.015 20.03 19.1196 20.03 18.015V10.815C20.03 9.99201 19.65 9.21501 19 8.71001' stroke='%23434050' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 14.9999C13.79 16.3329 10.208 16.3329 8 14.9999' stroke='%23434050' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.custom-orders-modal-table tbody tr:nth-child(2) td:nth-child(2) div>div {
+    margin: 0 !important;
+    gap: 16px !important;
+}
+
+.custom-orders-modal-table tbody tr:nth-child(2) td:nth-child(2) div div:first-child {
+    order: 2;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.custom-orders-modal-table tbody tr:nth-child(2) td:nth-child(2) div div:nth-child(2) {
+    order: 1;
+    flex-direction: column-reverse;
+    gap: 12px;
+}
+
+.custom-orders-modal-table tbody tr:nth-child(2) td:nth-child(2) div div:nth-child(2) div span:first-child {
+    display: none;
+}
+
+.custom-orders-modal-table tbody tr:nth-child(2) td:nth-child(2) div div:nth-child(2) div span.small {
+    margin: 0 !important;
+    font-size: unset !important;
+}
+
+.custom-orders-modal-table tbody tr:nth-child(2) td:nth-child(2) div div:nth-child(3) {
+    order: 3;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.custom-orders-modal-table tbody tr:nth-child(2) td:nth-child(2) div div:nth-child(4) {
+    order: 4;
+    flex-direction: column;
+    gap: 12px;
+    align-items: start !important;
+}
+
+.menu .app-brand.demo {
+    padding-inline-start: 16px !important;
+}
+
+#layout-menu:hover .menu .app-brand.demo,
+.layout-menu-hover .menu .app-brand.demo {
+    max-width: unset !important;
+    overflow: unset !important;
+}
+
+.layout-menu-collapsed .menu .app-brand.demo {
+    max-width: 58px;
+    width: 100%;
+    overflow: hidden;
+}
+
+/*.dispatches-table table.otif-data thead tr th:first-child,*/
+/*.dispatches-table table.otif-data tbody tr td:first-child,*/
+/*.dispatches-international-table table.international-arrival thead tr th:first-child,*/
+/*.dispatches-international-table table.international-arrival tbody tr td:first-child {*/
+/*    display: none;*/
+/*}*/
+
+.ppd .card-body {
+    padding: 0;
+}
+
+.product-detail-card {
+    display: flex;
+    gap: 24px;
+}
+
+.product-image {
+    width: 40%;
+}
+
+.product-image .pi-inner {
+    padding: 24px;
+    border-radius: 6px;
+    box-shadow: 0 3px 12px 0 rgba(47, 43, 61, 0.14);
+}
+
+.product-image .pi-inner div {
+    padding: 24px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(47, 43, 61, 0.12);
+}
+
+.product-detail {
+    width: 60%;
+    padding: 24px;
+}
+
+.product-detail .product-info h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+    margin: 0;
+    padding: 0;
+}
+
+.product-detail h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.product-detail .product-info li span,
+.product-detail .product-components li span {
+    color: rgba(47, 43, 61, 0.8);
+    font-weight: 500;
+}
+
+.product-detail p,
+.product-detail .product-info li,
+.product-detail .product-components li {
+    color: rgba(47, 43, 61, 0.6);
+    margin-top: 16px !important;
+}
+
+.product-detail h4 {
+    font-size: 18px;
+    line-height: 26px;
+}
+
+.product-detail .product-info {
+    margin-top: 20px;
+    padding: 24px 0;
+    border-top: 1px solid rgba(47, 43, 61, 0.12);
+    border-bottom: 1px solid rgba(47, 43, 61, 0.12);
+}
+
+.product-detail .product-components {
+    margin-top: 0;
+    padding: 24px 0;
+    border-bottom: 1px solid rgba(47, 43, 61, 0.12);
+}
+
+.product-detail .product-info ul,
+.product-detail .product-components ul {
+    margin: 0;
+    padding: 0;
+    margin-top: 16px;
+}
+
+.product-detail .product-components ul {
+    margin-top: 8px;
+}
+
+.product-detail .product-components ul:not(:last-child) {
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(47, 43, 61, 0.12);
+}
+
+.product-detail .product-info li,
+.product-detail .product-components ul li {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+}
+
+.product-detail .product-info li:not(:first-child),
+.product-detail .product-components li:not(:first-child) {
+    margin-top: 8px;
+}
+
+.product-detail .product-info li span {
+    min-width: 240px;
+    display: inline-block;
+}
+
+.product-detail .product-components li span {
+    min-width: 105px;
+    display: inline-block;
+}
+
+.product-detail .product-components p {
+    color: rgba(47, 43, 61, 0.8) !important;
+    font-weight: 500;
+}
+
+.orders-popup-table thead {
+    display: table-header-group !important;
+}
+
+.orders-popup-table thead th::after {
+    display: none;
+}
+
+.orders-popup-table tbody td {
+    display: table-cell !important;
+}
+
+.orders-popup-table thead th,
+.orders-popup-table tbody td {
+    padding-left: 20px !important;
+}
+
+.last-status-pt .modal-body {
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+}
+
+.last-status-pt table {
+    width: 100%;
+    table-layout: fixed;
+    margin: 0;
+}
+
+.last-status-pt.dd .modal-dialog {
+    max-width: 1000px;
+    ;
+}
+
+.btn-ls {
+    color: #7367F0;
+    text-decoration: underline;
+    padding: 0;
+    font-weight: 300;
+}
+
+/* chat screen */
+
+#chatbot-btn {
+    text-align: center;
+    position: fixed;
+    z-index: 1111;
+    right: 30px;
+    bottom: 30px;
+    border: none;
+    padding: 0;
+    outline: none;
+    box-shadow: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.first-chat-screen {
+    position: fixed;
+    z-index: 1111;
+    right: 20px;
+    bottom: 20px;
+    max-width: 400px;
+    width: 100%;
+    /* background: linear-gradient(319deg, rgba(115, 103, 240, 0.70) -2.33%, #7367F0 98.15%); */
+    background-color: #7367F0;
+    border-radius: 20px;
+    overflow: hidden;
+    /* padding: 16px; */
+    box-shadow: 0 5px 40px 0 rgba(0, 0, 0, 0.16);
+}
+
+.first-chat-screen .fsc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+}
+
+.first-chat-screen .fsc-header .fsc-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.first-chat-screen .fsc-header .fsc-left h6 {
+    font-size: 20px;
+    font-style: normal;
+    font-weight: 700;
+    line-height: 30px;
+    color: #FFF;
+}
+
+.first-chat-screen .fsc-header svg {
+    cursor: pointer;
+}
+
+.first-chat-screen .fsc-body {
+    /* margin-top: 16px; */
+    padding: 16px;
+}
+
+.first-chat-screen .fsc-body.fsd {
+    padding-top: 32px;
+}
+
+.first-chat-screen .fsc-body h3 {
+    font-size: 32px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 40px;
+    color: #FFF;
+    padding: 0 20px;
+}
+
+.first-chat-screen .chat-questions {
+    border-radius: 10px;
+    background: #FFF;
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.08);
+    padding: 8px;
+    margin-top: 16px;
+}
+
+.first-chat-screen .chat-questions p.chat-q {
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 22px;
+    color: #000;
+    padding: 10px 12px;
+    position: relative;
+    cursor: pointer;
+}
+
+.first-chat-screen .chat-questions p.chat-q::after {
+    content: url(../../assets/new-img-folder/q-arrow.svg);
+    width: 16px;
+    height: 16px;
+    position: absolute;
+    right: 6px;
+    top: 55%;
+    transform: translateY(-50%);
+}
+
+.first-chat-screen .fsc-footer {
+    background-color: #fff;
+    margin-top: 24px;
+    padding: 20px 16px;
+}
+
+.first-chat-screen .fsc-text-inpt {
+    border-radius: 16px;
+    background: #F7F9FB;
+    padding: 16px 20px;
+    margin-top: -48px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.first-chat-screen .fsc-text-inpt input {
+    border: none;
+    outline: none;
+    margin: 0;
+    padding: 2px 0;
+    width: 100%;
+    background-color: transparent;
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 200;
+    line-height: 24px;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.first-chat-screen .fsc-text-inpt input::placeholder {
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 200;
+    line-height: 24px;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.first-chat-screen.second-screen {
+    display: none;
+}
+
+.first-chat-screen.second-screen .fsc-body {
+    background-color: #fff;
+    padding-bottom: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: end;
+    gap: 12px;
+    min-height: 354px;
+    /* display: none; */
+    overflow: hidden;
+    transition: min-height 0.3s ease;
+}
+
+.first-chat-screen.second-screen .fsc-footer {
+    margin: 0;
+}
+
+.first-chat-screen.second-screen .fsc-body div:nth-child(odd) {
+    text-align: right;
+}
+
+.first-chat-screen.second-screen .fsc-body div:nth-child(even) {
+    text-align: left;
+}
+
+.first-chat-screen.second-screen .fsc-body p.user {
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 120%;
+    color: #888;
+    text-align: right;
+    border-radius: 6px;
+    background: #EBECF5;
+    padding: 10px;
+    display: inline-block;
+}
+
+.first-chat-screen.second-screen .fsc-body p.bot {
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 120%;
+    color: #888;
+    text-align: left;
+    border-radius: 6px;
+    background: #EBECF5;
+    padding: 10px;
+    display: inline-block;
+}
+
+.exit-popup {
+    display: none;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 999;
+    width: 280px;
+    text-align: center;
+    font-family: sans-serif;
+    flex-direction: column;
+}
+
+/* Heading */
+.exit-popup h3 {
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 38px;
+    margin: 0;
+    color: rgba(47, 43, 61, 0.9);
+}
+
+/* Paragraph text */
+.exit-popup p {
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 24px;
+    margin: 0;
+    color: rgba(47, 43, 61, 0.7);
+    margin-top: 8px;
+    margin-bottom: 16px;
+}
+
+/* Button styles */
+.exit-popup button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s ease;
+}
+
+.cn-number {
+    outline: none;
+    border: none;
+    background: transparent;
+    color: #5b50d6;
+    text-decoration: underline;
+    padding: 0;
+}
+
+/* Confirm button (purple) */
+.exit-popup .confirm {
+    background-color: #7367F0;
+    color: white;
+}
+
+.exit-popup .confirm:hover {
+    background-color: #5b50d6;
+}
+
+/* Cancel button (grey) */
+.exit-popup .cancel {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+.exit-popup .cancel:hover {
+    background-color: #c8c8c8;
+}
+
+/* Show state */
+.exit-popup.show {
+    display: block;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+#chatbot-btn img {
+    max-width: 65px;
+}
+
+.fsc-text-inpt img {
+    cursor: pointer;
+}
+
+/* timeline popup css */
+
+#cn-number-dispatch {
+    z-index: 1111111111;
+}
+
+#cn-number-dispatch .modal-dialog {
+    max-width: 400px !important;
+}
+
+#cn-number-dispatch .modal-body {
+    max-height: 500px;
+    overflow-y: scroll;
+}
+
+#cn-number-dispatch .modal-header {
+    border-bottom: 1px solid #bebebe;
+    padding-bottom: 20px;
+}
+
+.con-timeline {
+    display: flex;
+    gap: 16px;
+}
+
+.timeline {
+    width: 40px;
+}
+
+.con-timeline .con-detail h6 {
+    font-size: 14px;
+    line-height: 22px;
+    font-weight: 500;
+    margin: 0;
+    padding: 0;
+}
+
+.con-timeline .con-detail p {
+    font-size: 12px;
+    line-height: 20px;
+    font-weight: 400;
+    margin: 0;
+    padding: 0;
+}
+
+.con-timeline .con-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 44px;
+}
+
+.con-timeline .con-detail .inner div {
+    margin-top: 4px;
+}
+
+.con-timeline .con-detail .inner {
+    position: relative;
+}
+
+.con-timeline .con-detail .inner div span {
+    font-size: 12px;
+    line-height: 20px;
+    font-weight: 400;
+    margin: 0;
+    padding: 0;
+}
+
+.con-timeline .con-detail .inner.fulfill::before {
+    content: url('../../assets/new-img-folder/sn-tick.svg');
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    left: -40px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.con-timeline .con-detail .inner.empty::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: transparent;
+    border: 2px solid rgba(115, 103, 240, 0.22);
+    left: -40px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.con-timeline .con-detail .inner:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    width: 1.5px;
+    height: 40px;
+    background-color: rgba(47, 43, 61, 0.12);
+    left: -30px;
+    top: 100%;
+}
+
+@media (max-width: 767px) {
+    .custom-res-card-header {
+        flex-direction: column;
+        align-items: start !important;
+        gap: 16px;
+    }
+
+    .custom-res-card-header .custom-snb {
+        align-items: start !important;
+        flex-direction: column;
+        width: 100%;
+        gap: 16px;
+    }
+
+    .custom-res-card-header .custom-snb .cus-search-here {
+        width: 100%;
+        margin: 0 !important;
+    }
+
+    .custom-res-card-header .custom-snb .main-btn-gp .btn-group:first-child {
+        margin-right: 12px !important;
+    }
+
+    .custom-res-card-header .custom-snb .main-btn-gp .btn-group:first-child button {
+        font-size: 0;
+    }
+
+    .custom-tl .nav-tabs {
+        overflow-x: scroll;
+    }
+
+    .dispatches-table table.dataTable,
+    .dispatches-international-table table.dataTable,
+    .dispatches-table table.otif-data.dataTable {
+        width: 100% !important;
+    }
+
+    .dispatches-international-table table.all-data-orders.dataTable tbody td:nth-child(3),
+    .dispatches-international-table table.pending-orders.dataTable tbody td:nth-child(3),
+    .dispatches-international-table table.completed-orders.dataTable tbody td:nth-child(3) {
+        display: table-cell;
+    }
+
+    .custom-table-pagination-layout,
+    .custom-table-pagination-layout-two,
+    .custom-table-pagination-layout-three,
+    .custom-table-pagination-layout-dispatch,
+    .custom-table-pagination-layout-dispatch-international,
+    .custom-table-pagination-layout-otif,
+    .custom-table-pagination-layout-arrival-international,
+    .custom-table-pagination-layout-bl-date-international,
+    .custom-table-pagination-layout-product,
+    .custom-table-pagination-layout-all-orders,
+    .custom-table-pagination-layout-pending-orders,
+    .custom-table-pagination-layout-completed-orders {
+        margin-top: 32px;
+    }
+
+    .custom-table-pagination-layout .bottom-all,
+    .custom-table-pagination-layout-two .bottom-pf,
+    .custom-table-pagination-layout-three .bottom-pa,
+    .custom-table-pagination-layout-dispatch .bottom-dispatch,
+    .custom-table-pagination-layout-dispatch-international .bottom-dispatch-international,
+    .custom-table-pagination-layout .bottom-received,
+    .custom-table-pagination-layout-two .bottom-issued,
+    .custom-table-pagination-layout-three .bottom-summary,
+    .custom-table-pagination-layout-otif .bottom-otif,
+    .custom-table-pagination-layout-arrival-international .bottom-arrival,
+    .custom-table-pagination-layout-bl-date-international .bottom-bl-date,
+    .custom-table-pagination-layout-product .bottom-product,
+    .custom-table-pagination-layout-all-orders .bottom-all-orders,
+    .custom-table-pagination-layout-pending-orders .bottom-pending-orders,
+    .custom-table-pagination-layout-completed-orders .bottom-completed-orders {
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        row-gap: 24px;
+    }
+
+    .custom-table-pagination-layout .dt-length,
+    .custom-table-pagination-layout-two .dt-length,
+    .custom-table-pagination-layout-three .dt-length,
+    .custom-table-pagination-layout-dispatch .dt-length,
+    .custom-table-pagination-layout-dispatch-international .dt-length,
+    .custom-table-pagination-layout-otif .dt-length,
+    .custom-table-pagination-layout-arrival-international .dt-length,
+    .custom-table-pagination-layout-bl-date-international .dt-length,
+    .custom-table-pagination-layout-product .dt-length,
+    .custom-table-pagination-layout-all-orders .dt-length,
+    .custom-table-pagination-layout-pending-orders .dt-length,
+    .custom-table-pagination-layout-completed-orders .dt-length {
+        margin: 0 !important;
+    }
+
+    .custom-table-pagination-layout .bottom-all .dt-info,
+    .custom-table-pagination-layout-two .bottom-pf .dt-info,
+    .custom-table-pagination-layout-three .bottom-pa .dt-info,
+    .custom-table-pagination-layout-dispatch .bottom-dispatch .dt-info,
+    .custom-table-pagination-layout-dispatch-international .bottom-dispatch-international .dt-info,
+    .custom-table-pagination-layout .bottom-received .dt-info,
+    .custom-table-pagination-layout-two .bottom-issued .dt-info,
+    .custom-table-pagination-layout-three .bottom-summary .dt-info,
+    .custom-table-pagination-layout-otif .bottom-otif .dt-info,
+    .custom-table-pagination-layout-arrival-international .bottom-arrival .dt-info,
+    .custom-table-pagination-layout-bl-date-international .bottom-bl-date .dt-info,
+    .custom-table-pagination-layout-product .bottom-product .dt-info,
+    .custom-table-pagination-layout-all-orders .bottom-all-orders .dt-info,
+    .custom-table-pagination-layout-pending-orders .bottom-pending-orders .dt-info,
+    .custom-table-pagination-layout-completed-orders .bottom-completed-orders .dt-info {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .product-data thead {
+        display: none;
+    }
+
+    .custom-product-modal-table tbody tr td:nth-child(2) div {
+        flex-direction: column;
+    }
+
+    .dispatches-table table.otif-data thead tr th:first-child,
+    .dispatches-table table.otif-data tbody tr td:first-child,
+    .dispatches-international-table table.international-arrival thead tr th:first-child,
+    .dispatches-international-table table.international-arrival tbody tr td:first-child {
+        display: table-cell;
+    }
+
+    .product-detail-card {
+        flex-wrap: wrap;
+    }
+
+    .product-image,
+    .product-detail {
+        width: 100%;
+    }
+
+    .product-detail,
+    .product-image .pi-inner,
+    .product-image .pi-inner div {
+        padding: 16px;
+    }
+
+    .product-detail .product-info li span,
+    .product-detail .product-components li span {
+        min-width: unset;
+        margin-right: 8px;
+    }
+
+    .last-status-pt .modal-body {
+        overflow: scroll;
+    }
+
+    .last-status-pt table {
+        width: 130%;
+    }
+
+    .last-status-pt.dd table {
+        width: 210%;
+    }
+
+    .first-chat-screen {
+        right: 0;
+        bottom: 0;
+        width: 95%;
+        right: 2.5%;
+    }
+
+    #chatbot-btn img {
+        max-width: 50px;
+    }
+
+    .first-chat-screen .fsc-body h3 {
+        font-size: 24px;
+        line-height: 32px;
+    }
+
+    .exit-popup h3 {
+        font-size: 20px;
+        line-height: 28px;
+    }
+    
+    table.datatables-basic button.last-status-btn, table.datatables-basic button.delivery-dates-btn {
+        display: none !important;
+    }
+}

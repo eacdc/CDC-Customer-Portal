@@ -1,0 +1,1004 @@
+<!doctype html>
+
+<html lang="en" class="layout-navbar-fixed layout-menu-fixed layout-compact" dir="ltr" data-skin="default"
+    data-assets-path="../../assets/" data-template="vertical-menu-template" data-bs-theme="light">
+
+<head>
+    <base href="/html/vertical-menu-template/" />
+    <meta charset="utf-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+
+    <title>Paper Statements | CDC</title>
+
+    <meta name="description" content="" />
+
+    <!-- Favicon -->
+    <!-- <link rel="icon" type="image/x-icon" href="../../assets/img/favicon/favicon.ico" /> -->
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&ampdisplay=swap"
+        rel="stylesheet" />
+
+    <link rel="stylesheet" href="../../assets/vendor/fonts/iconify-icons.css" />
+
+    <!-- Core CSS -->
+    <!-- build:css assets/vendor/css/theme.css  -->
+
+    <link rel="stylesheet" href="../../assets/vendor/libs/node-waves/node-waves.css" />
+
+    <link rel="stylesheet" href="../../assets/vendor/libs/pickr/pickr-themes.css" />
+
+    <link rel="stylesheet" href="../../assets/vendor/css/core.css" />
+    <link rel="stylesheet" href="../../assets/css/demo.css" />
+    <link rel="stylesheet" href="../../assets/css/custom.css" />
+
+    <!-- Vendors CSS -->
+
+    <link rel="stylesheet" href="../../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+
+    <!-- endbuild -->
+
+    <link rel="stylesheet" href="../../assets/vendor/libs/apex-charts/apex-charts.css" />
+    <link rel="stylesheet" href="../../assets/vendor/libs/swiper/swiper.css" />
+    <link rel="stylesheet" href="../../assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+    <link rel="stylesheet" href="../../assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+    <link rel="stylesheet" href="../../assets/vendor/fonts/flag-icons.css" />
+
+    <!-- Page CSS -->
+    <link rel="stylesheet" href="../../assets/vendor/css/pages/cards-advance.css" />
+
+    <!-- Helpers -->
+    <script src="../../assets/vendor/js/helpers.js"></script>
+
+    <script src="../../assets/js/config.js"></script>
+</head>
+
+<body>
+    <!-- Layout wrapper -->
+    <div class="layout-wrapper layout-content-navbar">
+        <div class="layout-container">
+            <!-- Menu -->
+
+            <aside id="layout-menu" class="layout-menu menu-vertical menu">
+                <div class="app-brand demo">
+                    <a href="index.html" class="app-brand-link">
+                        <span class="app-brand-logo demo">
+                            <span class="text-primary">
+                                <svg width="164" height="35" viewBox="0 0 164 35" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                                    <rect width="164" height="35" fill="url(#pattern0_452_5455)" />
+                                    <rect width="164" height="35" fill="url(#pattern1_452_5455)" />
+                                    <rect width="164" height="35" fill="url(#pattern2_452_5455)" />
+                                    <defs>
+                                        <pattern id="pattern0_452_5455" patternContentUnits="objectBoundingBox"
+                                            width="1" height="1">
+                                            <use xlink:href="#image0_452_5455"
+                                                transform="matrix(0.00454545 0 0 0.0212987 0 -0.000519481)" />
+                                        </pattern>
+                                        <pattern id="pattern1_452_5455" patternContentUnits="objectBoundingBox"
+                                            width="1" height="1">
+                                            <use xlink:href="#image0_452_5455"
+                                                transform="matrix(0.00454545 0 0 0.0212987 0 -0.000519481)" />
+                                        </pattern>
+                                        <pattern id="pattern2_452_5455" patternContentUnits="objectBoundingBox"
+                                            width="1" height="1">
+                                            <use xlink:href="#image0_452_5455"
+                                                transform="matrix(0.00454545 0 0 0.0212987 0 -0.000519481)" />
+                                        </pattern>
+                                        <image id="image0_452_5455" width="220" height="47" preserveAspectRatio="none"
+                                            xlink:href="data:image/png;base64,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" />
+                                    </defs>
+                                </svg>
+                            </span>
+                        </span>
+                        <!-- <span class="app-brand-text demo menu-text fw-bold ms-3">CDC Printers</span> -->
+                    </a>
+
+                    <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-3">
+                        <i class="icon-base ti menu-toggle-icon d-none d-xl-block"></i>
+                        <i class="icon-base ti tabler-x d-block d-xl-none"></i>
+                    </a>
+                </div>
+
+                <div class="menu-inner-shadow"></div>
+
+                <ul class="menu-inner py-1">
+                    <li class="menu-item">
+                        <a href="index.html" class="menu-link">
+                            <i class="menu-icon icon-base ti custom-dashboards"></i>
+                            <div data-i18n="Dashboard">Dashboard</div>
+                        </a>
+                    </li>
+
+                    <!-- Apps & Pages -->
+                    <li class="menu-header small">
+                        <span class="menu-header-text" data-i18n="Apps & Pages">Apps &amp; Pages</span>
+                    </li>
+                    <li class="menu-item">
+                        <a href="all-orders.html" class="menu-link">
+                            <i class="menu-icon icon-base ti custom-orders"></i>
+                            <div data-i18n="Orders">Orders</div>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="approvals.html" class="menu-link">
+                            <i class="menu-icon icon-base ti custom-order-icon-approval"></i>
+                            <div data-i18n="Approvals">Approvals</div>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="dispatches.html" class="menu-link">
+                            <i class="menu-icon icon-base ti custom-bars-icon-dispatches"></i>
+                            <div data-i18n="Dispatches">Dispatches</div>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="product.html" class="menu-link">
+                            <i class="menu-icon icon-base ti custom-envelope-icon-products"></i>
+                            <div data-i18n="Products">Products</div>
+                        </a>
+                    </li>
+                    <li class="menu-item active">
+                        <a href="paper-statement.html" class="menu-link">
+                            <i class="menu-icon icon-base ti custom-edit-icon-paper-statement"></i>
+                            <div data-i18n="Paper Statement">Paper Statement</div>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="otif.html" class="menu-link">
+                            <i class="menu-icon icon-base ti custom-folder-icon-otif"></i>
+                            <div data-i18n="OTIF">OTIF</div>
+                        </a>
+                    </li>
+                </ul>
+            </aside>
+
+            <div class="menu-mobile-toggler d-xl-none rounded-1">
+                <a href="javascript:void(0);"
+                    class="layout-menu-toggle menu-link text-large text-bg-secondary p-2 rounded-1">
+                    <i class="ti tabler-menu icon-base"></i>
+                    <i class="ti tabler-chevron-right icon-base"></i>
+                </a>
+            </div>
+            <!-- / Menu -->
+
+            <!-- Layout container -->
+            <div class="layout-page">
+                <!-- Navbar -->
+
+                <nav class="layout-navbar container-xxl navbar-detached navbar navbar-expand-xl align-items-center bg-navbar-theme"
+                    id="layout-navbar">
+                    <div class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
+                        <a class="nav-item nav-link px-0 me-xl-6" href="javascript:void(0)">
+                            <i class="icon-base ti tabler-menu-2 icon-md"></i>
+                        </a>
+                    </div>
+
+                    <div class="navbar-nav-right d-flex align-items-center justify-content-end" id="navbar-collapse">
+                        <!-- Search -->
+                        <div class="navbar-nav align-items-center">
+                            <div class="nav-item navbar-search-wrapper px-md-0 px-2 mb-0">
+                                <a class="nav-item nav-link search-toggler d-flex align-items-center px-0"
+                                    href="javascript:void(0);">
+                                    <span class="d-inline-block text-body-secondary fw-normal" id="autocomplete"></span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- /Search -->
+
+                        <ul class="navbar-nav flex-row align-items-center ms-md-auto">
+                            <!-- <li class="nav-item dropdown-language dropdown">
+                  <a
+                    class="nav-link dropdown-toggle hide-arrow btn btn-icon btn-text-secondary rounded-pill"
+                    href="javascript:void(0);"
+                    data-bs-toggle="dropdown">
+                    <i class="icon-base ti tabler-language icon-22px text-heading"></i>
+                  </a>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                      <a class="dropdown-item" href="javascript:void(0);" data-language="en" data-text-direction="ltr">
+                        <span>English</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item" href="javascript:void(0);" data-language="fr" data-text-direction="ltr">
+                        <span>French</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item" href="javascript:void(0);" data-language="ar" data-text-direction="rtl">
+                        <span>Arabic</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item" href="javascript:void(0);" data-language="de" data-text-direction="ltr">
+                        <span>German</span>
+                      </a>
+                    </li>
+                  </ul>
+                </li> -->
+                            <!--/ Language -->
+
+                            <!-- Style Switcher -->
+                            <!-- <li class="nav-item dropdown">
+                  <a
+                    class="nav-link dropdown-toggle hide-arrow btn btn-icon btn-text-secondary rounded-pill"
+                    id="nav-theme"
+                    href="javascript:void(0);"
+                    data-bs-toggle="dropdown">
+                    <i class="icon-base ti tabler-sun icon-22px theme-icon-active text-heading"></i>
+                    <span class="d-none ms-2" id="nav-theme-text">Toggle theme</span>
+                  </a>
+                  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="nav-theme-text">
+                    <li>
+                      <button
+                        type="button"
+                        class="dropdown-item align-items-center active"
+                        data-bs-theme-value="light"
+                        aria-pressed="false">
+                        <span><i class="icon-base ti tabler-sun icon-22px me-3" data-icon="sun"></i>Light</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        class="dropdown-item align-items-center"
+                        data-bs-theme-value="dark"
+                        aria-pressed="true">
+                        <span
+                          ><i class="icon-base ti tabler-moon-stars icon-22px me-3" data-icon="moon-stars"></i
+                          >Dark</span
+                        >
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        class="dropdown-item align-items-center"
+                        data-bs-theme-value="system"
+                        aria-pressed="false">
+                        <span
+                          ><i
+                            class="icon-base ti tabler-device-desktop-analytics icon-22px me-3"
+                            data-icon="device-desktop-analytics"></i
+                          >System</span
+                        >
+                      </button>
+                    </li>
+                  </ul>
+                </li> -->
+                            <!-- / Style Switcher-->
+
+                            <!-- Quick links  -->
+                            <!-- <li class="nav-item dropdown-shortcuts navbar-dropdown dropdown">
+                  <a
+                    class="nav-link dropdown-toggle hide-arrow btn btn-icon btn-text-secondary rounded-pill"
+                    href="javascript:void(0);"
+                    data-bs-toggle="dropdown"
+                    data-bs-auto-close="outside"
+                    aria-expanded="false">
+                    <i class="icon-base ti tabler-layout-grid-add icon-22px text-heading"></i>
+                  </a>
+                  <div class="dropdown-menu dropdown-menu-end p-0">
+                    <div class="dropdown-menu-header border-bottom">
+                      <div class="dropdown-header d-flex align-items-center py-3">
+                        <h6 class="mb-0 me-auto">Shortcuts</h6>
+                        <a
+                          href="javascript:void(0)"
+                          class="dropdown-shortcuts-add py-2 btn btn-text-secondary rounded-pill btn-icon"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="top"
+                          title="Add shortcuts"
+                          ><i class="icon-base ti tabler-plus icon-20px text-heading"></i
+                        ></a>
+                      </div>
+                    </div>
+                    <div class="dropdown-shortcuts-list scrollable-container">
+                      <div class="row row-bordered overflow-visible g-0">
+                        <div class="dropdown-shortcuts-item col">
+                          <span class="dropdown-shortcuts-icon rounded-circle mb-3">
+                            <i class="icon-base ti tabler-calendar icon-26px text-heading"></i>
+                          </span>
+                          <a href="app-calendar.html" class="stretched-link">Calendar</a>
+                          <small>Appointments</small>
+                        </div>
+                        <div class="dropdown-shortcuts-item col">
+                          <span class="dropdown-shortcuts-icon rounded-circle mb-3">
+                            <i class="icon-base ti tabler-file-dollar icon-26px text-heading"></i>
+                          </span>
+                          <a href="app-invoice-list.html" class="stretched-link">Invoice App</a>
+                          <small>Manage Accounts</small>
+                        </div>
+                      </div>
+                      <div class="row row-bordered overflow-visible g-0">
+                        <div class="dropdown-shortcuts-item col">
+                          <span class="dropdown-shortcuts-icon rounded-circle mb-3">
+                            <i class="icon-base ti tabler-user icon-26px text-heading"></i>
+                          </span>
+                          <a href="app-user-list.html" class="stretched-link">User App</a>
+                          <small>Manage Users</small>
+                        </div>
+                        <div class="dropdown-shortcuts-item col">
+                          <span class="dropdown-shortcuts-icon rounded-circle mb-3">
+                            <i class="icon-base ti tabler-users icon-26px text-heading"></i>
+                          </span>
+                          <a href="app-access-roles.html" class="stretched-link">Role Management</a>
+                          <small>Permission</small>
+                        </div>
+                      </div>
+                      <div class="row row-bordered overflow-visible g-0">
+                        <div class="dropdown-shortcuts-item col">
+                          <span class="dropdown-shortcuts-icon rounded-circle mb-3">
+                            <i class="icon-base ti tabler-device-desktop-analytics icon-26px text-heading"></i>
+                          </span>
+                          <a href="index.html" class="stretched-link">Dashboard</a>
+                          <small>User Dashboard</small>
+                        </div>
+                        <div class="dropdown-shortcuts-item col">
+                          <span class="dropdown-shortcuts-icon rounded-circle mb-3">
+                            <i class="icon-base ti tabler-settings icon-26px text-heading"></i>
+                          </span>
+                          <a href="pages-account-settings-account.html" class="stretched-link">Setting</a>
+                          <small>Account Settings</small>
+                        </div>
+                      </div>
+                      <div class="row row-bordered overflow-visible g-0">
+                        <div class="dropdown-shortcuts-item col">
+                          <span class="dropdown-shortcuts-icon rounded-circle mb-3">
+                            <i class="icon-base ti tabler-help-circle icon-26px text-heading"></i>
+                          </span>
+                          <a href="pages-faq.html" class="stretched-link">FAQs</a>
+                          <small>FAQs & Articles</small>
+                        </div>
+                        <div class="dropdown-shortcuts-item col">
+                          <span class="dropdown-shortcuts-icon rounded-circle mb-3">
+                            <i class="icon-base ti tabler-square icon-26px text-heading"></i>
+                          </span>
+                          <a href="modal-examples.html" class="stretched-link">Modals</a>
+                          <small>Useful Popups</small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </li> -->
+                            <!-- Quick links -->
+
+                            <!-- Notification -->
+                            <!-- <li class="nav-item dropdown-notifications navbar-dropdown dropdown me-3 me-xl-2">
+                                <a class="nav-link dropdown-toggle hide-arrow btn btn-icon btn-text-secondary rounded-pill"
+                                    href="javascript:void(0);" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                    aria-expanded="false">
+                                    <span class="position-relative">
+                                        <i class="icon-base ti tabler-bell icon-22px text-heading"></i>
+                                        <span
+                                            class="badge rounded-pill bg-danger badge-dot badge-notifications border"></span>
+                                    </span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end p-0">
+                                    <li class="dropdown-menu-header border-bottom">
+                                        <div class="dropdown-header d-flex align-items-center py-3">
+                                            <h6 class="mb-0 me-auto">Notification</h6>
+                                            <div class="d-flex align-items-center h6 mb-0">
+                                                <span class="badge bg-label-primary me-2">8 New</span>
+                                                <a href="javascript:void(0)"
+                                                    class="dropdown-notifications-all p-2 btn btn-icon"
+                                                    data-bs-toggle="tooltip" data-bs-placement="top"
+                                                    title="Mark all as read"><i
+                                                        class="icon-base ti tabler-mail-opened text-heading"></i></a>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="dropdown-notifications-list scrollable-container">
+                                        <ul class="list-group list-group-flush">
+                                            <li
+                                                class="list-group-item list-group-item-action dropdown-notifications-item">
+                                                <div class="d-flex">
+                                                    <div class="flex-shrink-0 me-3">
+                                                        <div class="avatar">
+                                                            <img src="../../assets/img/avatars/1.png" alt
+                                                                class="rounded-circle" />
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="small mb-1">Congratulation Lettie 🎉</h6>
+                                                        <small class="mb-1 d-block text-body">Won the monthly best
+                                                            seller gold badge</small>
+                                                        <small class="text-body-secondary">1h ago</small>
+                                                    </div>
+                                                    <div class="flex-shrink-0 dropdown-notifications-actions">
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-read"><span
+                                                                class="badge badge-dot"></span></a>
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-archive"><span
+                                                                class="icon-base ti tabler-x"></span></a>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li
+                                                class="list-group-item list-group-item-action dropdown-notifications-item">
+                                                <div class="d-flex">
+                                                    <div class="flex-shrink-0 me-3">
+                                                        <div class="avatar">
+                                                            <span
+                                                                class="avatar-initial rounded-circle bg-label-danger">CF</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="mb-1 small">Charles Franklin</h6>
+                                                        <small class="mb-1 d-block text-body">Accepted your
+                                                            connection</small>
+                                                        <small class="text-body-secondary">12hr ago</small>
+                                                    </div>
+                                                    <div class="flex-shrink-0 dropdown-notifications-actions">
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-read"><span
+                                                                class="badge badge-dot"></span></a>
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-archive"><span
+                                                                class="icon-base ti tabler-x"></span></a>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li
+                                                class="list-group-item list-group-item-action dropdown-notifications-item marked-as-read">
+                                                <div class="d-flex">
+                                                    <div class="flex-shrink-0 me-3">
+                                                        <div class="avatar">
+                                                            <img src="../../assets/img/avatars/2.png" alt
+                                                                class="rounded-circle" />
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="mb-1 small">New Message ✉️</h6>
+                                                        <small class="mb-1 d-block text-body">You have new message from
+                                                            Natalie</small>
+                                                        <small class="text-body-secondary">1h ago</small>
+                                                    </div>
+                                                    <div class="flex-shrink-0 dropdown-notifications-actions">
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-read"><span
+                                                                class="badge badge-dot"></span></a>
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-archive"><span
+                                                                class="icon-base ti tabler-x"></span></a>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li
+                                                class="list-group-item list-group-item-action dropdown-notifications-item">
+                                                <div class="d-flex">
+                                                    <div class="flex-shrink-0 me-3">
+                                                        <div class="avatar">
+                                                            <span
+                                                                class="avatar-initial rounded-circle bg-label-success"><i
+                                                                    class="icon-base ti tabler-shopping-cart"></i></span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="mb-1 small">Whoo! You have new order 🛒</h6>
+                                                        <small class="mb-1 d-block text-body">ACME Inc. made new order
+                                                            $1,154</small>
+                                                        <small class="text-body-secondary">1 day ago</small>
+                                                    </div>
+                                                    <div class="flex-shrink-0 dropdown-notifications-actions">
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-read"><span
+                                                                class="badge badge-dot"></span></a>
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-archive"><span
+                                                                class="icon-base ti tabler-x"></span></a>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li
+                                                class="list-group-item list-group-item-action dropdown-notifications-item marked-as-read">
+                                                <div class="d-flex">
+                                                    <div class="flex-shrink-0 me-3">
+                                                        <div class="avatar">
+                                                            <img src="../../assets/img/avatars/9.png" alt
+                                                                class="rounded-circle" />
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="mb-1 small">Application has been approved 🚀</h6>
+                                                        <small class="mb-1 d-block text-body">Your ABC project
+                                                            application has been
+                                                            approved.</small>
+                                                        <small class="text-body-secondary">2 days ago</small>
+                                                    </div>
+                                                    <div class="flex-shrink-0 dropdown-notifications-actions">
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-read"><span
+                                                                class="badge badge-dot"></span></a>
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-archive"><span
+                                                                class="icon-base ti tabler-x"></span></a>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li
+                                                class="list-group-item list-group-item-action dropdown-notifications-item marked-as-read">
+                                                <div class="d-flex">
+                                                    <div class="flex-shrink-0 me-3">
+                                                        <div class="avatar">
+                                                            <span
+                                                                class="avatar-initial rounded-circle bg-label-success"><i
+                                                                    class="icon-base ti tabler-chart-pie"></i></span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="mb-1 small">Monthly report is generated</h6>
+                                                        <small class="mb-1 d-block text-body">July monthly financial
+                                                            report is generated </small>
+                                                        <small class="text-body-secondary">3 days ago</small>
+                                                    </div>
+                                                    <div class="flex-shrink-0 dropdown-notifications-actions">
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-read"><span
+                                                                class="badge badge-dot"></span></a>
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-archive"><span
+                                                                class="icon-base ti tabler-x"></span></a>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li
+                                                class="list-group-item list-group-item-action dropdown-notifications-item marked-as-read">
+                                                <div class="d-flex">
+                                                    <div class="flex-shrink-0 me-3">
+                                                        <div class="avatar">
+                                                            <img src="../../assets/img/avatars/5.png" alt
+                                                                class="rounded-circle" />
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="mb-1 small">Send connection request</h6>
+                                                        <small class="mb-1 d-block text-body">Peter sent you connection
+                                                            request</small>
+                                                        <small class="text-body-secondary">4 days ago</small>
+                                                    </div>
+                                                    <div class="flex-shrink-0 dropdown-notifications-actions">
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-read"><span
+                                                                class="badge badge-dot"></span></a>
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-archive"><span
+                                                                class="icon-base ti tabler-x"></span></a>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li
+                                                class="list-group-item list-group-item-action dropdown-notifications-item">
+                                                <div class="d-flex">
+                                                    <div class="flex-shrink-0 me-3">
+                                                        <div class="avatar">
+                                                            <img src="../../assets/img/avatars/6.png" alt
+                                                                class="rounded-circle" />
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="mb-1 small">New message from Jane</h6>
+                                                        <small class="mb-1 d-block text-body">Your have new message from
+                                                            Jane</small>
+                                                        <small class="text-body-secondary">5 days ago</small>
+                                                    </div>
+                                                    <div class="flex-shrink-0 dropdown-notifications-actions">
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-read"><span
+                                                                class="badge badge-dot"></span></a>
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-archive"><span
+                                                                class="icon-base ti tabler-x"></span></a>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li
+                                                class="list-group-item list-group-item-action dropdown-notifications-item marked-as-read">
+                                                <div class="d-flex">
+                                                    <div class="flex-shrink-0 me-3">
+                                                        <div class="avatar">
+                                                            <span
+                                                                class="avatar-initial rounded-circle bg-label-warning"><i
+                                                                    class="icon-base ti tabler-alert-triangle"></i></span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="mb-1 small">CPU is running high</h6>
+                                                        <small class="mb-1 d-block text-body">CPU Utilization Percent is
+                                                            currently at
+                                                            88.63%,</small>
+                                                        <small class="text-body-secondary">5 days ago</small>
+                                                    </div>
+                                                    <div class="flex-shrink-0 dropdown-notifications-actions">
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-read"><span
+                                                                class="badge badge-dot"></span></a>
+                                                        <a href="javascript:void(0)"
+                                                            class="dropdown-notifications-archive"><span
+                                                                class="icon-base ti tabler-x"></span></a>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li class="border-top">
+                                        <div class="d-grid p-4">
+                                            <a class="btn btn-primary btn-sm d-flex" href="javascript:void(0);">
+                                                <small class="align-middle">View all notifications</small>
+                                            </a>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li> -->
+                            <!--/ Notification -->
+
+                            <!-- User -->
+                            <li class="nav-item navbar-dropdown dropdown-user dropdown">
+                                <a class="nav-link dropdown-toggle hide-arrow p-0" href="javascript:void(0);"
+                                    data-bs-toggle="dropdown">
+                                    <div class="avatar avatar-online">
+                                        <img src="../../assets/img/avatars/1.png" alt class="rounded-circle" />
+                                    </div>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <div class="dropdown-item mt-0" style="cursor: default;">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-0" id="user-name-display">User</h6>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="dropdown-divider my-1 mx-n2"></div>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="pages-account-settings-account.html">
+                                            <i class="icon-base ti tabler-user me-3 icon-md"></i><span
+                                                class="align-middle">View Profile</span>
+                                        </a>
+                                    </li>
+                                    <!--<li>-->
+                                    <!--    <a class="dropdown-item" href="">-->
+                                    <!--        <i class="icon-base ti tabler-question-mark me-3 icon-md"></i><span-->
+                                    <!--            class="align-middle">Ask Me Anything</span>-->
+                                    <!--    </a>-->
+                                    <!--</li>-->
+                                    <li>
+                                        <div class="d-grid px-2 pt-2 pb-1">
+                                            <a
+                                              class="btn btn-sm btn-danger d-flex"
+                                              href="javascript:void(0);"
+                                              data-auth-action="logout"
+                                              data-redirect="auth-login-cover.html">
+                                                <small class="align-middle">Logout</small>
+                                                <i class="icon-base ti tabler-logout ms-2 icon-14px"></i>
+                                            </a>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li>
+                            <!--/ User -->
+                        </ul>
+                    </div>
+                </nav>
+
+                <!-- / Navbar -->
+
+                <!-- Content wrapper -->
+                <div class="content-wrapper">
+                    <!-- Content -->
+                    <div class="container-xxl flex-grow-1 container-p-y">
+                        <div class="row g-6">
+
+
+                            <!-- Approvals Table -->
+                            <div class="col-12 order-5 custom-tl">
+
+                                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link btn btn-primary active" id="home-tab"
+                                            data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab"
+                                            aria-controls="home" aria-selected="true">Received</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link btn" id="profile-tab" data-bs-toggle="tab"
+                                            data-bs-target="#profile" type="button" role="tab" aria-controls="profile"
+                                            aria-selected="false">Issued</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link btn" id="contact-tab" data-bs-toggle="tab"
+                                            data-bs-target="#contact" type="button" role="tab" aria-controls="contact"
+                                            aria-selected="false">Summary</button>
+                                    </li>
+                                </ul>
+
+                                <div class="tab-content p-0" id="myTabContent">
+                                    <div class="tab-pane fade show active" id="home" role="tabpanel"
+                                        aria-labelledby="home-tab">
+                                        <div class="card mt-5">
+                                            <div
+                                                class="card-header custom-res-card-header d-flex align-items-center justify-content-between">
+                                                <div class="card-title mb-0">
+                                                    <h5 class="m-0 me-2">Paper Statement</h5>
+                                                </div>
+                                                <div class="card-title mb-0 d-flex align-items-center custom-snb">
+                                                    <div class="search-here me-4 cus-search-here"></div>
+                                                    <div class="main-btn-gp">
+                                                        <div class="btn-group me-4">
+                                                            <button type="button" class="btn btn-label-secondary"><svg
+                                                                    xmlns="http://www.w3.org/2000/svg" width="17"
+                                                                    height="16" viewBox="0 0 17 16" fill="none">
+                                                                    <path
+                                                                        d="M3.16663 11.3333V12.6666C3.16663 13.403 3.76358 13.9999 4.49996 13.9999H12.5C13.2363 13.9999 13.8333 13.403 13.8333 12.6666V11.3333"
+                                                                        stroke="#808390" stroke-width="1.5"
+                                                                        stroke-linecap="round"
+                                                                        stroke-linejoin="round" />
+                                                                    <path
+                                                                        d="M5.16663 6.00008L8.49996 2.66675L11.8333 6.00008"
+                                                                        stroke="#808390" stroke-width="1.5"
+                                                                        stroke-linecap="round"
+                                                                        stroke-linejoin="round" />
+                                                                    <path d="M8.49996 2.66675V10.6667" stroke="#808390"
+                                                                        stroke-width="1.5" stroke-linecap="round"
+                                                                        stroke-linejoin="round" />
+                                                                </svg> &nbsp;&nbsp;Export</button>
+                                                        </div>
+                                                        <div class="btn-group">
+                                                            <button type="button" class="btn btn-label-primary">Last 3
+                                                                Month</button>
+                                                            <button type="button"
+                                                                class="btn btn-label-primary dropdown-toggle dropdown-toggle-split"
+                                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                                                <span class="visually-hidden">Toggle Dropdown</span>
+                                                            </button>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a class="dropdown-item"
+                                                                        href="javascript:void(0);">Last
+                                                                        Month</a></li>
+                                                                <li><a class="dropdown-item"
+                                                                        href="javascript:void(0);">Last
+                                                                        6
+                                                                        Month</a></li>
+                                                                <li><a class="dropdown-item"
+                                                                        href="javascript:void(0);">Last
+                                                                        1
+                                                                        year</a></li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="card-datatable border-top">
+                                                <table class="paper-statement-received table">
+                                                    <thead>
+                                                        <tr>
+                                                            <!--<th></th>-->
+                                                            <th></th>
+                                                            <th>DATE</th>
+                                                            <th>PAPER DETAILS</th>
+                                                            <th>VENDER</th>
+                                                            <th>SUMMARY</th>
+                                                            <!-- <th class="w-20">progress</th> -->
+                                                        </tr>
+                                                    </thead>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="dt-container custom-table-pagination-layout"></div>
+                                    </div>
+                                    <div class="tab-pane fade" id="profile" role="tabpanel"
+                                        aria-labelledby="profile-tab">
+                                        <div class="card mt-5">
+                                            <div
+                                                class="card-header custom-res-card-header d-flex align-items-center justify-content-between">
+                                                <div class="card-title mb-0">
+                                                    <h5 class="m-0 me-2">Paper Statement</h5>
+                                                </div>
+                                                <div class="card-title mb-0 d-flex align-items-center custom-snb">
+                                                    <div class="search-here-issued me-4 cus-search-here"></div>
+                                                    <div class="main-btn-gp">
+                                                        <div class="btn-group me-4">
+                                                            <button type="button" class="btn btn-label-secondary"><svg
+                                                                    xmlns="http://www.w3.org/2000/svg" width="17"
+                                                                    height="16" viewBox="0 0 17 16" fill="none">
+                                                                    <path
+                                                                        d="M3.16663 11.3333V12.6666C3.16663 13.403 3.76358 13.9999 4.49996 13.9999H12.5C13.2363 13.9999 13.8333 13.403 13.8333 12.6666V11.3333"
+                                                                        stroke="#808390" stroke-width="1.5"
+                                                                        stroke-linecap="round"
+                                                                        stroke-linejoin="round" />
+                                                                    <path
+                                                                        d="M5.16663 6.00008L8.49996 2.66675L11.8333 6.00008"
+                                                                        stroke="#808390" stroke-width="1.5"
+                                                                        stroke-linecap="round"
+                                                                        stroke-linejoin="round" />
+                                                                    <path d="M8.49996 2.66675V10.6667" stroke="#808390"
+                                                                        stroke-width="1.5" stroke-linecap="round"
+                                                                        stroke-linejoin="round" />
+                                                                </svg> &nbsp;&nbsp;Export</button>
+                                                        </div>
+                                                        <div class="btn-group">
+                                                            <button type="button" class="btn btn-label-primary">Last 3
+                                                                Month</button>
+                                                            <button type="button"
+                                                                class="btn btn-label-primary dropdown-toggle dropdown-toggle-split"
+                                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                                                <span class="visually-hidden">Toggle Dropdown</span>
+                                                            </button>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a class="dropdown-item"
+                                                                        href="javascript:void(0);">Last
+                                                                        Month</a></li>
+                                                                <li><a class="dropdown-item"
+                                                                        href="javascript:void(0);">Last
+                                                                        6
+                                                                        Month</a></li>
+                                                                <li><a class="dropdown-item"
+                                                                        href="javascript:void(0);">Last
+                                                                        1
+                                                                        year</a></li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="card-datatable border-top">
+                                                <table class="paper-statement-issued table">
+                                                    <thead>
+                                                        <tr>
+                                                            <!--<th></th>-->
+                                                            <th></th>
+                                                            <th>DATE</th>
+                                                            <th>PAPER DETAILS</th>
+                                                            <th>VENDER</th>
+                                                            <th>SUMMARY</th>
+                                                            <!-- <th class="w-20">progress</th> -->
+                                                        </tr>
+                                                    </thead>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="dt-container custom-table-pagination-layout-two"></div>
+                                    </div>
+                                    <div class="tab-pane fade" id="contact" role="tabpanel"
+                                        aria-labelledby="contact-tab">
+                                        <div class="card mt-5">
+                                            <div
+                                                class="card-header custom-res-card-header d-flex align-items-center justify-content-between">
+                                                <div class="card-title mb-0">
+                                                    <h5 class="m-0 me-2">Paper Statement</h5>
+                                                </div>
+                                                <div class="card-title mb-0 d-flex align-items-center custom-snb">
+                                                    <div class="search-here-summary me-4 cus-search-here"></div>
+                                                    <div class="main-btn-gp">
+                                                        <div class="btn-group me-4">
+                                                            <button type="button" class="btn btn-label-secondary"><svg
+                                                                    xmlns="http://www.w3.org/2000/svg" width="17"
+                                                                    height="16" viewBox="0 0 17 16" fill="none">
+                                                                    <path
+                                                                        d="M3.16663 11.3333V12.6666C3.16663 13.403 3.76358 13.9999 4.49996 13.9999H12.5C13.2363 13.9999 13.8333 13.403 13.8333 12.6666V11.3333"
+                                                                        stroke="#808390" stroke-width="1.5"
+                                                                        stroke-linecap="round"
+                                                                        stroke-linejoin="round" />
+                                                                    <path
+                                                                        d="M5.16663 6.00008L8.49996 2.66675L11.8333 6.00008"
+                                                                        stroke="#808390" stroke-width="1.5"
+                                                                        stroke-linecap="round"
+                                                                        stroke-linejoin="round" />
+                                                                    <path d="M8.49996 2.66675V10.6667" stroke="#808390"
+                                                                        stroke-width="1.5" stroke-linecap="round"
+                                                                        stroke-linejoin="round" />
+                                                                </svg> &nbsp;&nbsp;Export</button>
+                                                        </div>
+                                                        <div class="btn-group">
+                                                            <button type="button" class="btn btn-label-primary">Last 3
+                                                                Month</button>
+                                                            <button type="button"
+                                                                class="btn btn-label-primary dropdown-toggle dropdown-toggle-split"
+                                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                                                <span class="visually-hidden">Toggle Dropdown</span>
+                                                            </button>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a class="dropdown-item"
+                                                                        href="javascript:void(0);">Last
+                                                                        Month</a></li>
+                                                                <li><a class="dropdown-item"
+                                                                        href="javascript:void(0);">Last
+                                                                        6
+                                                                        Month</a></li>
+                                                                <li><a class="dropdown-item"
+                                                                        href="javascript:void(0);">Last
+                                                                        1
+                                                                        year</a></li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="card-datatable border-top">
+                                                <table class="paper-statement-summary table">
+                                                    <thead>
+                                                        <tr>
+                                                            <!--<th></th>-->
+                                                            <th></th>
+                                                            <th>DATE</th>
+                                                            <th>PAPER DETAILS</th>
+                                                            <th>VENDER</th>
+                                                            <th>SUMMARY</th>
+                                                            <!-- <th class="w-20">progress</th> -->
+                                                        </tr>
+                                                    </thead>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="dt-container custom-table-pagination-layout-three"></div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <!--/ Approvals Table -->
+
+                        </div>
+                    </div>
+                    <!-- / Content -->
+
+                    <div class="content-backdrop fade"></div>
+                </div>
+                <!-- Content wrapper -->
+            </div>
+            <!-- / Layout page -->
+        </div>
+
+        <!-- Overlay -->
+        <div class="layout-overlay layout-menu-toggle"></div>
+
+        <!-- Drag Target Area To SlideIn Menu On Small Screens -->
+        <div class="drag-target"></div>
+    </div>
+    <!-- / Layout wrapper -->
+
+    <!-- Core JS -->
+    <!-- build:js assets/vendor/js/theme.js -->
+
+    <script src="../../assets/vendor/libs/jquery/jquery.js"></script>
+
+    <script src="../../assets/vendor/libs/popper/popper.js"></script>
+    <script src="../../assets/vendor/js/bootstrap.js"></script>
+    <script src="../../assets/vendor/libs/node-waves/node-waves.js"></script>
+
+    <script src="../../assets/vendor/libs/@algolia/autocomplete-js.js"></script>
+
+    <script src="../../assets/vendor/libs/pickr/pickr.js"></script>
+
+    <script src="../../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+
+    <script src="../../assets/vendor/libs/hammer/hammer.js"></script>
+
+    <script src="../../assets/vendor/libs/i18n/i18n.js"></script>
+
+    <script src="../../assets/vendor/js/menu.js"></script>
+
+    <!-- endbuild -->
+
+    <!-- Vendors JS -->
+    <script src="../../assets/vendor/libs/apex-charts/apexcharts.js"></script>
+    <script src="../../assets/vendor/libs/swiper/swiper.js"></script>
+    <script src="../../assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+
+    <!-- Main JS -->
+
+    <script src="../../assets/js/main.js"></script>
+    <script src="../../assets/js/user-profile.js"></script>
+
+    <!-- Page JS -->
+    <script src="../../assets/js/paper-statement.js"></script>
+</body>
+
+</html>

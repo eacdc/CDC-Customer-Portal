@@ -1,0 +1,233 @@
+<!doctype html>
+
+<html lang="en" class="layout-wide customizer-hide" dir="ltr" data-skin="default" data-assets-path="../../assets/"
+  data-template="vertical-menu-template" data-bs-theme="light">
+
+<head>
+  <base href="/html/vertical-menu-template/" />
+  <meta charset="utf-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+
+  <title>Login | CDC</title>
+
+  <meta name="description" content="" />
+
+  <!-- Favicon -->
+  <!-- <link rel="icon" type="image/x-icon" href="../../assets/img/favicon/favicon.ico" /> -->
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&ampdisplay=swap"
+    rel="stylesheet" />
+
+  <link rel="stylesheet" href="../../assets/vendor/fonts/iconify-icons.css" />
+
+  <!-- Core CSS -->
+  <!-- build:css assets/vendor/css/theme.css  -->
+
+  <link rel="stylesheet" href="../../assets/vendor/libs/node-waves/node-waves.css" />
+
+  <link rel="stylesheet" href="../../assets/vendor/libs/pickr/pickr-themes.css" />
+
+  <link rel="stylesheet" href="../../assets/vendor/css/core.css" />
+  <link rel="stylesheet" href="../../assets/css/demo.css" />
+
+  <!-- Vendors CSS -->
+
+  <link rel="stylesheet" href="../../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+
+  <!-- endbuild -->
+
+  <!-- Vendor -->
+  <link rel="stylesheet" href="../../assets/vendor/libs/@form-validation/form-validation.css" />
+
+  <!-- Page CSS -->
+  <!-- Page -->
+  <link rel="stylesheet" href="../../assets/vendor/css/pages/page-auth.css" />
+
+  <!-- Helpers -->
+  <script src="../../assets/vendor/js/helpers.js"></script>
+  <!--! Template customizer & Theme config files MUST be included after core stylesheets and helpers.js in the <head> section -->
+
+  <!--? Template customizer: To hide customizer set displayCustomizer value false in config.js.  -->
+  <script src="../../assets/vendor/js/template-customizer.js"></script>
+
+  <!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
+
+  <script src="../../assets/js/config.js"></script>
+</head>
+
+<body>
+  <!-- Content -->
+
+  <div class="authentication-wrapper authentication-cover">
+    <!-- Logo -->
+    <a href="index.html" class="app-brand auth-cover-brand">
+      <span class="app-brand-logo demo">
+        <span class="text-primary">
+          <svg width="164" height="35" viewBox="0 0 164 35" fill="none" xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink">
+            <rect width="164" height="35" fill="url(#pattern0_452_5455)" />
+            <rect width="164" height="35" fill="url(#pattern1_452_5455)" />
+            <rect width="164" height="35" fill="url(#pattern2_452_5455)" />
+            <defs>
+              <pattern id="pattern0_452_5455" patternContentUnits="objectBoundingBox" width="1" height="1">
+                <use xlink:href="#image0_452_5455" transform="matrix(0.00454545 0 0 0.0212987 0 -0.000519481)" />
+              </pattern>
+              <pattern id="pattern1_452_5455" patternContentUnits="objectBoundingBox" width="1" height="1">
+                <use xlink:href="#image0_452_5455" transform="matrix(0.00454545 0 0 0.0212987 0 -0.000519481)" />
+              </pattern>
+              <pattern id="pattern2_452_5455" patternContentUnits="objectBoundingBox" width="1" height="1">
+                <use xlink:href="#image0_452_5455" transform="matrix(0.00454545 0 0 0.0212987 0 -0.000519481)" />
+              </pattern>
+              <image id="image0_452_5455" width="220" height="47" preserveAspectRatio="none"
+                xlink:href="data:image/png;base64,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" />
+            </defs>
+          </svg>
+
+        </span>
+      </span>
+      <!-- <span class="app-brand-text demo text-heading fw-bold">CDC PRINTERS</span> -->
+    </a>
+    <!-- /Logo -->
+    <div class="authentication-inner row m-0">
+      <!-- /Left Text -->
+      <div class="d-none d-xl-flex col-xl-8 p-0 auth-cover-illustration">
+        <div class="auth-cover-bg d-flex justify-content-center align-items-center">
+          <img src="../../assets/img/new-img-folder/login-illustration.png" alt="auth-login-cover"
+            class="my-5 auth-illustration" data-app-light-img="new-img-folder/login-illustration.png" />
+          <img src="../../assets/img/illustrations/bg-shape-image-light.png" alt="auth-login-cover" class="platform-bg"
+            data-app-light-img="illustrations/bg-shape-image-light.png"
+            data-app-dark-img="illustrations/bg-shape-image-dark.png" />
+        </div>
+      </div>
+      <!-- /Left Text -->
+
+      <!-- Login -->
+      <div class="d-flex col-12 col-xl-4 align-items-center authentication-bg p-sm-12 p-6">
+        <div class="w-px-400 mx-auto mt-12 pt-5">
+          <h4 class="mb-1">Welcome to CDC Printers! 👋🏻</h4>
+          <p class="mb-6">Please sign-in to your account and start your journey</p>
+
+          <form
+            id="formAuthentication"
+            class="mb-6"
+            data-auth="login"
+            data-success-redirect="index.html"
+            novalidate>
+            <div class="mb-6 form-control-validation">
+              <label for="email" class="form-label">Email</label>
+              <input
+                type="email"
+                class="form-control"
+                id="email"
+                name="email"
+                placeholder="Enter your email"
+                autocomplete="email"
+                autofocus />
+            </div>
+            <div class="mb-6 form-password-toggle form-control-validation">
+              <label class="form-label" for="password">Password</label>
+              <div class="input-group input-group-merge">
+                <input type="password" id="password" class="form-control" name="password"
+                  placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
+                  aria-describedby="password" />
+                <span class="input-group-text cursor-pointer"><i class="icon-base ti tabler-eye-off"></i></span>
+              </div>
+            </div>
+            <div class="my-8">
+              <div class="d-flex justify-content-between">
+                <div class="form-check mb-0 ms-2">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="remember-me"
+                    disabled
+                    aria-disabled="true" />
+                  <label class="form-check-label" for="remember-me"> Remember Me </label>
+                  <small class="text-muted d-block">Not required for now</small>
+                </div>
+                <a href="auth-forgot-password-cover.html">
+                  <p class="mb-0">Forgot Password?</p>
+                </a>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary d-grid w-100">Sign in</button>
+            <div id="formAlert" class="alert d-none mt-3" role="alert"></div>
+            <pre
+              id="formResult"
+              class="bg-body-secondary border rounded mt-3 mb-0 p-3 small text-break d-none"></pre>
+          </form>
+
+          <p class="text-center">
+            <span>New on our platform?</span>
+            <a href="auth-register-cover.html">
+              <span>Create an account</span>
+            </a>
+          </p>
+
+          <div class="divider my-6">
+            <div class="divider-text">or</div>
+          </div>
+
+          <div class="d-flex justify-content-center">
+            <a href="javascript:;" class="btn btn-icon rounded-circle btn-text-facebook me-1_5">
+              <i class="icon-base ti tabler-brand-facebook-filled icon-20px"></i>
+            </a>
+
+            <a href="javascript:;" class="btn btn-icon rounded-circle btn-text-twitter me-1_5">
+              <i class="icon-base ti tabler-brand-twitter-filled icon-20px"></i>
+            </a>
+
+            <a href="javascript:;" class="btn btn-icon rounded-circle btn-text-google-plus">
+              <i class="icon-base ti tabler-brand-google-filled icon-20px"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+      <!-- /Login -->
+    </div>
+  </div>
+
+  <!-- / Content -->
+
+  <!-- Core JS -->
+  <!-- build:js assets/vendor/js/theme.js -->
+
+  <script src="../../assets/vendor/libs/jquery/jquery.js"></script>
+
+  <script src="../../assets/vendor/libs/popper/popper.js"></script>
+  <script src="../../assets/vendor/js/bootstrap.js"></script>
+  <script src="../../assets/vendor/libs/node-waves/node-waves.js"></script>
+
+  <script src="../../assets/vendor/libs/@algolia/autocomplete-js.js"></script>
+
+  <script src="../../assets/vendor/libs/pickr/pickr.js"></script>
+
+  <script src="../../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+
+  <script src="../../assets/vendor/libs/hammer/hammer.js"></script>
+
+  <script src="../../assets/vendor/libs/i18n/i18n.js"></script>
+
+  <script src="../../assets/vendor/js/menu.js"></script>
+
+  <!-- endbuild -->
+
+  <!-- Vendors JS -->
+  <script src="../../assets/vendor/libs/@form-validation/popular.js"></script>
+  <script src="../../assets/vendor/libs/@form-validation/bootstrap5.js"></script>
+  <script src="../../assets/vendor/libs/@form-validation/auto-focus.js"></script>
+
+  <!-- Main JS -->
+
+  <script src="../../assets/js/main.js"></script>
+
+  <!-- Page JS -->
+  <script src="../../assets/js/pages-auth.js"></script>
+</body>
+
+</html>

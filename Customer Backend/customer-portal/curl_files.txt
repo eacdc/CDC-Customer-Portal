@@ -1,0 +1,20 @@
+curl -s "http://localhost:8080/api/orders?tab=all&range=3m&limit=25" \
+ -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFuaXNoQGFwdXJ2YS5vcmcuaW4iLCJpYXQiOjE3NjI2NzUzOTcsImV4cCI6MTc2MjY4MjU5N30.7XHoVLuHwQc1n9DFjQ2sJz7-QmABMAnfnUPsErZ6QR4" \
+ -H "X-Session-Id: aaa39aaf-093b-425c-a077-7e45fded4da6" | jq
+
+curl -X GET "http://localhost:8080/api/orders/619/processes?source=db1" \
+ -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFuaXNoQGFwdXJ2YS5vcmcuaW4iLCJpYXQiOjE3NjI2ODU5MjMsImV4cCI6MTc2NTI3NzkyM30.E87VnwT1pgSyUjcBmxhvgjHTYO3DFWzigOuP5RJVr-g" \
+ -H "x-session-id: 1ea8725a-d3e5-4b37-a5e4-de550ce5573c" \
+ -H "Content-Type: application/json"
+
+curl -s -X POST http://localhost:8080/api/auth/login-email \
+ -H "Content-Type: application/json" \
+ -d '{"email":"anish@apurva.org.in","password":"Passw0rd!"}'
+
+curl -s "http://localhost:8080/api/orders/619/deliveries?source=db1&limit=20" \
+ -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFuaXNoQGFwdXJ2YS5vcmcuaW4iLCJpYXQiOjE3NjI2ODU5MjMsImV4cCI6MTc2NTI3NzkyM30.E87VnwT1pgSyUjcBmxhvgjHTYO3DFWzigOuP5RJVr-g" \
+ -H "x-session-id: 1ea8725a-d3e5-4b37-a5e4-de550ce5573c" | jq
+
+curl -s "http://localhost:8080/api/approvals?tab=all&range=3m&limit=25" \
+ -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFuaXNoQGFwdXJ2YS5vcmcuaW4iLCJpYXQiOjE3NjI2ODU5MjMsImV4cCI6MTc2NTI3NzkyM30.E87VnwT1pgSyUjcBmxhvgjHTYO3DFWzigOuP5RJVr-g" \
+ -H "x-session-id: 1ea8725a-d3e5-4b37-a5e4-de550ce5573c" | jq
