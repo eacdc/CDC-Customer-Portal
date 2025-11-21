@@ -1,0 +1,59 @@
+# CSS Files
+/assets/**/*.css
+  Content-Type: text/css
+
+# JavaScript Files
+/assets/**/*.js
+  Content-Type: application/javascript
+
+# JSON Files
+/assets/**/*.json
+  Content-Type: application/json
+
+# Images
+/assets/**/*.png
+  Content-Type: image/png
+
+/assets/**/*.jpg
+  Content-Type: image/jpeg
+
+/assets/**/*.jpeg
+  Content-Type: image/jpeg
+
+/assets/**/*.gif
+  Content-Type: image/gif
+
+/assets/**/*.svg
+  Content-Type: image/svg+xml
+
+/assets/**/*.webp
+  Content-Type: image/webp
+
+# Fonts
+/assets/**/*.woff
+  Content-Type: font/woff
+
+/assets/**/*.woff2
+  Content-Type: font/woff2
+
+/assets/**/*.ttf
+  Content-Type: font/ttf
+
+/assets/**/*.eot
+  Content-Type: application/vnd.ms-fontobject
+
+/assets/**/*.otf
+  Content-Type: font/otf
+
+# HTML
+/*.html
+  Content-Type: text/html; charset=utf-8
+
+# ICO files
+/assets/**/*.ico
+  Content-Type: image/x-icon
+
+# PHP files (if any)
+/assets/**/*.php
+  Content-Type: text/html; charset=utf-8
+
