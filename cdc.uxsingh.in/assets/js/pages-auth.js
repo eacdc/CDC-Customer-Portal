@@ -201,7 +201,6 @@ document.addEventListener('DOMContentLoaded', function () {
           ? 'Registration successful! You are now signed in.'
           : 'Login successful! Redirecting...';
         setAlert('success', successMessage);
-        showResult(body);
 
         if (body?.token) {
           const ledgerNames = [
