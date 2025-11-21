@@ -393,12 +393,45 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       input.addEventListener('input', () => {
-        // Clear stored query when user types (will be set in applySearchFilter)
         const currentValue = input.value.trim();
+        console.log(`[SEARCH INPUT] Input changed for tab ${tab}, value:`, currentValue || '(empty)');
+        
         if (!currentValue) {
+          // User cleared the search box
+          console.log(`[SEARCH INPUT] Search cleared, reloading all orders for tab: ${tab}`);
           tabState[tab].searchQuery = '';
+          
+          // Reload orders without search query
+          loadOrdersForTab(tab, config.containerId);
+        } else {
+          // User is typing - will trigger search when they finish
+          applySearchFilter(tab);
         }
-        applySearchFilter(tab);
+      });
+      
+      // Listen for the native clear event (when clicking the X button)
+      input.addEventListener('search', (e) => {
+        const currentValue = e.target.value.trim();
+        console.log(`[SEARCH INPUT] Search event fired for tab ${tab}, value:`, currentValue || '(empty - X clicked)');
+        
+        if (!currentValue) {
+          // User clicked the X button or cleared via other means
+          console.log(`[SEARCH INPUT] Search cleared via X button, reloading all orders for tab: ${tab}`);
+          tabState[tab].searchQuery = '';
+          
+          // Reload orders without search query
+          loadOrdersForTab(tab, config.containerId);
+        }
+      });
+      
+      // Also handle when input loses focus and is empty
+      input.addEventListener('blur', () => {
+        const currentValue = input.value.trim();
+        if (!currentValue && tabState[tab].searchQuery) {
+          console.log(`[SEARCH INPUT] Input lost focus and is empty, clearing search for tab: ${tab}`);
+          tabState[tab].searchQuery = '';
+          loadOrdersForTab(tab, config.containerId);
+        }
       });
     });
   }
@@ -428,31 +461,21 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log(`[SEARCH FILTER] Applying search filter for tab: ${tab}`);
     console.log(`[SEARCH FILTER] Search query:`, query || '(empty - showing all)');
     
-    // Store search query in state
-    if (query) {
-      state.searchQuery = query;
-      console.log(`[SEARCH FILTER] Stored search query in state: ${query}`);
-    }
-    
-    // If there's a search query, reload orders from API with the search parameter
-    // Otherwise, filter client-side from already loaded orders
-    if (query && query.trim()) {
-      console.log(`[SEARCH FILTER] Reloading orders from API with search query: "${query}"`);
-      // Reload orders with search query
-      loadOrdersForTab(tab, config.containerId);
+    // If query is empty, clear the stored query
+    if (!query) {
+      console.log(`[SEARCH FILTER] Empty query - clearing stored search`);
+      state.searchQuery = '';
+      // Don't reload here - let the input event handler do it
       return;
     }
     
-    console.log(`[SEARCH FILTER] No search query - showing all loaded orders (client-side)`);
-    // Client-side filtering for empty query (show all)
-    const source = Array.isArray(state.orders) ? state.orders : [];
-    const filtered = source;
-
-    // Update filtered orders and reset to page 1
-    state.filteredOrders = filtered;
-    state.currentPage = 1;
-
-    renderOrdersWithPagination(tab);
+    // Store search query in state
+    state.searchQuery = query;
+    console.log(`[SEARCH FILTER] Stored search query in state: ${query}`);
+    
+    // Reload orders from API with the search parameter
+    console.log(`[SEARCH FILTER] Reloading orders from API with search query: "${query}"`);
+    loadOrdersForTab(tab, config.containerId);
   }
 
   function renderOrdersWithPagination(tab) {
