@@ -72,6 +72,13 @@ document.addEventListener('DOMContentLoaded', function () {
             message: 'Passwords do not match'
           }
         }
+      },
+      terms: {
+        validators: {
+          notEmpty: {
+            message: 'You must agree to the privacy policy and terms'
+          }
+        }
       }
     };
 
