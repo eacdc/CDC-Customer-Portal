@@ -898,7 +898,7 @@
                                 <th>STATUS</th>
                                 <th>PLAN DATE</th>
                                 <th>ACTUAL DATE</th>
-                                <th>PLAN QTY</th>
+                                <th>QC STATUS</th>
                             </tr>
                         </thead>
                         <tbody id="lastStatusContent"></tbody>
@@ -927,6 +927,26 @@
                             </tr>
                         </thead>
                         <tbody id="deliveryDatesContent"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade last-status-pt" id="inspectionsModal">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>QC Inspection Details</h5><button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table">
+                        <thead>
+                            <tr id="inspectionsTableHeader">
+                                <!-- Headers will be dynamically generated based on inspection data -->
+                            </tr>
+                        </thead>
+                        <tbody id="inspectionsContent"></tbody>
                     </table>
                 </div>
             </div>

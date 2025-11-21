@@ -801,10 +801,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
           const processes = await loadProcesses(jobId, source);
-          displayProcessDetailsModal(processes);
+          // Add jobId and source to each process for QC check button
+          processes.forEach(p => {
+            p.JobBookingID = jobId;
+            p._source = source;
+          });
+          displayProcessDetailsModal(processes, jobId, source);
         } catch (error) {
           console.error('Error loading processes:', error);
           alert(error.userMessage || 'Failed to load order processes');
+        }
+      }
+    });
+
+    // QC Check button handler
+    document.addEventListener('click', async function(e) {
+      const btn = e.target.closest('.qc-check-btn');
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const jobId = btn.getAttribute('data-jobid');
+        const processId = btn.getAttribute('data-processid');
+        const source = btn.getAttribute('data-source');
+        
+        if (!jobId || !processId) {
+          alert('Job ID or Process ID is missing. Cannot load inspection data.');
+          return;
+        }
+
+        // Disable button and show loading
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
+
+        try {
+          const inspections = await loadInspections(jobId, processId, source);
+          displayInspectionsModal(inspections, processId);
+        } catch (error) {
+          console.error('Error loading inspections:', error);
+          alert(error.userMessage || 'Failed to load inspection data');
+        } finally {
+          // Re-enable button
+          btn.disabled = false;
+          btn.innerHTML = originalText;
         }
       }
     });
@@ -884,7 +923,43 @@ document.addEventListener('DOMContentLoaded', () => {
     return Array.isArray(body) ? body : body?.items || [];
   }
 
-  function displayProcessDetailsModal(processes) {
+  async function loadInspections(jobId, processId, source) {
+    if (!jobId || !processId) {
+      throw userFacingError('Job ID or Process ID is missing.');
+    }
+
+    const apiBase = getApiBase();
+    let url = `${apiBase}/orders/${encodeURIComponent(jobId)}/processes/${encodeURIComponent(processId)}/inspections`;
+    if (source) url += `?source=${encodeURIComponent(source)}`;
+
+    console.log('[INSPECTIONS] Loading inspections from:', url);
+
+    const response = await fetch(url, {
+      headers: buildAuthHeaders()
+    });
+
+    if (response.status === 404) {
+      console.log('[INSPECTIONS] No inspections found (404)');
+      return [];
+    }
+
+    if (response.status === 401) {
+      throw userFacingError('Your session has expired. Please sign out and sign in again.');
+    }
+
+    if (!response.ok) {
+      const body = await safeJson(response);
+      console.error('[INSPECTIONS] Error response:', response.status, body);
+      throw userFacingError(body?.error || 'Unable to load inspection data.');
+    }
+
+    const body = await response.json();
+    const inspections = Array.isArray(body) ? body : body?.items || [];
+    console.log('[INSPECTIONS] Loaded', inspections.length, 'inspection records');
+    return inspections;
+  }
+
+  function displayProcessDetailsModal(processes, jobId, source) {
     const modalElement = document.getElementById('lastStatusModal');
     const modalContent = document.getElementById('lastStatusContent');
     
@@ -904,7 +979,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const processStatus = p.ProcessStatus || '-';
         const planDate = formatDate(p.PlanDate);
         const actualDate = formatDate(p.ActualDate);
-        const planQty = p.PlanQty || '-';
+        const processId = p.ProcessID || p.ProcessId || '';
+        const processJobId = p.JobBookingID || jobId || '';
+        const processSource = p._source || source || '';
+        
+        // Create Check button if we have both jobId and processId
+        const checkButton = processId && processJobId ? 
+          `<button class="btn btn-sm btn-primary qc-check-btn" 
+                   data-jobid="${processJobId}" 
+                   data-processid="${processId}" 
+                   data-source="${processSource}">
+            Check
+          </button>` : 
+          '<span class="text-muted">-</span>';
         
         rows += `<tr>
           <td>${processName}</td>
@@ -912,7 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${processStatus}</td>
           <td>${planDate}</td>
           <td>${actualDate}</td>
-          <td>${planQty}</td>
+          <td>${checkButton}</td>
         </tr>`;
       });
       modalContent.innerHTML = rows;
@@ -928,6 +1015,79 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       console.error('Error showing process details modal:', error);
       alert('Failed to display process details modal');
+    }
+  }
+
+  function displayInspectionsModal(inspections, processId) {
+    const modalElement = document.getElementById('inspectionsModal');
+    const modalHeader = document.getElementById('inspectionsTableHeader');
+    const modalContent = document.getElementById('inspectionsContent');
+    
+    if (!modalElement || !modalHeader || !modalContent) {
+      console.error('Inspections modal elements not found');
+      alert('Modal elements not found. Please refresh the page.');
+      return;
+    }
+
+    if (!Array.isArray(inspections) || inspections.length === 0) {
+      modalHeader.innerHTML = '';
+      modalContent.innerHTML = '<tr><td colspan="10" class="text-center">No inspection data available</td></tr>';
+    } else {
+      // Get all unique keys from inspection objects to create dynamic headers
+      const allKeys = new Set();
+      inspections.forEach(inspection => {
+        Object.keys(inspection).forEach(key => allKeys.add(key));
+      });
+      
+      // Create table headers dynamically
+      const headers = Array.from(allKeys).map(key => {
+        // Format header name (convert camelCase to Title Case)
+        const headerName = key
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/^./, str => str.toUpperCase())
+          .trim();
+        return `<th>${headerName}</th>`;
+      }).join('');
+      
+      modalHeader.innerHTML = headers;
+      
+      // Create table rows
+      let rows = '';
+      inspections.forEach(inspection => {
+        let row = '<tr>';
+        Array.from(allKeys).forEach(key => {
+          let value = inspection[key];
+          
+          // Format the value
+          if (value === null || value === undefined) {
+            value = '-';
+          } else if (value instanceof Date) {
+            value = formatDate(value);
+          } else if (typeof value === 'object') {
+            value = JSON.stringify(value);
+          } else {
+            value = String(value);
+          }
+          
+          row += `<td>${escapeHtml(value)}</td>`;
+        });
+        row += '</tr>';
+        rows += row;
+      });
+      
+      modalContent.innerHTML = rows;
+    }
+
+    // Show modal
+    try {
+      let modal = bootstrap.Modal.getInstance(modalElement);
+      if (!modal) {
+        modal = new bootstrap.Modal(modalElement);
+      }
+      modal.show();
+    } catch (error) {
+      console.error('Error showing inspections modal:', error);
+      alert('Failed to display inspections modal');
     }
   }
 
