@@ -32,9 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const ITEMS_PER_PAGE = 10;
 
   const tabState = {
-    all: { orders: [], searchInput: null, dateRange: DEFAULT_RANGE, customDates: null, currentPage: 1, filteredOrders: [] },
-    pending: { orders: [], searchInput: null, dateRange: DEFAULT_RANGE, customDates: null, currentPage: 1, filteredOrders: [] },
-    completed: { orders: [], searchInput: null, dateRange: DEFAULT_RANGE, customDates: null, currentPage: 1, filteredOrders: [] }
+    all: { orders: [], searchInput: null, dateRange: DEFAULT_RANGE, customDates: null, currentPage: 1, filteredOrders: [], searchQuery: '' },
+    pending: { orders: [], searchInput: null, dateRange: DEFAULT_RANGE, customDates: null, currentPage: 1, filteredOrders: [], searchQuery: '' },
+    completed: { orders: [], searchInput: null, dateRange: DEFAULT_RANGE, customDates: null, currentPage: 1, filteredOrders: [], searchQuery: '' }
   };
 
   let currentCustomDateTab = null;
@@ -46,8 +46,70 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
+  // Check for URL search query parameter before initializing
+  console.log('[ORDERS PAGE] ========== PAGE LOADED ==========');
+  console.log('[ORDERS PAGE] Full URL:', window.location.href);
+  console.log('[ORDERS PAGE] Origin:', window.location.origin);
+  console.log('[ORDERS PAGE] Pathname:', window.location.pathname);
+  console.log('[ORDERS PAGE] Search string:', window.location.search);
+  console.log('[ORDERS PAGE] Hash:', window.location.hash);
+  
+  // Check sessionStorage for search intent
+  const storedQuery = sessionStorage.getItem('lastSearchQuery');
+  const storedTime = sessionStorage.getItem('lastSearchTime');
+  if (storedQuery && storedTime) {
+    console.log('[ORDERS PAGE] Found stored search query:', storedQuery);
+    console.log('[ORDERS PAGE] Search was initiated at:', storedTime);
+    // Clear it so it doesn't affect subsequent visits
+    sessionStorage.removeItem('lastSearchQuery');
+    sessionStorage.removeItem('lastSearchTime');
+  }
+  
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlSearchQuery = urlParams.get('q');
+  
+  console.log('[ORDERS PAGE] URLSearchParams object:', urlParams.toString());
+  console.log('[ORDERS PAGE] All URL parameters:');
+  for (const [key, value] of urlParams.entries()) {
+    console.log(`[ORDERS PAGE]   ${key} = ${value}`);
+  }
+  console.log('[ORDERS PAGE] Search query from URL (q parameter):', urlSearchQuery || '(none)');
+  
+  // If URL doesn't have query but we have stored one, use stored
+  const finalSearchQuery = urlSearchQuery || storedQuery;
+  if (finalSearchQuery && !urlSearchQuery && storedQuery) {
+    console.warn('[ORDERS PAGE] URL missing query parameter but found in sessionStorage!');
+    console.warn('[ORDERS PAGE] Expected query from navigation:', storedQuery);
+    console.warn('[ORDERS PAGE] This suggests the query string was lost during navigation!');
+  }
+  
+  // Store search query in state before loading orders (use finalSearchQuery which includes fallback)
+  if (finalSearchQuery) {
+    console.log('[ORDERS PAGE] Storing search query in state:', finalSearchQuery);
+    tabState.all.searchQuery = finalSearchQuery;
+    // Switch to 'all' tab if not already active
+    const allTab = document.getElementById('dispatch-tab');
+    if (allTab && !allTab.classList.contains('active')) {
+      console.log('[ORDERS PAGE] Switching to "all" tab');
+      allTab.click();
+    }
+  }
+  
+  console.log('[ORDERS PAGE] ========================================');
+  
   initSearchInputs();
   initDateRangeHandlers();
+
+  // Set search input value from URL parameter if present
+  if (urlSearchQuery) {
+    // Set search input value on 'all' tab after initialization
+    setTimeout(() => {
+      const allTabInput = tabState.all.searchInput;
+      if (allTabInput) {
+        allTabInput.value = urlSearchQuery;
+      }
+    }, 100);
+  }
 
   // Load orders for each tab
   loadOrdersForTab('all', 'all-orders-container');
@@ -94,9 +156,12 @@ document.addEventListener('DOMContentLoaded', () => {
       // Filter orders by PoDate based on selected date range
       const filteredOrders = filterOrdersByDateRange(orders, tab);
       tabState[tab].orders = filteredOrders;
-      tabState[tab].filteredOrders = filteredOrders; // Initialize filtered orders
+      
+      // If there's a search query, the API already filtered, so use orders as-is
+      tabState[tab].filteredOrders = filteredOrders; // API already filtered if search query exists
+      
       tabState[tab].currentPage = 1; // Reset to page 1
-      applySearchFilter(tab);
+      renderOrdersWithPagination(tab);
     } catch (error) {
       console.error('Error loading orders:', error);
       container.innerHTML = `<div class="col-12 text-center"><p class="text-danger">${error.userMessage || 'Failed to load orders.'}</p></div>`;
@@ -108,21 +173,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = tabState[tab];
     const dateRange = state.dateRange || DEFAULT_RANGE;
     
+    console.log(`[ORDERS API] Loading orders for tab: ${tab}`);
+    console.log(`[ORDERS API] API Base URL: ${apiBase}`);
+    console.log(`[ORDERS API] Date range: ${dateRange}`);
+    
     let url = `${apiBase}/orders?tab=${encodeURIComponent(tab)}&limit=${encodeURIComponent(DEFAULT_LIMIT)}`;
+    
+    // Add search query if present (from input or stored query)
+    const searchQuery = (state.searchInput ? state.searchInput.value.trim() : '') || state.searchQuery || '';
+    console.log(`[ORDERS API] Search query from state:`, searchQuery || '(none)');
+    console.log(`[ORDERS API] Search input value:`, state.searchInput ? state.searchInput.value : '(no input)');
+    console.log(`[ORDERS API] Stored search query:`, state.searchQuery || '(none)');
+    
+    if (searchQuery) {
+      url += `&q=${encodeURIComponent(searchQuery)}`;
+      // Store the search query in state
+      state.searchQuery = searchQuery;
+      console.log(`[ORDERS API] Search query added to URL: q=${encodeURIComponent(searchQuery)}`);
+    }
     
     if (state.customDates) {
       // Custom date range
       url += `&from=${encodeURIComponent(state.customDates.from)}&to=${encodeURIComponent(state.customDates.to)}`;
+      console.log(`[ORDERS API] Using custom date range: from=${state.customDates.from}, to=${state.customDates.to}`);
     } else {
       // Predefined range
       url += `&range=${encodeURIComponent(dateRange)}`;
+      console.log(`[ORDERS API] Using predefined range: ${dateRange}`);
     }
 
+    console.log(`[ORDERS API] Making API call to: ${url}`);
+    console.log(`[ORDERS API] Request headers:`, buildAuthHeaders());
+    
+    const startTime = performance.now();
     const response = await fetch(url, {
       headers: buildAuthHeaders()
     });
+    const endTime = performance.now();
+    const duration = (endTime - startTime).toFixed(2);
+    
+    console.log(`[ORDERS API] Response received in ${duration}ms`);
+    console.log(`[ORDERS API] Response status: ${response.status} ${response.statusText}`);
+    console.log(`[ORDERS API] Response headers:`, Object.fromEntries(response.headers.entries()));
 
     if (response.status === 401) {
+      console.error('[ORDERS API] Unauthorized - session expired');
       throw userFacingError(
         'Your session has expired. Please sign out and sign in again.'
       );
@@ -130,19 +225,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!response.ok) {
       const body = await safeJson(response);
+      console.error('[ORDERS API] Error response:', response.status, body);
       throw userFacingError(body?.error || 'Unable to load orders.');
     }
 
     const body = await response.json();
-    return body?.items || [];
+    const items = body?.items || [];
+    
+    console.log(`[ORDERS API] Successfully received ${items.length} orders`);
+    console.log(`[ORDERS API] Response body:`, {
+      itemsCount: items.length,
+      hasNextCursor: !!body?.nextCursor,
+      nextCursor: body?.nextCursor || '(none)'
+    });
+    
+    if (searchQuery) {
+      console.log(`[ORDERS API] Filtered orders by search query "${searchQuery}": ${items.length} results`);
+      if (items.length > 0) {
+        console.log(`[ORDERS API] Sample order (first result):`, items[0]);
+      }
+    }
+    
+    return items;
   }
 
-  function renderOrderCards(orders, container, emptyMessage) {
+  function renderOrderCards(orders, container, emptyMessage, searchQuery = '') {
     if (!container) return;
 
+    console.log(`[RENDER] Rendering order cards for container:`, container.id || '(no id)');
+    console.log(`[RENDER] Number of orders to display:`, orders?.length || 0);
+    console.log(`[RENDER] Search query:`, searchQuery || '(none)');
+
+    // Clear container but preserve search message container
+    const existingSearchMsg = container.parentElement?.querySelector('.search-result-message');
+    if (existingSearchMsg) {
+      console.log(`[RENDER] Removing existing search result message`);
+      existingSearchMsg.remove();
+    }
+
     if (!orders || orders.length === 0) {
+      console.log(`[RENDER] No orders to display, showing empty message:`, emptyMessage);
       container.innerHTML = `<div class="col-12 text-center"><p>${emptyMessage || 'No orders found.'}</p></div>`;
       return;
+    }
+
+    // Add search result message if there's a search query
+    if (searchQuery && searchQuery.trim()) {
+      console.log(`[RENDER] Adding search result message for query: "${searchQuery}"`);
+      const searchMsgDiv = document.createElement('div');
+      searchMsgDiv.className = 'col-12 mb-3 search-result-message';
+      searchMsgDiv.innerHTML = `<p class="text-muted mb-0"><strong>Search result for '<span class="text-primary">${escapeHtml(searchQuery)}</span>'</strong></p>`;
+      container.parentElement?.insertBefore(searchMsgDiv, container);
+      console.log(`[RENDER] Search result message displayed above order cards`);
     }
 
     container.innerHTML = '';
@@ -151,6 +285,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = createOrderCard(order);
       container.appendChild(card);
     });
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   function createOrderCard(order) {
@@ -246,7 +386,20 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!input) return;
 
       tabState[tab].searchInput = input;
-      input.addEventListener('input', () => applySearchFilter(tab));
+      
+      // If there's a stored search query, set it in the input
+      if (tabState[tab].searchQuery) {
+        input.value = tabState[tab].searchQuery;
+      }
+      
+      input.addEventListener('input', () => {
+        // Clear stored query when user types (will be set in applySearchFilter)
+        const currentValue = input.value.trim();
+        if (!currentValue) {
+          tabState[tab].searchQuery = '';
+        }
+        applySearchFilter(tab);
+      });
     });
   }
 
@@ -271,12 +424,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = tabState[tab];
     if (!config || !config.container || !state) return;
 
-    const query = state.searchInput ? state.searchInput.value.trim().toLowerCase() : '';
+    const query = (state.searchInput ? state.searchInput.value.trim() : '') || state.searchQuery || '';
+    console.log(`[SEARCH FILTER] Applying search filter for tab: ${tab}`);
+    console.log(`[SEARCH FILTER] Search query:`, query || '(empty - showing all)');
+    
+    // Store search query in state
+    if (query) {
+      state.searchQuery = query;
+      console.log(`[SEARCH FILTER] Stored search query in state: ${query}`);
+    }
+    
+    // If there's a search query, reload orders from API with the search parameter
+    // Otherwise, filter client-side from already loaded orders
+    if (query && query.trim()) {
+      console.log(`[SEARCH FILTER] Reloading orders from API with search query: "${query}"`);
+      // Reload orders with search query
+      loadOrdersForTab(tab, config.containerId);
+      return;
+    }
+    
+    console.log(`[SEARCH FILTER] No search query - showing all loaded orders (client-side)`);
+    // Client-side filtering for empty query (show all)
     const source = Array.isArray(state.orders) ? state.orders : [];
-
-    const filtered = query
-      ? source.filter(order => matchesSearch(order, query))
-      : source;
+    const filtered = source;
 
     // Update filtered orders and reset to page 1
     state.filteredOrders = filtered;
@@ -300,12 +470,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const endIndex = startIndex + ITEMS_PER_PAGE;
     const pageItems = filtered.slice(startIndex, endIndex);
 
-    const query = state.searchInput ? state.searchInput.value.trim().toLowerCase() : '';
+    const query = (state.searchInput ? state.searchInput.value.trim() : '') || state.searchQuery || '';
     const emptyMessage = query
       ? config.searchEmptyMessage || config.emptyMessage || 'No matching records found.'
       : config.emptyMessage || 'No records found.';
 
-    renderOrderCards(pageItems, config.container, emptyMessage);
+    renderOrderCards(pageItems, config.container, emptyMessage, query);
     renderPagination(tab, currentPage, totalPages, totalItems);
   }
 
