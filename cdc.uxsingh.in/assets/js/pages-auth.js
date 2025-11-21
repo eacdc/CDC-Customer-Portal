@@ -58,6 +58,20 @@ document.addEventListener('DOMContentLoaded', function () {
             message: 'Password must be at least 6 characters'
           }
         }
+      },
+      confirm_password: {
+        validators: {
+          notEmpty: {
+            message: 'Please confirm your password'
+          },
+          identical: {
+            compare: function () {
+              const passwordField = formAuthentication.querySelector('[name="password"]');
+              return passwordField ? passwordField.value : '';
+            },
+            message: 'Passwords do not match'
+          }
+        }
       }
     };
 

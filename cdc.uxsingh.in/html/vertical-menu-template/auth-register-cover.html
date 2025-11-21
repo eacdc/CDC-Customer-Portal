@@ -124,19 +124,6 @@
 
             <form id="formAuthentication" class="mb-6" data-auth="register" novalidate>
               <div class="mb-6 form-control-validation">
-                <label for="username" class="form-label">Username</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  id="username"
-                  name="username"
-                  placeholder="Enter your username"
-                  value=""
-                  disabled
-                  aria-disabled="true" />
-                <small class="text-muted d-block mt-1">Not required for now</small>
-              </div>
-              <div class="mb-6 form-control-validation">
                 <label for="email" class="form-label">Business Email</label>
                 <input
                   type="email"
@@ -146,18 +133,6 @@
                   placeholder="Enter your registered email"
                   autocomplete="email"
                   autofocus />
-              </div>
-              <div class="mb-6 form-control-validation">
-                <label for="phone" class="form-label">Phone</label>
-                <input
-                  type="tel"
-                  class="form-control"
-                  id="phone"
-                  name="phone"
-                  placeholder="Enter your phone number"
-                  disabled
-                  aria-disabled="true" />
-                <small class="text-muted d-block mt-1">Not required for now</small>
               </div>
               <div class="mb-6 form-control-validation">
                 <label for="customer_key" class="form-label">Customer Key</label>
@@ -179,6 +154,19 @@
                     name="password"
                     placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
                     aria-describedby="password" />
+                  <span class="input-group-text cursor-pointer"><i class="icon-base ti tabler-eye-off"></i></span>
+                </div>
+              </div>
+              <div class="mb-6 form-password-toggle form-control-validation">
+                <label class="form-label" for="confirm_password">Confirm Password</label>
+                <div class="input-group input-group-merge">
+                  <input
+                    type="password"
+                    id="confirm_password"
+                    class="form-control"
+                    name="confirm_password"
+                    placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
+                    aria-describedby="confirm_password" />
                   <span class="input-group-text cursor-pointer"><i class="icon-base ti tabler-eye-off"></i></span>
                 </div>
               </div>
