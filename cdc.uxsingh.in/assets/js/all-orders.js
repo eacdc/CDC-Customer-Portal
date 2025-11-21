@@ -325,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="row align-items-start">
             <!-- Product Image -->
             <div class="col-auto">
-              <img src="${imageUrl}" alt="Product" class="rounded" style="width: 100px; height: 100px; object-fit: contain; background-color: #87CEEB;" onerror="this.onerror=null;this.src='${resolveImageUrl(null)}';">
+              <img src="${imageUrl}" alt="Product" class="rounded" style="width: 100px; height: 100px; object-fit: contain; background-color: #e0e0e0;" onerror="this.onerror=null;this.src='${resolveImageUrl(null)}';">
             </div>
             
             <!-- Product Details -->
