@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const DISPATCHES_SESSION_KEY = 'cdcAuthSession';
-  const DEFAULT_RANGE = '1m';
+  const DEFAULT_RANGE = '90d';
   const DEFAULT_LIMIT = '1000'; // Fetch more items for pagination
   const ITEMS_PER_PAGE = 10;
 
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isLocalHost = ['localhost', '127.0.0.1', '0.0.0.0'].includes(host);
     const fallback = isLocalHost
       ? 'http://localhost:8080/api'
-      : 'https://cdcapi.onrender.com/api';
+      : 'https://cdc-customer-portal-backend.onrender.com/api';
     return fallback.replace(/\/$/, '');
   }
 
@@ -424,12 +424,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getRangeLabel(range) {
     const labels = {
-      '1m': 'Last Month',
-      '3m': 'Last Quarter',
-      '1y': 'Last Year',
+      '30d': 'Last 30 Days',
+      '90d': 'Last 90 Days',
+      '180d': 'Last 180 Days',
+      '365d': 'Last 365 Days',
       'custom': 'Custom Date'
     };
-    return labels[range] || 'Last Month';
+    return labels[range] || 'Last 90 Days';
   }
 
 

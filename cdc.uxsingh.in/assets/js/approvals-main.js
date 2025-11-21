@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
     const isLocalHost = ['localhost', '127.0.0.1', '0.0.0.0'].includes(host);
     const fallback = isLocalHost
       ? 'http://localhost:8080/api'
-      : 'https://cdcapi.onrender.com/api';
+      : 'https://cdc-customer-portal-backend.onrender.com/api';
     return fallback.replace(/\/$/, '');
   }
 
@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
   }
 
   // Date range state management
-  const DEFAULT_RANGE = '1m';
+  const DEFAULT_RANGE = '90d';
   const tabState = {
     all: { dateRange: DEFAULT_RANGE, customDates: null, dataTable: null },
     pending_files: { dateRange: DEFAULT_RANGE, customDates: null, dataTable: null },
@@ -79,64 +79,16 @@ document.addEventListener('DOMContentLoaded', function (e) {
 
   function getRangeLabel(range) {
     const labels = {
-      '1m': 'Last Month',
-      '3m': 'Last Quarter',
-      '1y': 'Last Year',
+      '30d': 'Last 30 Days',
+      '90d': 'Last 90 Days',
+      '180d': 'Last 180 Days',
+      '365d': 'Last 365 Days',
       'custom': 'Custom Date'
     };
-    return labels[range] || 'Last Month';
+    return labels[range] || 'Last 90 Days';
   }
 
-  function getDateRange(tab) {
-    const state = tabState[tab];
-    const now = new Date();
-    let fromDate, toDate;
-
-    if (state.customDates) {
-      fromDate = new Date(state.customDates.from);
-      toDate = new Date(state.customDates.to);
-      // Set to end of day for toDate
-      toDate.setHours(23, 59, 59, 999);
-    } else {
-      const range = state.dateRange || DEFAULT_RANGE;
-      toDate = new Date(now);
-      toDate.setHours(23, 59, 59, 999);
-
-      fromDate = new Date(now);
-      if (range === '1m') {
-        fromDate.setMonth(fromDate.getMonth() - 1);
-      } else if (range === '3m') {
-        fromDate.setMonth(fromDate.getMonth() - 3);
-      } else if (range === '1y') {
-        fromDate.setFullYear(fromDate.getFullYear() - 1);
-      } else {
-        // Default to last month
-        fromDate.setMonth(fromDate.getMonth() - 1);
-      }
-      fromDate.setHours(0, 0, 0, 0);
-    }
-
-    return { fromDate, toDate };
-  }
-
-  function filterApprovalsByDateRange(approvals, tab) {
-    if (!approvals || approvals.length === 0) return approvals;
-
-    const { fromDate, toDate } = getDateRange(tab);
-    
-    return approvals.filter(approval => {
-      if (!approval.PODate) return false;
-      
-      try {
-        const poDate = new Date(approval.PODate);
-        // Check if PODate is within the range
-        return poDate >= fromDate && poDate <= toDate;
-      } catch (error) {
-        console.warn('Invalid PODate format:', approval.PODate);
-        return false;
-      }
-    });
-  }
+  // Date filtering is now handled by SQL procedure - no client-side filtering needed
 
   function initDateRangeHandlers() {
     // Handle predefined date range options
@@ -235,12 +187,22 @@ document.addEventListener('DOMContentLoaded', function (e) {
       ajax: {
         url: getApiBase() + '/approvals?tab=all',
         headers: buildAuthHeaders(),
-        dataSrc: function(json) {
-          if (json && json.items) {
-            const filtered = filterApprovalsByDateRange(json.items, 'all');
-            return filtered;
+        data: function(d) {
+          // Add date range parameters
+          const state = tabState.all;
+          if (state.customDates) {
+            d.from = state.customDates.from;
+            d.to = state.customDates.to;
+          } else {
+            d.range = state.dateRange || DEFAULT_RANGE;
           }
-          return filterApprovalsByDateRange(json || [], 'all');
+        },
+        dataSrc: function(json) {
+          // Return items directly - date filtering is done in backend
+          if (json && json.items) {
+            return json.items;
+          }
+          return json || [];
         },
         error: function(xhr, error, thrown) {
           console.error('Error loading approvals:', error);
@@ -450,12 +412,22 @@ document.addEventListener('DOMContentLoaded', function (e) {
                     ajax: {
                         url: getApiBase() + '/approvals?tab=pending_files',
                         headers: buildAuthHeaders(),
-                        dataSrc: function(json) {
-                          if (json && json.items) {
-                            const filtered = filterApprovalsByDateRange(json.items, 'pending_files');
-                            return filtered;
+                        data: function(d) {
+                          // Add date range parameters
+                          const state = tabState.pending_files;
+                          if (state.customDates) {
+                            d.from = state.customDates.from;
+                            d.to = state.customDates.to;
+                          } else {
+                            d.range = state.dateRange || DEFAULT_RANGE;
                           }
-                          return filterApprovalsByDateRange(json || [], 'pending_files');
+                        },
+                        dataSrc: function(json) {
+                          // Return items directly - date filtering is done in backend
+                          if (json && json.items) {
+                            return json.items;
+                          }
+                          return json || [];
                         },
                         error: function(xhr, error, thrown) {
                           console.error('Error loading pending files:', error);
@@ -657,12 +629,22 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 ajax: {
                     url: getApiBase() + '/approvals?tab=pending_approval',
                     headers: buildAuthHeaders(),
-                    dataSrc: function(json) {
-                      if (json && json.items) {
-                        const filtered = filterApprovalsByDateRange(json.items, 'pending_approval');
-                        return filtered;
+                    data: function(d) {
+                      // Add date range parameters
+                      const state = tabState.pending_approval;
+                      if (state.customDates) {
+                        d.from = state.customDates.from;
+                        d.to = state.customDates.to;
+                      } else {
+                        d.range = state.dateRange || DEFAULT_RANGE;
                       }
-                      return filterApprovalsByDateRange(json || [], 'pending_approval');
+                    },
+                    dataSrc: function(json) {
+                      // Return items directly - date filtering is done in backend
+                      if (json && json.items) {
+                        return json.items;
+                      }
+                      return json || [];
                     },
                     error: function(xhr, error, thrown) {
                       console.error('Error loading pending approvals:', error);

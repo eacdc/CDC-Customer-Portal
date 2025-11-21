@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const OTIF_SESSION_KEY = 'cdcAuthSession';
-  const DEFAULT_RANGE = '1m';
+  const DEFAULT_RANGE = '90d';
   const DEFAULT_LIMIT = '1000';
 
   const searchWrapper = '.search-here';
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isLocalHost = ['localhost', '127.0.0.1', '0.0.0.0'].includes(host);
     const fallback = isLocalHost
       ? 'http://localhost:8080/api'
-      : 'https://cdcapi.onrender.com/api';
+      : 'https://cdc-customer-portal-backend.onrender.com/api';
     return fallback.replace(/\/$/, '');
   }
 
@@ -88,60 +88,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getRangeLabel(range) {
     const labels = {
-      '1m': 'Last Month',
-      '3m': 'Last Quarter',
-      '1y': 'Last Year',
+      '30d': 'Last 30 Days',
+      '90d': 'Last 90 Days',
+      '180d': 'Last 180 Days',
+      '365d': 'Last 365 Days',
       'custom': 'Custom Date'
     };
-    return labels[range] || 'Last Month';
+    return labels[range] || 'Last 90 Days';
   }
 
-  function getDateRange() {
-    const now = new Date();
-    let fromDate, toDate;
-
-    if (state.customDates) {
-      fromDate = new Date(state.customDates.from);
-      toDate = new Date(state.customDates.to);
-      toDate.setHours(23, 59, 59, 999);
-    } else {
-      const range = state.dateRange || DEFAULT_RANGE;
-      toDate = new Date(now);
-      toDate.setHours(23, 59, 59, 999);
-
-      fromDate = new Date(now);
-      if (range === '1m') {
-        fromDate.setMonth(fromDate.getMonth() - 1);
-      } else if (range === '3m') {
-        fromDate.setMonth(fromDate.getMonth() - 3);
-      } else if (range === '1y') {
-        fromDate.setFullYear(fromDate.getFullYear() - 1);
-      } else {
-        fromDate.setMonth(fromDate.getMonth() - 1);
-      }
-      fromDate.setHours(0, 0, 0, 0);
-    }
-
-    return { fromDate, toDate };
-  }
-
-  function filterOtifByDateRange(otifData) {
-    if (!otifData || otifData.length === 0) return otifData;
-
-    const { fromDate, toDate } = getDateRange();
-    
-    return otifData.filter(item => {
-      if (!item.PODate) return false;
-      
-      try {
-        const poDate = new Date(item.PODate);
-        return poDate >= fromDate && poDate <= toDate;
-      } catch (error) {
-        console.warn('Invalid PODate format:', item.PODate);
-        return false;
-      }
-    });
-  }
+  // Date filtering is now handled by SQL procedure - no client-side filtering needed
 
   function initDateRangeHandlers() {
     // Handle predefined date range options
@@ -279,11 +235,11 @@ document.addEventListener('DOMContentLoaded', () => {
             d.limit = DEFAULT_LIMIT;
           },
           dataSrc: function(json) {
+            // Return items directly - date filtering is done in SQL procedure
             if (json && json.items) {
-              const filtered = filterOtifByDateRange(json.items);
-              return filtered;
+              return json.items;
             }
-            return filterOtifByDateRange(json || []);
+            return json || [];
           },
           error: function(xhr, error, thrown) {
             console.error('Error loading OTIF data:', error);

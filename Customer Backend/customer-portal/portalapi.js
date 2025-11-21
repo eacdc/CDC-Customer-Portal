@@ -9,20 +9,22 @@ import { db2 } from "./lib/db2.js";
 // --- helpers
 function parseRange(range) {
   const now = new Date();
-  const y = now.getFullYear();
-  const startOfYear = new Date(y, 0, 1);
-  const endOfYear = new Date(y, 11, 31);
-  const lastYearStart = new Date(y - 1, 0, 1);
-  const lastYearEnd = new Date(y - 1, 11, 31);
-
-  const map = { "1m": 30, "3m": 90, "6m": 180, "12m": 365 };
+  
+  // Only support: 30d, 90d, 180d, 365d (last N days)
+  const map = { 
+    "30d": 30,   // Last 30 days
+    "90d": 90,   // Last 90 days
+    "180d": 180, // Last 180 days
+    "365d": 365  // Last 365 days
+  };
+  
   if (range in map) {
     const d = new Date(now);
     d.setDate(d.getDate() - map[range]);
     return { from: d, to: now };
   }
-  if (range === "thisyear") return { from: startOfYear, to: endOfYear };
-  if (range === "lastyear") return { from: lastYearStart, to: lastYearEnd };
+  
+  // Default to last 90 days if invalid range
   const d = new Date(now);
   d.setDate(d.getDate() - 90);
   return { from: d, to: now };
@@ -275,19 +277,19 @@ fastify.get("/dashboard", async (req, reply) => {
     });
   }
 });
-  // GET /api/orders
+  // GET /api/orders?tab=all|pending|completed&range=30d|90d|180d|365d&q=&limit=25&cursor=
   fastify.get("/orders", async (req, reply) => {
-    req.log.info("[ORDERS API] /api/orders endpoint called");
+    // req.log.info("[ORDERS API] /api/orders endpoint called");
     
     const {
       tab = "all",
-      range = "3m",
+      range = "90d",
       q = "",
       limit = "25",
       cursor,
     } = req.query || {};
     
-    req.log.info("[ORDERS API] Query parameters:", { tab, range, q, limit, cursor: cursor ? "present" : "none" });
+    // req.log.info("[ORDERS API] Query parameters:", { tab, range, q, limit, cursor: cursor ? "present" : "none" });
     
     const status = ["all", "pending", "completed"].includes(
       String(tab).toLowerCase()
@@ -295,6 +297,13 @@ fastify.get("/dashboard", async (req, reply) => {
       ? String(tab).toLowerCase()
       : "all";
     const win = parseRange(String(range));
+    
+    // req.log.info("[ORDERS API] Date range parsed", {
+    //   range,
+    //   supportedRanges: "30d (Last 30 days), 90d (Last 90 days), 180d (Last 180 days), 365d (Last 365 days)",
+    //   from: win.from?.toISOString(),
+    //   to: win.to?.toISOString()
+    // });
 
     let cur = null;
     if (cursor) {
@@ -311,15 +320,15 @@ fastify.get("/dashboard", async (req, reply) => {
       .collection("tenants")
       .findOne({ email: req.user.email });
     if (!tenant) {
-      req.log.warn("[ORDERS API] Tenant binding missing for email:", req.user.email);
+      // req.log.warn("[ORDERS API] Tenant binding missing for email:", req.user.email);
       return reply.code(400).send({ error: "Tenant binding missing" });
     }
 
-    req.log.info("[ORDERS API] Tenant found:", { 
-      email: req.user.email,
-      ledgerIds_db1: tenant.ledgerIds_db1?.length || 0,
-      ledgerIds_db2: tenant.ledgerIds_db2?.length || 0
-    });
+    // req.log.info("[ORDERS API] Tenant found:", { 
+    //   email: req.user.email,
+    //   ledgerIds_db1: tenant.ledgerIds_db1?.length || 0,
+    //   ledgerIds_db2: tenant.ledgerIds_db2?.length || 0
+    // });
 
     const ids1 = tenant.ledgerIds_db1 || [];
     const ids2 = tenant.ledgerIds_db2 || [];
@@ -490,16 +499,32 @@ fastify.get("/dashboard", async (req, reply) => {
     return chosen;
   });
 
-  // GET /api/approvals?tab=all|pending_approval|pending_files&range=3m&q=&limit=25&cursor=base64(date|id)&source=db1|db2
+  // GET /api/approvals?tab=all|pending_approval|pending_files&range=30d|90d|180d|365d&q=&limit=25&cursor=base64(date|id)&source=db1|db2
+  // Also supports: /api/approvals?from=YYYY-MM-DD&to=YYYY-MM-DD for custom date ranges
   fastify.get("/approvals", async (req, reply) => {
     const {
       tab = "all",
-      range = "3m",
+      range = "90d",
       q = "",
       limit = "25",
       cursor,
       source,
+      from,
+      to,
     } = req.query || {};
+
+    req.log.info({
+      msg: "[APPROVALS] Request received",
+      tab,
+      range,
+      from,
+      to,
+      q,
+      limit,
+      cursor: cursor ? "present" : "none",
+      source,
+      email: req.user?.email
+    });
 
     // normalize tab
     const status = ["all", "pending_approval", "pending_files"].includes(
@@ -508,8 +533,56 @@ fastify.get("/dashboard", async (req, reply) => {
       ? String(tab).toLowerCase()
       : "all";
 
-    // date window (same helper you already have)
-    const win = parseRange(String(range));
+    // date window - support custom dates or predefined range
+    let win;
+    if (from && to) {
+      try {
+        // Parse custom dates as IST dates (UTC+5:30)
+        const parseDateStringIST = (dateStr, isEndOfDay = false) => {
+          const parts = dateStr.split('-');
+          if (parts.length === 3) {
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const day = parseInt(parts[2], 10);
+            
+            if (isEndOfDay) {
+              return new Date(Date.UTC(year, month, day, 18, 29, 59, 999));
+            } else {
+              const utcDate = new Date(Date.UTC(year, month, day, 18, 30, 0, 0));
+              utcDate.setUTCDate(utcDate.getUTCDate() - 1);
+              return utcDate;
+            }
+          }
+          return new Date(dateStr);
+        };
+        
+        const fromDate = parseDateStringIST(from, false);
+        const toDate = parseDateStringIST(to, true);
+        win = { from: fromDate, to: toDate };
+        
+        req.log.info({
+          msg: "[APPROVALS] Custom date range parsed in IST",
+          fromParam: from,
+          toParam: to,
+          fromDate: win.from.toISOString(),
+          toDate: win.to.toISOString()
+        });
+      } catch (err) {
+        req.log.warn({
+          msg: "[APPROVALS] Failed to parse custom dates, falling back to range",
+          error: err.message
+        });
+        win = parseRange(String(range));
+      }
+    } else {
+      win = parseRange(String(range));
+      req.log.info({
+        msg: "[APPROVALS] Predefined range parsed",
+        range,
+        fromDate: win.from?.toISOString(),
+        toDate: win.to?.toISOString()
+      });
+    }
 
     // decode keyset cursor
     let after = null;
@@ -541,17 +614,25 @@ fastify.get("/dashboard", async (req, reply) => {
     };
 
     // calls the proc on one DB
+    // NOTE: Date filtering is NOT done in SQL procedure - it's done after SQL returns
     const execOne = async (pool, ids, tag) => {
       if (!ids || !ids.length) return [];
       const r = (await pool).request();
       r.input("LedgerIds", tvp(ids));
-      r.input("FromDate", sql.Date, win.from || null);
-      r.input("ToDate", sql.Date, win.to || null);
+      // FromDate and ToDate are NOT passed to SQL procedure - filtering happens after
       r.input("Status", sql.VarChar(20), status);
       r.input("Search", sql.NVarChar(100), q || "");
       r.input("AfterDate", sql.DateTime2, after?.date || null);
       r.input("AfterId", sql.Int, after?.id || null);
       r.input("Limit", sql.Int, Number(limit) + 5);
+
+      req.log.info({
+        msg: `[APPROVALS] Executing stored procedure for ${tag}`,
+        ledgerIdsCount: ids.length,
+        status,
+        search: q || "",
+        note: "FromDate and ToDate are NOT passed - filtering will be done after SQL returns"
+      });
 
       const rs = await r.execute("dbo.portal_approvals_list");
       const rows = rs.recordset || [];
@@ -576,6 +657,44 @@ fastify.get("/dashboard", async (req, reply) => {
       const rows1 = a.status === "fulfilled" ? a.value : [];
       const rows2 = b.status === "fulfilled" ? b.value : [];
       merged = [...rows1, ...rows2];
+    }
+
+    // Filter by PODate after SQL procedure returns
+    // PODate filtering is done in JavaScript, not in SQL procedure
+    if (win.from && win.to) {
+      const beforeFilter = merged.length;
+      
+      // Helper to convert date to IST date string for comparison
+      const toISTDateStr = (date) => {
+        if (!date) return null;
+        // PODate comes as UTC ISO string but represents IST time
+        // To get IST date: add 5:30 hours to UTC time, then extract date
+        const istTime = new Date(date.getTime() + (5 * 60 + 30) * 60 * 1000);
+        return `${istTime.getUTCFullYear()}-${String(istTime.getUTCMonth() + 1).padStart(2, '0')}-${String(istTime.getUTCDate()).padStart(2, '0')}`;
+      };
+      
+      // Convert win dates to IST date strings for comparison
+      const targetFromDate = toISTDateStr(win.from);
+      const targetToDate = toISTDateStr(win.to);
+      
+      merged = merged.filter(item => {
+        if (!item.PODate) return false;
+        const poDateISTStr = toISTDateStr(new Date(item.PODate));
+        // Compare IST date strings (YYYY-MM-DD format)
+        return poDateISTStr >= targetFromDate && poDateISTStr <= targetToDate;
+      });
+      
+      req.log.info({
+        msg: "[APPROVALS] Filtered results by PODate after SQL procedure",
+        beforeFilter,
+        afterFilter: merged.length,
+        targetFromDate,
+        targetToDate,
+        dateRange: {
+          from: win.from.toISOString(),
+          to: win.to.toISOString()
+        }
+      });
     }
 
     // global sort by cursor keys (desc)
@@ -604,10 +723,10 @@ fastify.get("/dashboard", async (req, reply) => {
     return { items: page, nextCursor };
   });
 
-  // GET /api/dispatches?range=3m&q=&limit=50&cursor=base64(date|id)&source=db1|db2
+  // GET /api/dispatches?range=30d|90d|180d|365d&q=&limit=50&cursor=base64(date|id)&source=db1|db2
   // Also supports: /api/dispatches?from=YYYY-MM-DD&to=YYYY-MM-DD for custom date ranges
   fastify.get("/dispatches", async (req, reply) => {
-    const { range = "3m", q = "", limit = "50", cursor, source, from, to } = req.query || {};
+    const { range = "90d", q = "", limit = "50", cursor, source, from, to } = req.query || {};
 
     req.log.info({
       msg: "[DISPATCHES] Request received",
@@ -677,12 +796,18 @@ fastify.get("/dashboard", async (req, reply) => {
     } else {
       win = parseRange(String(range));
       req.log.info({
-        msg: "[DISPATCHES] Predefined range parsed",
+        msg: "[DISPATCHES] Predefined range parsed - Line 680",
+        codeLocation: "Line 680: win = parseRange(String(range))",
         range,
+        supportedRanges: "30d (Last 30 days), 90d (Last 90 days), 180d (Last 180 days), 365d (Last 365 days)",
         fromDate: win.from?.toISOString(),
         toDate: win.to?.toISOString(),
         fromDateLocal: win.from?.toString(),
-        toDateLocal: win.to?.toString()
+        toDateLocal: win.to?.toString(),
+        appliedDates: {
+          from: win.from?.toISOString() || null,
+          to: win.to?.toISOString() || null
+        }
       });
     }
 
@@ -906,10 +1031,10 @@ fastify.get("/dashboard", async (req, reply) => {
     return { items: page, nextCursor };
   });
 
-  // GET /api/otif?range=3m&q=&limit=50&cursor=base64(date|id)&source=db1|db2
+  // GET /api/otif?range=30d|90d|180d|365d&q=&limit=50&cursor=base64(date|id)&source=db1|db2
   // Also supports: /api/otif?from=YYYY-MM-DD&to=YYYY-MM-DD for custom date ranges
   fastify.get("/otif", async (req, reply) => {
-    const { range = "3m", q = "", limit = "50", cursor, source, from, to } = req.query || {};
+    const { range = "90d", q = "", limit = "50", cursor, source, from, to } = req.query || {};
 
     req.log.info({
       msg: "[OTIF] Request received",
@@ -961,13 +1086,18 @@ fastify.get("/dashboard", async (req, reply) => {
         
         win = { from: fromDate, to: toDate };
         req.log.info({
-          msg: "[OTIF] Custom date range parsed in IST",
+          msg: "[OTIF] Custom date range parsed in IST - Line 962",
+          codeLocation: "Line 962: win = { from: fromDate, to: toDate }",
           fromParam: from,
           toParam: to,
           fromDate: win.from.toISOString(),
           toDate: win.to.toISOString(),
           fromDateIST: `${win.from.getUTCFullYear()}-${String(win.from.getUTCMonth() + 1).padStart(2, '0')}-${String(win.from.getUTCDate()).padStart(2, '0')} ${String(win.from.getUTCHours()).padStart(2, '0')}:${String(win.from.getUTCMinutes()).padStart(2, '0')}:${String(win.from.getUTCSeconds()).padStart(2, '0')} IST`,
-          toDateIST: `${win.to.getUTCFullYear()}-${String(win.to.getUTCMonth() + 1).padStart(2, '0')}-${String(win.to.getUTCDate()).padStart(2, '0')} ${String(win.to.getUTCHours()).padStart(2, '0')}:${String(win.to.getUTCMinutes()).padStart(2, '0')}:${String(win.to.getUTCSeconds()).padStart(2, '0')} IST`
+          toDateIST: `${win.to.getUTCFullYear()}-${String(win.to.getUTCMonth() + 1).padStart(2, '0')}-${String(win.to.getUTCDate()).padStart(2, '0')} ${String(win.to.getUTCHours()).padStart(2, '0')}:${String(win.to.getUTCMinutes()).padStart(2, '0')}:${String(win.to.getUTCSeconds()).padStart(2, '0')} IST`,
+          appliedDates: {
+            from: win.from.toISOString(),
+            to: win.to.toISOString()
+          }
         });
       } catch (err) {
         req.log.warn({
@@ -978,14 +1108,20 @@ fastify.get("/dashboard", async (req, reply) => {
       }
     } else {
       win = parseRange(String(range));
-      req.log.info({
-        msg: "[OTIF] Predefined range parsed",
-        range,
-        fromDate: win.from?.toISOString(),
-        toDate: win.to?.toISOString(),
-        fromDateLocal: win.from?.toString(),
-        toDateLocal: win.to?.toString()
-      });
+        req.log.info({
+          msg: "[OTIF] Predefined range parsed - Line 987",
+          codeLocation: "Line 987: win = parseRange(String(range))",
+          range,
+          supportedRanges: "30d (Last 30 days), 90d (Last 90 days), 180d (Last 180 days), 365d (Last 365 days)",
+          fromDate: win.from?.toISOString(),
+          toDate: win.to?.toISOString(),
+          fromDateLocal: win.from?.toString(),
+          toDateLocal: win.to?.toString(),
+          appliedDates: {
+            from: win.from?.toISOString() || null,
+            to: win.to?.toISOString() || null
+          }
+        });
     }
 
     // decode cursor: base64("isoDate|id")
@@ -1022,48 +1158,89 @@ fastify.get("/dashboard", async (req, reply) => {
       if (!ids || !ids.length) return [];
       const r = (await pool).request();
       
+      // Helper function to convert date to IST and format
+      const toIST = (date) => {
+        if (!date) return null;
+        // IST is UTC+5:30, so add 5 hours 30 minutes
+        const istTime = new Date(date.getTime() + (5 * 60 + 30) * 60 * 1000);
+        return {
+          date: istTime,
+          year: istTime.getUTCFullYear(),
+          month: istTime.getUTCMonth(),
+          day: istTime.getUTCDate(),
+          hours: istTime.getUTCHours(),
+          minutes: istTime.getUTCMinutes(),
+          seconds: istTime.getUTCSeconds(),
+          formatted: `${istTime.getUTCFullYear()}-${String(istTime.getUTCMonth() + 1).padStart(2, '0')}-${String(istTime.getUTCDate()).padStart(2, '0')} ${String(istTime.getUTCHours()).padStart(2, '0')}:${String(istTime.getUTCMinutes()).padStart(2, '0')}:${String(istTime.getUTCSeconds()).padStart(2, '0')} IST`,
+          dateOnly: `${istTime.getUTCFullYear()}-${String(istTime.getUTCMonth() + 1).padStart(2, '0')}-${String(istTime.getUTCDate()).padStart(2, '0')}`
+        };
+      };
+      
       // For sql.Date, extract the date part from IST dates
       // Since OTIF data dates are returned in IST, we extract the IST date components
       let fromDateParam = null;
       let toDateParam = null;
       
       if (win.from) {
-        // win.from represents start of day in IST
-        // Extract the date components and create a date for SQL Server
-        const fromYear = win.from.getUTCFullYear();
-        const fromMonth = win.from.getUTCMonth();
-        const fromDay = win.from.getUTCDate();
-        // For Nov 6 IST start (which is Nov 5 18:30 UTC), we want to query from Nov 5
-        fromDateParam = new Date(Date.UTC(fromYear, fromMonth, fromDay, 0, 0, 0, 0));
+        // Convert win.from to IST and extract date components
+        const istFrom = toIST(win.from);
+        // Create SQL date parameter using IST date components
+        // SQL Server will interpret this as the date in its timezone
+        fromDateParam = new Date(Date.UTC(istFrom.year, istFrom.month, istFrom.day, 0, 0, 0, 0));
+        req.log.info({
+          msg: `[OTIF] FromDate calculated - Line 1063`,
+          codeLocation: "Line 1063: fromDateParam = new Date(Date.UTC(...))",
+          sourceWinFrom: win.from.toISOString(),
+          sourceWinFromIST: istFrom.formatted,
+          extractedISTComponents: { year: istFrom.year, month: istFrom.month + 1, day: istFrom.day },
+          calculatedFromDateParamIST: toIST(fromDateParam)?.formatted,
+          appliedDateIST: toIST(fromDateParam)?.formatted,
+          appliedDateOnlyIST: toIST(fromDateParam)?.dateOnly
+        });
       }
       
       if (win.to) {
-        // win.to represents end of day in IST
-        const toYear = win.to.getUTCFullYear();
-        const toMonth = win.to.getUTCMonth();
-        const toDay = win.to.getUTCDate();
-        // For Nov 6 IST end (which is Nov 6 18:29 UTC), we want to query to Nov 6
-        toDateParam = new Date(Date.UTC(toYear, toMonth, toDay, 23, 59, 59, 999));
+        // Convert win.to to IST and extract date components
+        const istTo = toIST(win.to);
+        // Create SQL date parameter using IST date components
+        toDateParam = new Date(Date.UTC(istTo.year, istTo.month, istTo.day, 23, 59, 59, 999));
+        req.log.info({
+          msg: `[OTIF] ToDate calculated - Line 1080`,
+          codeLocation: "Line 1080: toDateParam = new Date(Date.UTC(...))",
+          sourceWinTo: win.to.toISOString(),
+          sourceWinToIST: istTo.formatted,
+          extractedISTComponents: { year: istTo.year, month: istTo.month + 1, day: istTo.day },
+          calculatedToDateParamIST: toIST(toDateParam)?.formatted,
+          appliedDateIST: toIST(toDateParam)?.formatted,
+          appliedDateOnlyIST: toIST(toDateParam)?.dateOnly
+        });
       }
       
       req.log.info({
         msg: `[OTIF] Executing stored procedure for ${tag}`,
         ledgerIdsCount: ids.length,
-        originalFromDate: win.from ? win.from.toISOString() : null,
-        originalToDate: win.to ? win.to.toISOString() : null,
-        fromDateParam: fromDateParam ? fromDateParam.toISOString() : null,
-        toDateParam: toDateParam ? toDateParam.toISOString() : null,
-        fromDateLocal: fromDateParam ? fromDateParam.toString() : null,
-        toDateLocal: toDateParam ? toDateParam.toString() : null,
-        fromDateSQL: fromDateParam ? `${fromDateParam.getFullYear()}-${String(fromDateParam.getMonth() + 1).padStart(2, '0')}-${String(fromDateParam.getDate()).padStart(2, '0')}` : null,
-        toDateSQL: toDateParam ? `${toDateParam.getFullYear()}-${String(toDateParam.getMonth() + 1).padStart(2, '0')}-${String(toDateParam.getDate()).padStart(2, '0')}` : null,
+        originalFromDateIST: win.from ? toIST(win.from)?.formatted : null,
+        originalToDateIST: win.to ? toIST(win.to)?.formatted : null,
+        fromDateParamIST: fromDateParam ? toIST(fromDateParam)?.formatted : null,
+        toDateParamIST: toDateParam ? toIST(toDateParam)?.formatted : null,
+        fromDateSQLIST: fromDateParam ? toIST(fromDateParam)?.dateOnly : null,
+        toDateSQLIST: toDateParam ? toIST(toDateParam)?.dateOnly : null,
         search: q || "",
-        afterDate: after?.date ? after.date.toISOString() : null,
+        afterDateIST: after?.date ? toIST(after.date)?.formatted : null,
         afterId: after?.id || null,
         limit: Number(limit) + 5
       });
       
       r.input("LedgerIds", tvp(ids));
+      req.log.info({
+        msg: `[OTIF] Applying dates to SQL procedure - Lines 1118-1119`,
+        codeLocation: "Lines 1118-1119: r.input('FromDate'/'ToDate', sql.Date, ...)",
+        fromDateAppliedIST: fromDateParam ? toIST(fromDateParam)?.formatted : null,
+        toDateAppliedIST: toDateParam ? toIST(toDateParam)?.formatted : null,
+        fromDateSQLFormatIST: fromDateParam ? toIST(fromDateParam)?.dateOnly : null,
+        toDateSQLFormatIST: toDateParam ? toIST(toDateParam)?.dateOnly : null,
+        sqlParameterType: "sql.Date"
+      });
       r.input("FromDate", sql.Date, fromDateParam);
       r.input("ToDate", sql.Date, toDateParam);
       r.input("Search", sql.NVarChar(100), q || "");
@@ -1073,6 +1250,13 @@ fastify.get("/dashboard", async (req, reply) => {
 
       const rs = await r.execute("dbo.portal_otif_list");
       const rows = rs.recordset || [];
+      
+      // Log the exact JSON data returned from SQL procedure
+      req.log.info({
+        msg: `[OTIF] Raw SQL procedure data for ${tag}`,
+        rawDataJSON: JSON.stringify(rows, null, 2),
+        rowCount: rows.length
+      });
       
       req.log.info({
         msg: `[OTIF] Stored procedure result for ${tag}`,
@@ -1106,38 +1290,9 @@ fastify.get("/dashboard", async (req, reply) => {
       merged = [...rows1, ...rows2];
     }
 
-    // Filter results to match the actual IST date range (if custom dates were used)
-    // OTIF data dates are in IST, so we compare IST dates
-    let filteredMerged = merged;
-    if (from && to && win.from && win.to) {
-      // Use the original input dates (from/to) as target dates since they're already in YYYY-MM-DD format
-      // These represent the IST dates the user selected
-      const targetFromDate = from; // e.g., "2025-11-06"
-      const targetToDate = to;     // e.g., "2025-11-06"
-      
-      filteredMerged = merged.filter(item => {
-        // Filter by PODate (primary date field for OTIF)
-        if (!item.PODate) return false;
-        const poDate = new Date(item.PODate);
-        // PODate comes as UTC ISO string but represents IST time
-        // To get IST date: add 5:30 hours to UTC time, then extract date
-        const istTime = new Date(poDate.getTime() + (5 * 60 + 30) * 60 * 1000);
-        const poDateISTStr = `${istTime.getUTCFullYear()}-${String(istTime.getUTCMonth() + 1).padStart(2, '0')}-${String(istTime.getUTCDate()).padStart(2, '0')}`;
-        
-        // Compare IST date strings (YYYY-MM-DD format)
-        return poDateISTStr >= targetFromDate && poDateISTStr <= targetToDate;
-      });
-      
-      req.log.info({
-        msg: "[OTIF] Filtered results for IST date range",
-        beforeFilter: merged.length,
-        afterFilter: filteredMerged.length,
-        targetFromDate,
-        targetToDate
-      });
-    }
-
+    // All date filtering is done in SQL procedure - no JavaScript filtering needed
     // global sort + page trim
+    const filteredMerged = merged;
     filteredMerged.sort((a, b) => {
       const da = new Date(a._cursorDate || 0).getTime();
       const dbb = new Date(b._cursorDate || 0).getTime();

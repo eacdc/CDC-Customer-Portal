@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const ORDERS_SESSION_KEY = 'cdcAuthSession';
-  const DEFAULT_RANGE = '1m';
+  const DEFAULT_RANGE = '90d';
       const DEFAULT_LIMIT = '1000'; // Fetch more items for pagination
 
   const TAB_CONFIG = {
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isLocalHost = ['localhost', '127.0.0.1', '0.0.0.0'].includes(host);
     const fallback = isLocalHost
       ? 'http://localhost:8080/api'
-      : 'https://cdcapi.onrender.com/api';
+      : 'https://cdc-customer-portal-backend.onrender.com/api';
     return fallback.replace(/\/$/, '');
   }
 
@@ -442,12 +442,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getRangeLabel(range) {
     const labels = {
-      '1m': 'Last Month',
-      '3m': 'Last Quarter',
-      '1y': 'Last Year',
+      '30d': 'Last 30 Days',
+      '90d': 'Last 90 Days',
+      '180d': 'Last 180 Days',
+      '365d': 'Last 365 Days',
       'custom': 'Custom Date'
     };
-    return labels[range] || 'Last Month';
+    return labels[range] || 'Last 90 Days';
   }
 
   function getDateRange(tab) {
@@ -466,15 +467,18 @@ document.addEventListener('DOMContentLoaded', () => {
       toDate.setHours(23, 59, 59, 999);
 
       fromDate = new Date(now);
-      if (range === '1m') {
-        fromDate.setMonth(fromDate.getMonth() - 1);
-      } else if (range === '3m') {
-        fromDate.setMonth(fromDate.getMonth() - 3);
-      } else if (range === '1y') {
-        fromDate.setFullYear(fromDate.getFullYear() - 1);
+      // Support 30d, 90d, 180d, 365d
+      if (range === '30d') {
+        fromDate.setDate(fromDate.getDate() - 30);
+      } else if (range === '90d') {
+        fromDate.setDate(fromDate.getDate() - 90);
+      } else if (range === '180d') {
+        fromDate.setDate(fromDate.getDate() - 180);
+      } else if (range === '365d') {
+        fromDate.setDate(fromDate.getDate() - 365);
       } else {
-        // Default to last month
-        fromDate.setMonth(fromDate.getMonth() - 1);
+        // Default to last 90 days
+        fromDate.setDate(fromDate.getDate() - 90);
       }
       fromDate.setHours(0, 0, 0, 0);
     }

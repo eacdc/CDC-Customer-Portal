@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
       window.AUTH_API_BASE ||
       (['localhost', '127.0.0.1', '0.0.0.0'].includes(window.location.hostname)
         ? 'http://localhost:8080/api'
-        : 'https://cdcapi.onrender.com/api');
+        : 'https://cdc-customer-portal-backend.onrender.com/api');
 
     const API_BASE = defaultBase.replace(/\/$/, '');
     const ENDPOINT = isRegister ? `${API_BASE}/auth/register-email` : `${API_BASE}/auth/login-email`;

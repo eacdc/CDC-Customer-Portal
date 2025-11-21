@@ -739,7 +739,7 @@ if (document.documentElement.querySelector('#autocomplete')) {
     if (window.AUTH_API_BASE) return String(window.AUTH_API_BASE).replace(/\/$/, '');
     const host = window.location.hostname;
     const isLocal = ['localhost', '127.0.0.1', '0.0.0.0'].includes(host);
-    return (isLocal ? 'http://localhost:8080/api' : 'https://cdcapi.onrender.com/api').replace(/\/$/, '');
+    return (isLocal ? 'http://localhost:8080/api' : 'https://cdc-customer-portal-backend.onrender.com/api').replace(/\/$/, '');
   }
 
   function resolveRedirect(redirectUrl) {
