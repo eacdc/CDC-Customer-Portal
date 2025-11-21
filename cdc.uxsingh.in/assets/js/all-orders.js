@@ -895,7 +895,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (!Array.isArray(processes) || processes.length === 0) {
-      modalContent.innerHTML = '<tr><td colspan="7" class="text-center">No process data available</td></tr>';
+      modalContent.innerHTML = '<tr><td colspan="6" class="text-center">No process data available</td></tr>';
     } else {
       let rows = '';
       processes.forEach(p => {
@@ -905,7 +905,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const planDate = formatDate(p.PlanDate);
         const actualDate = formatDate(p.ActualDate);
         const planQty = p.PlanQty || '-';
-        const actualQty = p.ActualQty || '-';
         
         rows += `<tr>
           <td>${processName}</td>
@@ -914,7 +913,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${planDate}</td>
           <td>${actualDate}</td>
           <td>${planQty}</td>
-          <td>${actualQty}</td>
         </tr>`;
       });
       modalContent.innerHTML = rows;
