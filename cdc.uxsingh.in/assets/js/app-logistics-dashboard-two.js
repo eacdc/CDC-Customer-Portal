@@ -809,10 +809,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
             scrollX: true,
 
             columns: [
-                // { data: null }, // For control column
-                // { data: null }, // For checkboxes
-                // { data: 'id' },
-                { data: 'id', orderable: false, render: DataTable.render.select() },
                 { data: 'po_details' },
                 { data: 'po_date' },
                 { data: 'item' },
@@ -849,30 +845,9 @@ document.addEventListener('DOMContentLoaded', function (e) {
             },
 
             columnDefs: [
-                // {
-                //     // For Responsive control
-                //     className: 'control',
-                //     orderable: false,
-                //     searchable: false,
-                //     responsivePriority: 1,
-                //     targets: 0,
-                //     render: () => ''
-                // },
-                {
-                    // For Checkboxes
-                    targets: 0,
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 2,
-                    checkboxes: true,
-                    render: () => '<input type="checkbox" class="dt-checkboxes form-check-input">',
-                    checkboxes: {
-                        selectAllRender: '<input type="checkbox" class="form-check-input">'
-                    }
-                },
                 {
                     // Approval Status Badge
-                    targets: 4,
+                    targets: 3,
                     render: (data) => {
                         const statusMap = {
                             'Yes': 'success',
@@ -888,18 +863,14 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 },
                 {
                     // Approval Link Button
-                    targets: 5,
+                    targets: 4,
                     render: (data) => {
                         if (!data || data === '#') return 'N/A';
                         return `<a href="${data}" class="" target="_blank" style="text-decoration: underline;">${data}</a>`;
                     }
                 }
             ],
-            select: {
-                style: 'multi',
-                selector: 'td:nth-child(2)'
-            },
-            order: [[2, 'asc']],
+            order: [[1, 'asc']],
             lengthMenu: [5],
             language: {
                 paginate: {
@@ -1048,8 +1019,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
             scrollX: true,
             
             columns: [
-                // { data: 'id' },
-                { data: 'id', orderable: false, render: DataTable.render.select() },
                 { data: 'po_details' },
                 { data: 'po_date' },
                 { data: 'item' },
@@ -1080,29 +1049,9 @@ document.addEventListener('DOMContentLoaded', function (e) {
             },
 
             columnDefs: [
-                // {
-                //     // Responsive control
-                //     className: 'control',
-                //     orderable: false,
-                //     searchable: false,
-                //     responsivePriority: 1,
-                //     targets: 0,
-                //     render: () => ''
-                // },
-                {
-                    // Checkboxes
-                    targets: 0,
-                    orderable: false,
-                    searchable: false,
-                    checkboxes: {
-                        selectRow: true,
-                        selectAllRender: '<input type="checkbox" class="form-check-input" />'
-                    },
-                    render: () => '<input type="checkbox" class="dt-checkboxes form-check-input" />'
-                },
                 {
                     // File Status Badge
-                    targets: 4,
+                    targets: 3,
                     render: (data) => {
                         const statusMap = {
                             'Approved': 'success',
@@ -1115,12 +1064,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 }
             ],
 
-            select: {
-                style: 'multi',
-                selector: 'td:nth-child(2)'
-            },
-
-            order: [[2, 'asc']],
+            order: [[1, 'asc']],
             lengthMenu: [5],
 
             language: {
