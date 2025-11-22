@@ -332,8 +332,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="col">
               <div class="row">
                 <div class="col-12 col-md-8">
-                  <h5 class="mb-1">PO No. ${poNumber}</h5>
-                  <p class="text-muted mb-2">${title}</p>
+                  <h5 class="mb-1">${title}</h5>
+                  <p class="text-muted mb-2">PO No. ${poNumber}</p>
                   <p class="mb-0"><strong>Committed Delivery:</strong> ${committedDelivery}</p>
                 </div>
                 <div class="col-12 col-md-4 text-md-end">
@@ -1022,11 +1022,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalElement = document.getElementById('inspectionsModal');
     const modalHeader = document.getElementById('inspectionsTableHeader');
     const modalContent = document.getElementById('inspectionsContent');
+    const processDetailsModal = document.getElementById('lastStatusModal');
     
     if (!modalElement || !modalHeader || !modalContent) {
       console.error('Inspections modal elements not found');
       alert('Modal elements not found. Please refresh the page.');
       return;
+    }
+    
+    // Add blur effect to process details modal if it's open
+    if (processDetailsModal) {
+      const processModalInstance = bootstrap.Modal.getInstance(processDetailsModal);
+      if (processModalInstance && processModalInstance._isShown) {
+        processDetailsModal.style.filter = 'blur(3px)';
+        processDetailsModal.style.opacity = '0.7';
+        processDetailsModal.style.pointerEvents = 'none';
+        console.log('[INSPECTIONS] Applied blur effect to process details modal');
+      }
     }
 
     if (!Array.isArray(inspections) || inspections.length === 0) {
@@ -1051,10 +1063,12 @@ document.addEventListener('DOMContentLoaded', () => {
       
       modalHeader.innerHTML = headers;
       
-      // Create table rows
+      // Create table rows with alternating row colors for better readability
       let rows = '';
-      inspections.forEach(inspection => {
-        let row = '<tr>';
+      inspections.forEach((inspection, index) => {
+        // Alternate row background colors - light sky blue theme
+        const rowBgColor = index % 2 === 0 ? '#ffffff' : '#e3f2fd';
+        let row = `<tr style="background-color: ${rowBgColor};">`;
         Array.from(allKeys).forEach(key => {
           let value = inspection[key];
           
@@ -1084,6 +1098,31 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!modal) {
         modal = new bootstrap.Modal(modalElement);
       }
+      
+      // Add event listeners to handle blur effect when inspection modal opens/closes
+      modalElement.addEventListener('show.bs.modal', function() {
+        const processDetailsModal = document.getElementById('lastStatusModal');
+        if (processDetailsModal) {
+          const processModalInstance = bootstrap.Modal.getInstance(processDetailsModal);
+          if (processModalInstance && processModalInstance._isShown) {
+            processDetailsModal.style.filter = 'blur(3px)';
+            processDetailsModal.style.opacity = '0.7';
+            processDetailsModal.style.pointerEvents = 'none';
+            processDetailsModal.style.transition = 'filter 0.3s ease, opacity 0.3s ease';
+          }
+        }
+      });
+      
+      modalElement.addEventListener('hidden.bs.modal', function() {
+        const processDetailsModal = document.getElementById('lastStatusModal');
+        if (processDetailsModal) {
+          processDetailsModal.style.filter = 'none';
+          processDetailsModal.style.opacity = '1';
+          processDetailsModal.style.pointerEvents = 'auto';
+          console.log('[INSPECTIONS] Removed blur effect from process details modal');
+        }
+      });
+      
       modal.show();
     } catch (error) {
       console.error('Error showing inspections modal:', error);

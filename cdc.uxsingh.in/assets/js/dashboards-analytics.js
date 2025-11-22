@@ -565,7 +565,11 @@
 
     function buildChartConfig(months) {
       const categories = months.map((m) => monthLabel(m.YearMonth));
-      const seriesData = months.map((m) => Number(m.TotalQty || 0));
+      const seriesData = months.map((m) => Number(m.TotalValue || 0));
+      const valueFormatter = new Intl.NumberFormat('en-IN', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      });
       return {
         chart: {
           height: 320,
@@ -608,7 +612,7 @@
         },
         yaxis: {
           labels: {
-            formatter: (val) => `${(val / 1000).toFixed(0)}k`,
+            formatter: (val) => `₹${(val / 1000).toFixed(0)}k`,
             style: {
               colors: labelColor,
               fontFamily,
@@ -623,7 +627,7 @@
         },
         tooltip: {
           y: {
-            formatter: (val) => `${Number(val || 0).toLocaleString()} Qty`
+            formatter: (val) => `Rs.${valueFormatter.format(val || 0)}`
           }
         },
         responsive: [
@@ -859,6 +863,7 @@
 
       recentOrdersList.innerHTML = orders.map((order) => {
         const poNo = order.PONo || 'N/A';
+        const jobName = order.JobName || 'N/A';
         const orderDate = formatDate(order.OrderDate);
         const orderQty = formatQuantity(order.OrderQty);
         const displayText = `${poNo} · ${orderDate}`;
@@ -868,7 +873,7 @@
             <div class="d-flex align-items-center">
               <div class="d-flex justify-content-between w-100 flex-wrap gap-2">
                 <div class="me-2">
-                  <h6 class="mb-0">${poNo}</h6>
+                  <h6 class="mb-0">${jobName}</h6>
                   <small class="text-body cus-dis-color">${displayText}</small>
                 </div>
                 <div class="d-flex align-items-center">
