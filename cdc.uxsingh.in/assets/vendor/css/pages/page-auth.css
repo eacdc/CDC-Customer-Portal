@@ -138,3 +138,17 @@
     margin-inline: 1px;
   }
 }
+
+/* Safeguard: Ensure authentication form is always clickable */
+.authentication-wrapper,
+.authentication-wrapper *,
+#formAuthentication,
+#formAuthentication * {
+  pointer-events: auto !important;
+}
+
+.authentication-wrapper .authentication-bg {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 10;
+}

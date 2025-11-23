@@ -4,6 +4,58 @@
 'use strict';
 
 document.addEventListener('DOMContentLoaded', function () {
+  // Initial cleanup function to ensure UI is always clickable (before form is initialized)
+  const initialCleanup = () => {
+    // Remove any modal backdrops that might be blocking
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    backdrops.forEach(backdrop => backdrop.remove());
+    
+    // Remove modal-open class from body
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    
+    // Remove any notiflix overlays that might be blocking
+    if (typeof Loading !== 'undefined') {
+      try {
+        Loading.remove();
+      } catch (e) {
+        // Ignore errors if Loading is not initialized
+      }
+    }
+    
+    // Remove any notiflix block overlays
+    if (typeof Block !== 'undefined') {
+      try {
+        Block.remove('body');
+        Block.remove('#formAuthentication');
+        Block.remove('.authentication-wrapper');
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+    
+    // Clear any notiflix loading or block elements
+    const notiflixElements = document.querySelectorAll('.notiflix-loading, .notiflix-block');
+    notiflixElements.forEach(el => {
+      if (el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
+    });
+    
+    // Ensure pointer-events is not blocked
+    document.body.style.pointerEvents = '';
+    const authWrapper = document.querySelector('.authentication-wrapper');
+    if (authWrapper) {
+      authWrapper.style.pointerEvents = '';
+    }
+  };
+
+  // Run initial cleanup immediately and after a short delay to catch any late-loading overlays
+  initialCleanup();
+  setTimeout(initialCleanup, 100);
+  setTimeout(initialCleanup, 500);
+
   (() => {
     const formAuthentication = document.querySelector('#formAuthentication');
     if (!formAuthentication) return;
@@ -132,12 +184,87 @@ document.addEventListener('DOMContentLoaded', function () {
       resultEl.textContent = JSON.stringify(data, null, 2);
     };
 
+    // Flag to prevent multiple simultaneous submissions
+    let isSubmitting = false;
+    
+    // Cleanup function to ensure UI is always clickable (with access to form elements)
+    const cleanupBlockingStates = () => {
+      // Remove any modal backdrops that might be blocking
+      const backdrops = document.querySelectorAll('.modal-backdrop');
+      backdrops.forEach(backdrop => backdrop.remove());
+      
+      // Remove modal-open class from body
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+      
+      // Remove any notiflix overlays that might be blocking
+      if (typeof Loading !== 'undefined') {
+        try {
+          Loading.remove();
+        } catch (e) {
+          // Ignore errors if Loading is not initialized
+        }
+      }
+      
+      // Remove any notiflix block overlays
+      if (typeof Block !== 'undefined') {
+        try {
+          Block.remove('body');
+          Block.remove('#formAuthentication');
+          Block.remove('.authentication-wrapper');
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+      
+      // Clear any notiflix loading or block elements
+      const notiflixElements = document.querySelectorAll('.notiflix-loading, .notiflix-block');
+      notiflixElements.forEach(el => {
+        if (el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+      });
+      
+      // Ensure form elements are not disabled
+      const formInputs = document.querySelectorAll('#formAuthentication input, #formAuthentication button');
+      formInputs.forEach(input => {
+        if (input.disabled && input.type !== 'checkbox' && input.type !== 'radio') {
+          input.disabled = false;
+        }
+      });
+      
+      // Ensure pointer-events is not blocked
+      document.body.style.pointerEvents = '';
+      const authWrapper = document.querySelector('.authentication-wrapper');
+      if (authWrapper) {
+        authWrapper.style.pointerEvents = '';
+      }
+      
+      // Re-enable submit button if it was disabled
+      if (submitBtn && submitBtn.disabled) {
+        isSubmitting = false;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+      }
+    };
+    
     const toggleLoading = state => {
       if (!submitBtn) return;
       if (state) {
+        isSubmitting = true;
         submitBtn.disabled = true;
         submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...`;
+        
+        // Safety timeout: automatically re-enable after 30 seconds to prevent permanent blocking
+        setTimeout(() => {
+          if (isSubmitting && submitBtn && submitBtn.disabled) {
+            console.warn('[AUTH] Loading state exceeded 30 seconds, re-enabling form');
+            cleanupBlockingStates();
+          }
+        }, 30000);
       } else {
+        isSubmitting = false;
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnText;
       }
@@ -168,9 +295,18 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const handleSubmit = async () => {
+      // Prevent multiple simultaneous submissions
+      if (isSubmitting) {
+        console.warn('[AUTH] Form submission already in progress, ignoring duplicate submit');
+        return;
+      }
+      
       clearAlert();
       showResult(null);
       toggleLoading(true);
+      
+      // Ensure blocking states are cleared before starting
+      cleanupBlockingStates();
 
       const formData = new FormData(formAuthentication);
       const payload = {
@@ -235,8 +371,12 @@ document.addEventListener('DOMContentLoaded', function () {
       } catch (err) {
         setAlert('danger', err.message || 'Unexpected error. Please try again.');
         storeSession(null);
+        // Ensure UI is clickable even after error
+        cleanupBlockingStates();
       } finally {
         toggleLoading(false);
+        // Double-check that blocking states are cleared
+        setTimeout(cleanupBlockingStates, 100);
       }
     };
 
@@ -285,6 +425,33 @@ document.addEventListener('DOMContentLoaded', function () {
         });
       });
     }
+    
+    // Add event listeners to clear blocking states on page visibility/focus changes
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        cleanupBlockingStates();
+      }
+    });
+    
+    window.addEventListener('focus', () => {
+      cleanupBlockingStates();
+    });
+    
+    window.addEventListener('pageshow', (event) => {
+      // Handle back/forward cache restoration
+      if (event.persisted) {
+        cleanupBlockingStates();
+        // Re-enable submit button if it was disabled
+        if (submitBtn && submitBtn.disabled) {
+          toggleLoading(false);
+        }
+      }
+    });
+    
+    // Ensure cleanup on page unload as well
+    window.addEventListener('beforeunload', () => {
+      cleanupBlockingStates();
+    });
   })();
     function resolveRedirectTarget(rawTarget) {
       const fallback = './index.html';

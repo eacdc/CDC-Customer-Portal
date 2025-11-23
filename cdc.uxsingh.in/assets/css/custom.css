@@ -1139,12 +1139,38 @@ h6,
         margin: 0 !important;
     }
 
-    .custom-res-card-header .custom-snb .main-btn-gp .btn-group:first-child {
-        margin-right: 12px !important;
+    .custom-res-card-header .custom-snb .main-btn-gp {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-end;
     }
 
-    .custom-res-card-header .custom-snb .main-btn-gp .btn-group:first-child button {
-        font-size: 0;
+    .custom-res-card-header .custom-snb .main-btn-gp .btn-group {
+        width: 40%;
+        display: flex;
+    }
+
+    .custom-res-card-header .custom-snb .main-btn-gp .btn-group .btn {
+        flex: 1;
+        font-size: 14px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .custom-res-card-header .custom-snb .main-btn-gp .btn-group .dropdown-toggle-split {
+        flex: 0 0 auto;
+        min-width: 40px;
+    }
+
+    .custom-res-card-header .custom-snb .main-btn-gp .btn-group .dropdown-menu {
+        width: 100%;
+        min-width: 100%;
+        position: absolute;
+        left: 0 !important;
+        transform: translateY(4px) !important;
     }
 
     .custom-tl .nav-tabs {
@@ -1303,6 +1329,63 @@ h6,
     }
     
     table.datatables-basic button.last-status-btn, table.datatables-basic button.delivery-dates-btn {
+        display: none !important;
+    }
+}
+
+/* Mobile Menu Footer - View Profile & Logout */
+@media (max-width: 1199.98px) {
+    .layout-menu {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .layout-menu .menu-inner {
+        flex: 1;
+        overflow-y: auto;
+    }
+    
+    .menu-mobile-footer {
+        margin-top: auto;
+        padding: 16px;
+        border-top: 1px solid rgba(47, 43, 61, 0.12);
+        background-color: var(--bs-body-bg);
+    }
+    
+    .menu-mobile-footer .menu-divider {
+        margin: 0 0 8px 0;
+        border-top: 1px solid rgba(47, 43, 61, 0.12);
+    }
+    
+    .menu-mobile-footer .menu-inner {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .menu-mobile-footer .menu-item {
+        margin: 4px 0;
+    }
+    
+    .menu-mobile-footer .menu-link {
+        padding: 10px 12px;
+        border-radius: 6px;
+    }
+    
+    .menu-mobile-footer .menu-link:hover {
+        background-color: rgba(115, 103, 240, 0.08);
+    }
+}
+
+/* Hide mobile footer on desktop */
+@media (min-width: 1200px) {
+    .menu-mobile-footer {
+        display: none !important;
+    }
+}
+
+/* Hide profile icon in navbar on mobile view */
+@media (max-width: 1199.98px) {
+    .navbar-dropdown.dropdown-user {
         display: none !important;
     }
 }
