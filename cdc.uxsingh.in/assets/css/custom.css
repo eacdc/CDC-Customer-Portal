@@ -403,23 +403,32 @@
 .order-card .order-card-toggle {
     font-weight: 600;
     padding-left: 0;
+    color: #7367f0;
+    text-decoration: none;
 }
 
-@media (max-width: 767.98px) {
+.order-card .order-card-toggle:hover {
+    color: #5d52d5;
+    text-decoration: underline;
+}
+
+/* Mobile view: Hide extra details by default, show toggle button */
+@media (max-width: 991.98px) {
     .order-card .order-card-extra {
-        display: none;
+        display: none !important;
     }
 
     .order-card.order-card-expanded .order-card-extra {
-        display: block;
+        display: block !important;
     }
 
     .order-card .order-card-toggle {
-        display: inline-flex;
+        display: inline-flex !important;
     }
 }
 
-@media (min-width: 768px) {
+/* Desktop view: Always show all details, hide toggle button */
+@media (min-width: 992px) {
     .order-card .order-card-toggle {
         display: none !important;
     }

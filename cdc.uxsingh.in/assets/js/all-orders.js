@@ -322,37 +322,36 @@ document.addEventListener('DOMContentLoaded', () => {
     col.innerHTML = `
       <div class="card order-card">
         <div class="card-body p-4">
-          <div class="order-card-core">
-            <div class="d-flex flex-column flex-md-row gap-2 align-items-md-center">
-              <div class="flex-grow-1">
-                <h5 class="mb-1">${title}</h5>
-                <p class="text-muted mb-0 d-none d-md-block">PO No. ${poNumber}</p>
-              </div>
-              <div class="text-md-end">
-                <p class="mb-0"><strong>Ordered QTY:</strong> ${orderQty}</p>
-              </div>
+          <div class="row align-items-start">
+            <!-- Product Image - Always visible -->
+            <div class="col-auto">
+              <img src="${imageUrl}" alt="Product" class="rounded" style="width: 100px; height: 100px; object-fit: contain; background-color: #e0e0e0;" onerror="this.onerror=null;this.src='${resolveImageUrl(null)}';">
             </div>
-          </div>
-
-          <div class="order-card-actions d-flex flex-wrap align-items-center gap-3 mt-3">
-            <button type="button" class="btn btn-sm btn-label-secondary process-details-btn" data-jobid="${jobId}" data-source="${source}">
-              Process Details
-            </button>
-            <a href="javascript:void(0);" class="text-primary delivery-dates-btn" data-jobid="${jobId}" data-source="${source}">Delivery Dates</a>
-            <button type="button" class="btn btn-sm btn-link order-card-toggle d-md-none ms-auto" aria-expanded="false">
-              Show Details
-            </button>
-          </div>
-
-          <div class="order-card-extra mt-4">
-            <div class="row align-items-start">
-              <div class="col-auto mb-4 mb-md-0">
-                <img src="${imageUrl}" alt="Product" class="rounded" style="width: 100px; height: 100px; object-fit: contain; background-color: #e0e0e0;" onerror="this.onerror=null;this.src='${resolveImageUrl(null)}';">
+            
+            <!-- Main Content -->
+            <div class="col">
+              <!-- Always Visible: Job Name and Ordered QTY -->
+              <div class="order-card-core">
+                <h5 class="mb-1">${title}</h5>
+                <p class="mb-2"><strong>Ordered QTY:</strong> ${orderQty}</p>
               </div>
-              <div class="col">
+
+              <!-- Always Visible: Action Buttons -->
+              <div class="order-card-actions d-flex flex-wrap align-items-center gap-3 mt-3">
+                <button type="button" class="btn btn-sm btn-label-secondary process-details-btn" data-jobid="${jobId}" data-source="${source}">
+                  Process Details
+                </button>
+                <a href="javascript:void(0);" class="text-primary delivery-dates-btn" data-jobid="${jobId}" data-source="${source}">Delivery Dates</a>
+                <button type="button" class="btn btn-sm btn-link order-card-toggle d-md-none ms-auto" aria-expanded="false">
+                  Show Details
+                </button>
+              </div>
+
+              <!-- Hidden on Mobile: Extra Details -->
+              <div class="order-card-extra mt-4">
                 <div class="row">
                   <div class="col-12 col-md-8">
-                    <p class="text-muted mb-2 d-md-none">PO No. ${poNumber}</p>
+                    <p class="text-muted mb-2">PO No. ${poNumber}</p>
                     <p class="mb-0"><strong>Committed Delivery:</strong> ${committedDelivery}</p>
                   </div>
                   <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
