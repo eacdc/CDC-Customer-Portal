@@ -1148,16 +1148,17 @@ h6,
     }
 
     .custom-res-card-header .custom-snb .main-btn-gp .btn-group {
-        width: 40%;
+        width: auto;
         display: flex;
+        max-width: 100%;
     }
 
     .custom-res-card-header .custom-snb .main-btn-gp .btn-group .btn {
-        flex: 1;
+        flex: 0 0 auto;
         font-size: 14px !important;
         white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        overflow: visible;
+        text-overflow: unset;
     }
 
     .custom-res-card-header .custom-snb .main-btn-gp .btn-group .dropdown-toggle-split {
@@ -1166,8 +1167,8 @@ h6,
     }
 
     .custom-res-card-header .custom-snb .main-btn-gp .btn-group .dropdown-menu {
-        width: 100%;
-        min-width: 100%;
+        width: auto;
+        min-width: max-content;
         position: absolute;
         left: 0 !important;
         transform: translateY(4px) !important;
