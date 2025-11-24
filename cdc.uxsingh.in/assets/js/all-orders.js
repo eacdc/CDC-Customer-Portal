@@ -320,50 +320,58 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     col.innerHTML = `
-      <div class="card">
+      <div class="card order-card">
         <div class="card-body p-4">
-          <div class="row align-items-start">
-            <!-- Product Image -->
-            <div class="col-auto">
-              <img src="${imageUrl}" alt="Product" class="rounded" style="width: 100px; height: 100px; object-fit: contain; background-color: #e0e0e0;" onerror="this.onerror=null;this.src='${resolveImageUrl(null)}';">
-            </div>
-            
-            <!-- Product Details -->
-            <div class="col">
-              <div class="row">
-                <div class="col-12 col-md-8">
-                  <h5 class="mb-1">${title}</h5>
-                  <p class="text-muted mb-2">PO No. ${poNumber}</p>
-                  <p class="mb-0"><strong>Committed Delivery:</strong> ${committedDelivery}</p>
-                </div>
-                <div class="col-12 col-md-4 text-md-end">
-                  <p class="text-muted mb-1">PO Date: ${poDate}</p>
-                  <p class="text-muted mb-1">Approval: ${approvalDate}</p>
-                  <p class="mb-0"><strong>Job Card No. #${jobCardNo}</strong></p>
-                </div>
+          <div class="order-card-core">
+            <div class="d-flex flex-column flex-md-row gap-2 align-items-md-center">
+              <div class="flex-grow-1">
+                <h5 class="mb-1">${title}</h5>
+                <p class="text-muted mb-0 d-none d-md-block">PO No. ${poNumber}</p>
               </div>
-              
-              <!-- Order Stats -->
-              <div class="row mt-3 align-items-center">
-                <div class="col-auto">
-                  <p class="mb-0"><strong>Ordered QTY:</strong> ${orderQty}</p>
+              <div class="text-md-end">
+                <p class="mb-0"><strong>Ordered QTY:</strong> ${orderQty}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="order-card-actions d-flex flex-wrap align-items-center gap-3 mt-3">
+            <button type="button" class="btn btn-sm btn-label-secondary process-details-btn" data-jobid="${jobId}" data-source="${source}">
+              Process Details
+            </button>
+            <a href="javascript:void(0);" class="text-primary delivery-dates-btn" data-jobid="${jobId}" data-source="${source}">Delivery Dates</a>
+            <button type="button" class="btn btn-sm btn-link order-card-toggle d-md-none ms-auto" aria-expanded="false">
+              Show Details
+            </button>
+          </div>
+
+          <div class="order-card-extra mt-4">
+            <div class="row align-items-start">
+              <div class="col-auto mb-4 mb-md-0">
+                <img src="${imageUrl}" alt="Product" class="rounded" style="width: 100px; height: 100px; object-fit: contain; background-color: #e0e0e0;" onerror="this.onerror=null;this.src='${resolveImageUrl(null)}';">
+              </div>
+              <div class="col">
+                <div class="row">
+                  <div class="col-12 col-md-8">
+                    <p class="text-muted mb-2 d-md-none">PO No. ${poNumber}</p>
+                    <p class="mb-0"><strong>Committed Delivery:</strong> ${committedDelivery}</p>
+                  </div>
+                  <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
+                    <p class="text-muted mb-1">PO Date: ${poDate}</p>
+                    <p class="text-muted mb-1">Approval: ${approvalDate}</p>
+                    <p class="mb-0"><strong>Job Card No. #${jobCardNo}</strong></p>
+                  </div>
                 </div>
-                <div class="col-auto">
-                  <p class="mb-0"><strong>Packed QTY:</strong> ${packedQty}</p>
-                </div>
-                <div class="col-auto">
-                  <p class="mb-0"><strong>Delivered QTY:</strong> ${deliveredQty}</p>
-                </div>
-                <div class="col-auto">
-                  <p class="mb-0"><strong>Order status:</strong> <span class="badge ${statusClass}">${status}</span></p>
-                </div>
-                <div class="col-auto">
-                  <button type="button" class="btn btn-sm btn-label-secondary process-details-btn" data-jobid="${jobId}" data-source="${source}">
-                    Process Details
-                  </button>
-                </div>
-                <div class="col-auto ms-auto">
-                  <a href="javascript:void(0);" class="text-primary delivery-dates-btn" data-jobid="${jobId}" data-source="${source}">Delivery Dates</a>
+
+                <div class="row mt-3 gy-2 align-items-center">
+                  <div class="col-sm-auto">
+                    <p class="mb-0"><strong>Packed QTY:</strong> ${packedQty}</p>
+                  </div>
+                  <div class="col-sm-auto">
+                    <p class="mb-0"><strong>Delivered QTY:</strong> ${deliveredQty}</p>
+                  </div>
+                  <div class="col-sm-auto">
+                    <p class="mb-0"><strong>Order status:</strong> <span class="badge ${statusClass}">${status}</span></p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -371,6 +379,16 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
     `;
+
+    const cardEl = col.querySelector('.order-card');
+    const toggleBtn = cardEl.querySelector('.order-card-toggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        const expanded = cardEl.classList.toggle('order-card-expanded');
+        toggleBtn.textContent = expanded ? 'Hide Details' : 'Show Details';
+        toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      });
+    }
 
     return col;
   }

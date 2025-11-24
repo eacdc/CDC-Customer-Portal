@@ -399,6 +399,36 @@
     color: #62CCF4 !important;
 }
 
+/* Order card responsive behavior */
+.order-card .order-card-toggle {
+    font-weight: 600;
+    padding-left: 0;
+}
+
+@media (max-width: 767.98px) {
+    .order-card .order-card-extra {
+        display: none;
+    }
+
+    .order-card.order-card-expanded .order-card-extra {
+        display: block;
+    }
+
+    .order-card .order-card-toggle {
+        display: inline-flex;
+    }
+}
+
+@media (min-width: 768px) {
+    .order-card .order-card-toggle {
+        display: none !important;
+    }
+
+    .order-card .order-card-extra {
+        display: block !important;
+    }
+}
+
 .dashboard-custom-cards .col-lg-3:nth-child(3) .card.cus-card span.growth {
     color: #02B090 !important;
 }
