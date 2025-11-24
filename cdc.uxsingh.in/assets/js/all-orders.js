@@ -330,10 +330,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             <!-- Main Content -->
             <div class="col">
-              <!-- Always Visible: Job Name and Ordered QTY -->
+              <!-- Always Visible: Job Name, Ordered QTY, and Order Status -->
               <div class="order-card-core">
                 <h5 class="mb-1">${title}</h5>
                 <p class="mb-2"><strong>Ordered QTY:</strong> ${orderQty}</p>
+                <p class="mb-0"><strong>Order status:</strong> <span class="badge ${statusClass}">${status}</span></p>
               </div>
 
               <!-- Always Visible: Action Buttons -->
@@ -367,9 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
                   </div>
                   <div class="col-sm-auto">
                     <p class="mb-0"><strong>Delivered QTY:</strong> ${deliveredQty}</p>
-                  </div>
-                  <div class="col-sm-auto">
-                    <p class="mb-0"><strong>Order status:</strong> <span class="badge ${statusClass}">${status}</span></p>
                   </div>
                 </div>
               </div>
