@@ -1,9 +1,12 @@
 /**
  * Global Loading Overlay System
  * Shows loading spinner on button clicks and navigation
+ * Automatically hides when API calls complete
  */
 (function() {
     'use strict';
+
+    let activeRequests = 0; // Track number of active API calls
 
     // Create and inject loading overlay HTML if it doesn't exist
     function injectLoadingOverlay() {
@@ -78,14 +81,21 @@
         }
 
         function hideLoading() {
-            if (loadingOverlay) {
-                loadingOverlay.classList.remove('active');
-                body.classList.remove('cdc-loading-active');
+            // Only hide if no active requests
+            if (activeRequests <= 0) {
+                if (loadingOverlay) {
+                    loadingOverlay.classList.remove('active');
+                    body.classList.remove('cdc-loading-active');
+                }
             }
         }
 
         function resetLoading() {
-            hideLoading();
+            activeRequests = 0;
+            if (loadingOverlay) {
+                loadingOverlay.classList.remove('active');
+                body.classList.remove('cdc-loading-active');
+            }
         }
 
         function isModifiedClick(event) {
@@ -133,10 +143,62 @@
             return false;
         }
 
+        // Intercept fetch API calls
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            activeRequests++;
+            showLoading();
+            
+            return originalFetch.apply(this, args)
+                .then(response => {
+                    activeRequests--;
+                    hideLoading();
+                    return response;
+                })
+                .catch(error => {
+                    activeRequests--;
+                    hideLoading();
+                    throw error;
+                });
+        };
+
+        // Intercept XMLHttpRequest (AJAX) calls
+        const originalOpen = XMLHttpRequest.prototype.open;
+        const originalSend = XMLHttpRequest.prototype.send;
+
+        XMLHttpRequest.prototype.open = function(...args) {
+            this._cdcTracked = true;
+            return originalOpen.apply(this, args);
+        };
+
+        XMLHttpRequest.prototype.send = function(...args) {
+            if (this._cdcTracked) {
+                activeRequests++;
+                showLoading();
+
+                const onComplete = () => {
+                    activeRequests--;
+                    hideLoading();
+                };
+
+                this.addEventListener('load', onComplete);
+                this.addEventListener('error', onComplete);
+                this.addEventListener('abort', onComplete);
+            }
+            
+            return originalSend.apply(this, args);
+        };
+
         // Expose global API
         window.CDCLoadingOverlay = {
-            show: showLoading,
-            hide: hideLoading,
+            show: function() {
+                activeRequests++;
+                showLoading();
+            },
+            hide: function() {
+                activeRequests = Math.max(0, activeRequests - 1);
+                hideLoading();
+            },
             reset: resetLoading
         };
 
@@ -155,7 +217,10 @@
                 return;
             }
 
-            showLoading();
+            // For navigation links, show loading (will be cleared on page load)
+            if (trigger.tagName === 'A' && trigger.getAttribute('href')) {
+                showLoading();
+            }
         }, true);
 
         // Handle form submissions
@@ -179,4 +244,3 @@
     }
 
 })();
-
