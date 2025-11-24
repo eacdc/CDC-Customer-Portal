@@ -351,14 +351,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
               <!-- Hidden on Mobile: Extra Details -->
               <div class="order-card-extra mt-4">
-                <!-- Action Buttons inside expandable section (Mobile only) -->
-                <div class="order-card-extra-actions d-flex flex-wrap align-items-center gap-3 mb-4 d-md-none">
-                  <button type="button" class="btn btn-sm btn-label-secondary process-details-btn" data-jobid="${jobId}" data-source="${source}">
-                    Process Details
-                  </button>
-                  <a href="javascript:void(0);" class="text-primary delivery-dates-btn" data-jobid="${jobId}" data-source="${source}">Delivery Dates</a>
-                </div>
-
                 <div class="row">
                   <div class="col-12 col-md-8">
                     <p class="text-muted mb-2">PO No. ${poNumber}</p>
@@ -375,6 +367,14 @@ document.addEventListener('DOMContentLoaded', () => {
                   <div class="col-sm-auto">
                     <p class="mb-0"><strong>Packed QTY:</strong> ${packedQty}</p>
                   </div>
+                </div>
+
+                <!-- Action Buttons at the bottom of expandable section (Mobile only) -->
+                <div class="order-card-extra-actions d-flex flex-wrap align-items-center gap-3 mt-4 d-md-none">
+                  <button type="button" class="btn btn-sm btn-label-secondary process-details-btn" data-jobid="${jobId}" data-source="${source}">
+                    Process Details
+                  </button>
+                  <a href="javascript:void(0);" class="text-primary delivery-dates-btn" data-jobid="${jobId}" data-source="${source}">Delivery Dates</a>
                 </div>
               </div>
             </div>
