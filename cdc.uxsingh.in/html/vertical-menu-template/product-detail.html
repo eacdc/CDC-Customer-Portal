@@ -55,45 +55,6 @@
     <script src="../../assets/vendor/js/helpers.js"></script>
 
     <script src="../../assets/js/config.js"></script>
-
-    <!-- Loading Overlay Styles -->
-    <style>
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            pointer-events: all;
-        }
-
-        .loading-overlay.active {
-            display: flex;
-        }
-
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid #ffffff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        body.loading-active {
-            overflow: hidden;
-        }
-    </style>
 </head>
 
 <body>
@@ -388,11 +349,6 @@
     </div>
     <!-- / Layout wrapper -->
 
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner"></div>
-    </div>
-
     <!-- Core JS -->
     <!-- build:js assets/vendor/js/theme.js -->
 
@@ -429,43 +385,8 @@
     <!-- Page JS -->
     <script src="../../assets/js/product.js"></script>
 
-    <!-- Loading Overlay Script -->
-    <script>
-        (function () {
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            const body = document.body;
-
-            function showLoading() {
-                loadingOverlay.classList.add('active');
-                body.classList.add('loading-active');
-            }
-
-            function hideLoading() {
-                loadingOverlay.classList.remove('active');
-                body.classList.remove('loading-active');
-            }
-
-            // Expose helpers so feature-specific scripts can hide the overlay when their work is done.
-            window.CDCLoadingOverlay = {
-                show: showLoading,
-                hide: hideLoading
-            };
-
-            // Delegate button clicks so newly added buttons are covered automatically.
-            document.addEventListener('click', function (event) {
-                const trigger = event.target.closest('button, a.btn, input[type="button"], input[type="submit"], [role="button"]');
-
-                if (!trigger) return;
-
-                // Skip disabled controls
-                if (trigger.disabled || trigger.getAttribute('aria-disabled') === 'true') {
-                    return;
-                }
-
-                showLoading();
-            }, true);
-        })();
-    </script>
+    <!-- Loading Overlay -->
+    <script src="../../assets/js/loading-overlay.js"></script>
 </body>
 
 </html>
