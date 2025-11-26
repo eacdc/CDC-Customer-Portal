@@ -556,16 +556,19 @@
                     <div class="card-title mb-0 d-flex align-items-center custom-snb">
                       <div class="search-here me-4 cus-search-here"></div>
                       <div class="main-btn-gp">
-                        <div class="btn-group">
-                          <button type="button" class="btn btn-label-primary">Last 3 Month</button>
+                        <div class="btn-group date-range-group" data-section="pending-approvals">
+                          <button type="button" class="btn btn-label-primary date-range-btn">Last 90 Days</button>
                           <button type="button" class="btn btn-label-primary dropdown-toggle dropdown-toggle-split"
                             data-bs-toggle="dropdown" aria-expanded="false">
                             <span class="visually-hidden">Toggle Dropdown</span>
                           </button>
                           <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="javascript:void(0);">Last Month</a></li>
-                            <li><a class="dropdown-item" href="javascript:void(0);">Last 6 Month</a></li>
-                            <li><a class="dropdown-item" href="javascript:void(0);">Last 1 year</a></li>
+                            <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="30d">Last 30 Days</a></li>
+                            <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="90d">Last 90 Days</a></li>
+                            <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="180d">Last 180 Days</a></li>
+                            <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="365d">Last 365 Days</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item custom-date-option" href="javascript:void(0);" data-section="pending-approvals" data-bs-toggle="modal" data-bs-target="#customDateModalDashboard">Custom Date</a></li>
                           </ul>
                         </div>
                       </div>
@@ -615,16 +618,19 @@
                     <div class="card-title mb-0 d-flex align-items-center custom-snb">
                       <div class="search-here-pending-files me-4 cus-search-here"></div>
                       <div class="main-btn-gp">
-                        <div class="btn-group">
-                          <button type="button" class="btn btn-label-primary">Last 3 Month</button>
+                        <div class="btn-group date-range-group" data-section="pending-files">
+                          <button type="button" class="btn btn-label-primary date-range-btn">Last 90 Days</button>
                           <button type="button" class="btn btn-label-primary dropdown-toggle dropdown-toggle-split"
                             data-bs-toggle="dropdown" aria-expanded="false">
                             <span class="visually-hidden">Toggle Dropdown</span>
                           </button>
                           <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="javascript:void(0);">Last Month</a></li>
-                            <li><a class="dropdown-item" href="javascript:void(0);">Last 6 Month</a></li>
-                            <li><a class="dropdown-item" href="javascript:void(0);">Last 1 year</a></li>
+                            <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="30d">Last 30 Days</a></li>
+                            <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="90d">Last 90 Days</a></li>
+                            <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="180d">Last 180 Days</a></li>
+                            <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="365d">Last 365 Days</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item custom-date-option" href="javascript:void(0);" data-section="pending-files" data-bs-toggle="modal" data-bs-target="#customDateModalDashboard">Custom Date</a></li>
                           </ul>
                         </div>
                       </div>
@@ -1038,6 +1044,34 @@
 
 
   </script>
+
+  <!-- Custom Date Modal for Dashboard -->
+  <div class="modal fade" id="customDateModalDashboard" tabindex="-1" aria-labelledby="customDateModalDashboardLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="customDateModalDashboardLabel">Select Custom Date Range</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="customDateFormDashboard">
+            <div class="mb-3">
+              <label for="startDateDashboard" class="form-label">Start Date</label>
+              <input type="date" class="form-control" id="startDateDashboard" required>
+            </div>
+            <div class="mb-3">
+              <label for="endDateDashboard" class="form-label">End Date</label>
+              <input type="date" class="form-control" id="endDateDashboard" required>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-label-primary" id="applyCustomDateDashboard">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

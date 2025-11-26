@@ -13,6 +13,74 @@ document.addEventListener('DOMContentLoaded', function (e) {
     legendColor = config.colors.bodyColor;
     fontFamily = config.fontFamily;
 
+    // Date range state for dashboard sections
+    const dashboardDateState = {
+        'pending-approvals': { dateRange: '90d', customDates: null, rawData: [] },
+        'pending-files': { dateRange: '90d', customDates: null, rawData: [] }
+    };
+
+    // Date range utility functions
+    function getRangeLabel(range) {
+        const labels = {
+            '30d': 'Last 30 Days',
+            '90d': 'Last 90 Days',
+            '180d': 'Last 180 Days',
+            '365d': 'Last 365 Days',
+            'custom': 'Custom Date'
+        };
+        return labels[range] || 'Last 90 Days';
+    }
+
+    function getDateRange(section) {
+        const state = dashboardDateState[section];
+        const now = new Date();
+        let fromDate, toDate;
+
+        if (state.customDates) {
+            fromDate = new Date(state.customDates.from);
+            toDate = new Date(state.customDates.to);
+            toDate.setHours(23, 59, 59, 999);
+        } else {
+            const range = state.dateRange || '90d';
+            toDate = new Date(now);
+            toDate.setHours(23, 59, 59, 999);
+
+            fromDate = new Date(now);
+            if (range === '30d') {
+                fromDate.setDate(fromDate.getDate() - 30);
+            } else if (range === '90d') {
+                fromDate.setDate(fromDate.getDate() - 90);
+            } else if (range === '180d') {
+                fromDate.setDate(fromDate.getDate() - 180);
+            } else if (range === '365d') {
+                fromDate.setDate(fromDate.getDate() - 365);
+            } else {
+                fromDate.setDate(fromDate.getDate() - 90);
+            }
+            fromDate.setHours(0, 0, 0, 0);
+        }
+
+        return { fromDate, toDate };
+    }
+
+    function filterByDateRange(data, section) {
+        if (!data || data.length === 0) return data;
+
+        const { fromDate, toDate } = getDateRange(section);
+        
+        return data.filter(item => {
+            if (!item.PODate) return false;
+            
+            try {
+                const poDate = new Date(item.PODate);
+                return poDate >= fromDate && poDate <= toDate;
+            } catch (error) {
+                console.warn('Invalid PODate format:', item.PODate);
+                return false;
+            }
+        });
+    }
+
     // Chart Colors
     const chartColors = {
         donut: {
@@ -764,8 +832,15 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 })
                 .then(body => {
                     const approvals = Array.isArray(body?.pendingApprovals) ? body.pendingApprovals : [];
+                    
+                    // Store raw data for filtering
+                    dashboardDateState['pending-approvals'].rawData = approvals;
+                    
+                    // Filter by date range (client-side)
+                    const filteredApprovals = filterByDateRange(approvals, 'pending-approvals');
+                    
                     // Transform API data to match DataTable expected format
-                    const transformed = approvals.map((item, index) => {
+                    const transformed = filteredApprovals.map((item, index) => {
                         // Format date: PODate
                         let formattedDate = 'N/A';
                         if (item.PODate) {
@@ -817,6 +892,11 @@ document.addEventListener('DOMContentLoaded', function (e) {
             ],
             dom: '<"dt-custom-search-vehicles"f>rt<"bottom"lip>',
             initComplete: function () {
+                // Store DataTable instance
+                if (!dtPendingApprovals) {
+                    dtPendingApprovals = this.api();
+                }
+                
                 // Move search input to your custom container
                 $('.dt-custom-search-vehicles').appendTo('.search-here');
 
@@ -975,8 +1055,15 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 })
                 .then(body => {
                     const files = Array.isArray(body?.pendingFiles) ? body.pendingFiles : [];
+                    
+                    // Store raw data for filtering
+                    dashboardDateState['pending-files'].rawData = files;
+                    
+                    // Filter by date range (client-side)
+                    const filteredFiles = filterByDateRange(files, 'pending-files');
+                    
                     // Transform API data to match DataTable expected format
-                    const transformed = files.map((item, index) => {
+                    const transformed = filteredFiles.map((item, index) => {
                         // Format date: PODate
                         let formattedDate = 'N/A';
                         if (item.PODate) {
@@ -1028,6 +1115,11 @@ document.addEventListener('DOMContentLoaded', function (e) {
             dom: '<"dt-custom-search"f>rt<"bottom"lip>',
 
             initComplete: function () {
+                // Store DataTable instance
+                if (!dtPendingFiles) {
+                    dtPendingFiles = this.api();
+                }
+                
                 $('.dt-custom-search').appendTo('.search-here-pending-files');
 
                 // Remove label text and hide label element
@@ -1133,5 +1225,148 @@ document.addEventListener('DOMContentLoaded', function (e) {
         });
     }, 100);
 
+    // Store DataTable instances for refreshing
+    let dtPendingApprovals = null;
+    let dtPendingFiles = null;
+
+    // Function to refresh DataTable with filtered data
+    function refreshDashboardTable(section) {
+        const state = dashboardDateState[section];
+        const rawData = state.rawData || [];
+        
+        if (rawData.length === 0) {
+            // If no cached data, reload from API
+            if (section === 'pending-approvals' && dtPendingApprovals) {
+                dtPendingApprovals.ajax.reload();
+            } else if (section === 'pending-files' && dtPendingFiles) {
+                dtPendingFiles.ajax.reload();
+            }
+            return;
+        }
+
+        const filteredData = filterByDateRange(rawData, section);
+
+        // Transform filtered data
+        const transformed = filteredData.map((item, index) => {
+            let formattedDate = 'N/A';
+            if (item.PODate) {
+                try {
+                    const date = new Date(item.PODate);
+                    formattedDate = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                } catch (e) {
+                    formattedDate = item.PODate;
+                }
+            }
+
+            if (section === 'pending-approvals') {
+                return {
+                    id: index + 1,
+                    po_details: item.PONumber || 'N/A',
+                    po_date: formattedDate,
+                    item: item.ItemName || 'N/A',
+                    approval_status: item.FinallyApproved || 'N/A',
+                    approve: item.SoftApprovalLink || '#'
+                };
+            } else {
+                return {
+                    id: index + 1,
+                    po_details: item.PONumber || 'N/A',
+                    po_date: formattedDate,
+                    item: item.ItemName || 'N/A',
+                    file_status: item.FileStatus || 'N/A'
+                };
+            }
+        });
+
+        // Update the appropriate DataTable
+        if (section === 'pending-approvals' && dtPendingApprovals) {
+            dtPendingApprovals.clear();
+            dtPendingApprovals.rows.add(transformed);
+            dtPendingApprovals.draw(false); // false = don't reset paging
+        } else if (section === 'pending-files' && dtPendingFiles) {
+            dtPendingFiles.clear();
+            dtPendingFiles.rows.add(transformed);
+            dtPendingFiles.draw(false); // false = don't reset paging
+        }
+    }
+
+    // Date range handlers
+    document.addEventListener('click', function(e) {
+        // Handle predefined date range options
+        if (e.target.classList.contains('date-range-option')) {
+            e.preventDefault();
+            const range = e.target.dataset.range;
+            const dateRangeGroup = e.target.closest('.date-range-group');
+            const section = dateRangeGroup?.dataset.section;
+            
+            if (section && range) {
+                const state = dashboardDateState[section];
+                state.dateRange = range;
+                state.customDates = null;
+                
+                // Update button text
+                const btn = dateRangeGroup.querySelector('.date-range-btn');
+                if (btn) {
+                    btn.textContent = getRangeLabel(range);
+                }
+                
+                // Refresh table
+                refreshDashboardTable(section);
+            }
+        }
+
+        // Handle custom date option click
+        if (e.target.classList.contains('custom-date-option')) {
+            e.preventDefault();
+            const section = e.target.dataset.section;
+            if (section) {
+                // Store which section is requesting custom date
+                document.getElementById('customDateModalDashboard').dataset.section = section;
+            }
+        }
+    });
+
+    // Custom date form handler
+    const applyCustomDateBtn = document.getElementById('applyCustomDateDashboard');
+    if (applyCustomDateBtn) {
+        applyCustomDateBtn.addEventListener('click', function() {
+            const modal = document.getElementById('customDateModalDashboard');
+            const section = modal?.dataset.section;
+            const startDate = document.getElementById('startDateDashboard')?.value;
+            const endDate = document.getElementById('endDateDashboard')?.value;
+
+            if (!section || !startDate || !endDate) {
+                alert('Please select both start and end dates.');
+                return;
+            }
+
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('Start date cannot be after end date.');
+                return;
+            }
+
+            const state = dashboardDateState[section];
+            state.customDates = { from: startDate, to: endDate };
+            state.dateRange = 'custom';
+
+            // Update button text
+            const dateRangeGroup = document.querySelector(`.date-range-group[data-section="${section}"]`);
+            if (dateRangeGroup) {
+                const btn = dateRangeGroup.querySelector('.date-range-btn');
+                if (btn) {
+                    btn.textContent = 'Custom Date';
+                }
+            }
+
+            // Close modal
+            const modalInstance = bootstrap.Modal.getInstance(modal);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+
+            // Refresh table
+            refreshDashboardTable(section);
+        });
+    }
 
 });
