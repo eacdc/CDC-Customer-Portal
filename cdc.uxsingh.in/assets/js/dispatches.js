@@ -153,23 +153,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const dispatchId = dispatch.DispatchId || '-';
 
     col.innerHTML = `
-      <div class="card">
+      <div class="card dispatch-card">
         <div class="card-body p-4">
           <div class="row align-items-start">
             <!-- Product Image -->
-            <div class="col-auto">
+            <div class="col-auto dispatch-card-image">
               <img src="${imageUrl}" alt="Product" class="rounded" style="width: 100px; height: 100px; object-fit: contain; background-color: #e0e0e0;" onerror="this.onerror=null;this.src='${resolveImageUrl(null)}';">
             </div>
             
             <!-- Dispatch Details -->
-            <div class="col">
+            <div class="col dispatch-card-content">
               <div class="row">
                 <div class="col-12 col-md-8">
                   <h5 class="mb-1">Job Num: ${jobNum}</h5>
                   <p class="text-muted mb-2">${item}</p>
                   <p class="mb-0"><strong>Dispatch Date:</strong> ${dispatchDate}</p>
                 </div>
-                <div class="col-12 col-md-4 text-md-end">
+                <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
                   <p class="text-muted mb-1">PO Date: ${poDate}</p>
                   <p class="mb-0"><strong>Dispatch ID: #${dispatchId}</strong></p>
                 </div>

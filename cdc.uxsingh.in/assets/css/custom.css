@@ -412,6 +412,42 @@
     text-decoration: underline;
 }
 
+/* Dispatch card mobile-first layout */
+@media (max-width: 991.98px) {
+    .dispatch-card .row {
+        flex-direction: column;
+    }
+
+    .dispatch-card-image {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+
+    .dispatch-card-content {
+        width: 100%;
+        text-align: center;
+    }
+
+    .dispatch-card-content h5,
+    .dispatch-card-content p {
+        text-align: center;
+    }
+
+    .dispatch-card-content .row {
+        justify-content: center;
+    }
+
+    .dispatch-card-content .col-12 {
+        text-align: center;
+    }
+
+    .dispatch-card-content .col-auto {
+        margin: 0 auto;
+    }
+}
+
 /* Mobile view: Hide extra details by default, show toggle button */
 @media (max-width: 991.98px) {
     .order-card .order-card-extra {
