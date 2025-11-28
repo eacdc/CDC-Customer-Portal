@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
         paging: true,
         pageLength: state.pageSize,
         lengthChange: true,  // Enable the default DataTables length menu
-        lengthMenu: [AVAILABLE_PAGE_SIZES],  // Set available page sizes
+        lengthMenu: [[10, 25, 50, 100], ['10', '25', '50', '100']],  // Fixed: nested array format
         searching: true,
         info: true,
         responsive: false,
@@ -391,6 +391,11 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         initComplete: function() {
+          // Update pageSize when user changes it
+          state.dataTable.on('length.dt', function (e, settings, len) {
+            state.pageSize = len;
+          });
+          
           // Move search input to custom container
           $('.dt-custom-search-otif').appendTo(searchWrapper);
 
