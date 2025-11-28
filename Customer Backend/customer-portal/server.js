@@ -8,7 +8,11 @@ import { clientInfo } from "./utils/clientInfo.js"; // optional tiny util; see n
 import authPlugin from "./auth.js";
 import portalApiPlugin from "./portalapi.js";
 
-const app = Fastify({ logger: true });
+const app = Fastify({
+  logger: true,
+  requestTimeout: 60000, // 60 seconds (60000ms)
+  connectionTimeout: 60000, // 60 seconds
+});
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // --- CORS
