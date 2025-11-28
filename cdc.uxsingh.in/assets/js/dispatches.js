@@ -4,7 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const DISPATCHES_SESSION_KEY = 'cdcAuthSession';
   const DEFAULT_RANGE = '90d';
   const DEFAULT_LIMIT = '1000'; // Fetch more items for pagination
-  const ITEMS_PER_PAGE = 10;
+  const DEFAULT_ITEMS_PER_PAGE = 10;
+  const AVAILABLE_PAGE_SIZES = [10, 25, 50, 100];
 
   const containerId = 'dispatches-container';
   const searchWrapper = '.search-here';
@@ -19,7 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
     dateRange: DEFAULT_RANGE,
     customDates: null,
     nextCursor: null,
-    currentPage: 1
+    currentPage: 1,
+    itemsPerPage: DEFAULT_ITEMS_PER_PAGE
   };
 
   let currentCustomDateTab = null;
@@ -241,12 +243,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const filtered = state.filteredDispatches || [];
     const totalItems = filtered.length;
-    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    const itemsPerPage = state.itemsPerPage || DEFAULT_ITEMS_PER_PAGE;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
     const currentPage = Math.max(1, Math.min(state.currentPage || 1, totalPages || 1));
 
     // Get items for current page
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
     const pageItems = filtered.slice(startIndex, endIndex);
 
     const query = state.searchInput ? state.searchInput.value.trim().toLowerCase() : '';
@@ -255,10 +258,10 @@ document.addEventListener('DOMContentLoaded', () => {
       : emptyMessage || 'No records found.';
 
     renderDispatchCards(pageItems, container, emptyMsg);
-    renderPagination(currentPage, totalPages, totalItems);
+    renderPagination(currentPage, totalPages, totalItems, itemsPerPage);
   }
 
-  function renderPagination(currentPage, totalPages, totalItems) {
+  function renderPagination(currentPage, totalPages, totalItems, itemsPerPage) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -270,13 +273,27 @@ document.addEventListener('DOMContentLoaded', () => {
       container.parentElement?.appendChild(paginationContainer);
     }
 
-    if (totalPages <= 1) {
+    if (totalPages <= 1 && totalItems <= itemsPerPage) {
       paginationContainer.innerHTML = '';
       return;
     }
 
     const prevDisabled = currentPage === 1 ? 'disabled' : '';
     const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+
+    // Build page limit selector
+    const pageSizeOptions = AVAILABLE_PAGE_SIZES.map(size => 
+      `<option value="${size}" ${size === itemsPerPage ? 'selected' : ''}>${size}</option>`
+    ).join('');
+    
+    const pageSizeSelector = `
+      <div class="d-flex align-items-center me-3">
+        <label for="page-size-select-dispatches" class="form-label mb-0 me-2 text-muted">Show:</label>
+        <select id="page-size-select-dispatches" class="form-select form-select-sm" style="width: auto;">
+          ${pageSizeOptions}
+        </select>
+      </div>
+    `;
 
     let pageNumbers = '';
     const maxVisiblePages = 5;
@@ -309,8 +326,11 @@ document.addEventListener('DOMContentLoaded', () => {
     paginationContainer.innerHTML = `
       <nav aria-label="Page navigation">
         <div class="d-flex justify-content-between align-items-center">
-          <div class="text-muted">
-            Showing ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalItems)} to ${Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} of ${totalItems} entries
+          <div class="d-flex align-items-center">
+            ${pageSizeSelector}
+            <div class="text-muted ms-3">
+              Showing ${Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)} to ${Math.min(currentPage * itemsPerPage, totalItems)} of ${totalItems} entries
+            </div>
           </div>
           <ul class="pagination mb-0">
             <li class="page-item ${prevDisabled}">
@@ -337,11 +357,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (page >= 1 && page <= totalPages && page !== currentPage) {
           state.currentPage = page;
           renderDispatchesWithPagination();
-          // Scroll to top of container
           container.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       });
     });
+
+    // Bind page size change handler
+    const pageSizeSelect = paginationContainer.querySelector('#page-size-select-dispatches');
+    if (pageSizeSelect) {
+      pageSizeSelect.addEventListener('change', (e) => {
+        const newSize = parseInt(e.target.value);
+        state.itemsPerPage = newSize;
+        state.currentPage = 1;
+        renderDispatchesWithPagination();
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
   }
 
   function matchesSearch(dispatch, query) {

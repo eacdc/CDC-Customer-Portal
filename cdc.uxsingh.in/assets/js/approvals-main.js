@@ -69,10 +69,13 @@ document.addEventListener('DOMContentLoaded', function (e) {
 
   // Date range state management
   const DEFAULT_RANGE = '90d';
+  const DEFAULT_PAGE_SIZE = 10;
+  const AVAILABLE_PAGE_SIZES = [10, 25, 50, 100];
+  
   const tabState = {
-    all: { dateRange: DEFAULT_RANGE, customDates: null, dataTable: null },
-    pending_files: { dateRange: DEFAULT_RANGE, customDates: null, dataTable: null },
-    pending_approval: { dateRange: DEFAULT_RANGE, customDates: null, dataTable: null }
+    all: { dateRange: DEFAULT_RANGE, customDates: null, dataTable: null, pageSize: DEFAULT_PAGE_SIZE },
+    pending_files: { dateRange: DEFAULT_RANGE, customDates: null, dataTable: null, pageSize: DEFAULT_PAGE_SIZE },
+    pending_approval: { dateRange: DEFAULT_RANGE, customDates: null, dataTable: null, pageSize: DEFAULT_PAGE_SIZE }
   };
 
   let currentCustomDateTab = null;
@@ -188,7 +191,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
         url: getApiBase() + '/approvals?tab=all',
         headers: buildAuthHeaders(),
         data: function(d) {
-          // Add date range parameters
           const state = tabState.all;
           if (state.customDates) {
             d.from = state.customDates.from;
@@ -198,7 +200,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
           }
         },
         dataSrc: function(json) {
-          // Return items directly - date filtering is done in backend
           if (json && json.items) {
             return json.items;
           }
@@ -217,8 +218,9 @@ document.addEventListener('DOMContentLoaded', function (e) {
             // dom: '<"top">rt<"bottom"i p><"clear">',
 
             paging: true,
-            pageLength: 10,         // Show 10 items per page
-            lengthChange: false,    // Hide "Show X entries" dropdown
+            pageLength: tabState.all.pageSize,
+            lengthChange: true,  // Enable the default DataTables length menu
+            lengthMenu: [AVAILABLE_PAGE_SIZES],  // Set available page sizes
             searching: true,
             info: true,
             responsive: false,
@@ -441,8 +443,9 @@ document.addEventListener('DOMContentLoaded', function (e) {
                     // dom: '<"top">rt<"bottom"i p><"clear">',
 
                     paging: true,
-                    pageLength: 10,         // Show 10 items per page
-                    lengthChange: false,    // Hide "Show X entries" dropdown
+                    pageLength: tabState.pending_files.pageSize,
+                    lengthChange: true,  // Enable the default DataTables length menu
+                    lengthMenu: [AVAILABLE_PAGE_SIZES],  // Set available page sizes
                     searching: true,
                     info: true,
                     responsive: false,
@@ -603,7 +606,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
         if (!$.fn.DataTable.isDataTable('.all-approvals-pending-files')) {
             $('.all-approvals-pending-files').DataTable({
                 responsive: true,
-                pageLength: 10
+                pageLength: tabState.pending_files.pageSize
             });
         } else {
             $('.all-approvals-pending-files').DataTable().columns.adjust().draw();
@@ -655,8 +658,9 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 // dom: '<"top">rt<"bottom"i p><"clear">',
 
                 paging: true,
-                pageLength: 10,         // Show 10 items per page
-                lengthChange: false,    // Hide "Show X entries" dropdown
+                pageLength: tabState.pending_approval.pageSize,
+                lengthChange: true,  // Enable the default DataTables length menu
+                lengthMenu: [AVAILABLE_PAGE_SIZES],  // Set available page sizes
                 searching: true,
                 info: true,
                 responsive: false,
@@ -851,7 +855,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
         if (!$.fn.DataTable.isDataTable('.all-approvals-pending-approvals')) {
             $('.all-approvals-pending-approvals').DataTable({
                 responsive: true,
-                pageLength: 10
+                pageLength: tabState.pending_approval.pageSize
             });
         } else {
             $('.all-approvals-pending-approvals').DataTable().columns.adjust().draw();

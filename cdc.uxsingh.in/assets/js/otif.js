@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const OTIF_SESSION_KEY = 'cdcAuthSession';
   const DEFAULT_RANGE = '90d';
   const DEFAULT_LIMIT = '1000';
+  const DEFAULT_PAGE_SIZE = 10;
+  const AVAILABLE_PAGE_SIZES = [10, 25, 50, 100];
 
   const searchWrapper = '.search-here';
   const placeholder = 'Search OTIF...';
@@ -11,7 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const state = {
     dateRange: DEFAULT_RANGE,
     customDates: null,
-    dataTable: null
+    dataTable: null,
+    pageSize: DEFAULT_PAGE_SIZE
   };
 
   let currentCustomDateTab = null;
@@ -216,7 +219,6 @@ document.addEventListener('DOMContentLoaded', () => {
           url: getApiBase() + '/otif',
           headers: buildAuthHeaders(),
           data: function(d) {
-            // Add date range parameters
             if (state.customDates) {
               d.from = state.customDates.from;
               d.to = state.customDates.to;
@@ -226,7 +228,6 @@ document.addEventListener('DOMContentLoaded', () => {
             d.limit = DEFAULT_LIMIT;
           },
           dataSrc: function(json) {
-            // Return items directly - date filtering is done in SQL procedure
             if (json && json.items) {
               return json.items;
             }
@@ -243,8 +244,9 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         paging: true,
-        pageLength: 10,
-        lengthChange: false,
+        pageLength: state.pageSize,
+        lengthChange: true,  // Enable the default DataTables length menu
+        lengthMenu: [AVAILABLE_PAGE_SIZES],  // Set available page sizes
         searching: true,
         info: true,
         responsive: false,
