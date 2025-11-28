@@ -1507,6 +1507,78 @@ h6,
         padding: 0 !important;
     }
 
+    /* DataTables Pagination Numbers - wrap and center */
+    .custom-table-pagination-layout .dt-paging,
+    .custom-table-pagination-layout-two .dt-paging,
+    .custom-table-pagination-layout-three .dt-paging,
+    .custom-table-pagination-layout-dispatch .dt-paging,
+    .custom-table-pagination-layout-dispatch-international .dt-paging,
+    .custom-table-pagination-layout-otif .dt-paging,
+    .custom-table-pagination-layout-arrival-international .dt-paging,
+    .custom-table-pagination-layout-bl-date-international .dt-paging,
+    .custom-table-pagination-layout-product .dt-paging,
+    .custom-table-pagination-layout-all-orders .dt-paging,
+    .custom-table-pagination-layout-pending-orders .dt-paging,
+    .custom-table-pagination-layout-completed-orders .dt-paging {
+        width: 100%;
+        order: 3;
+    }
+
+    .custom-table-pagination-layout .bottom-all,
+    .custom-table-pagination-layout-two .bottom-pf,
+    .custom-table-pagination-layout-three .bottom-pa,
+    .custom-table-pagination-layout-dispatch .bottom-dispatch,
+    .custom-table-pagination-layout-dispatch-international .bottom-dispatch-international,
+    .custom-table-pagination-layout .bottom-received,
+    .custom-table-pagination-layout-two .bottom-issued,
+    .custom-table-pagination-layout-three .bottom-summary,
+    .custom-table-pagination-layout-otif .bottom-otif,
+    .custom-table-pagination-layout-arrival-international .bottom-arrival,
+    .custom-table-pagination-layout-bl-date-international .bottom-bl-date,
+    .custom-table-pagination-layout-product .bottom-product,
+    .custom-table-pagination-layout-all-orders .bottom-all-orders,
+    .custom-table-pagination-layout-pending-orders .bottom-pending-orders,
+    .custom-table-pagination-layout-completed-orders .bottom-completed-orders {
+        flex-direction: column;
+    }
+
+    .custom-table-pagination-layout .bottom-all .dt-length,
+    .custom-table-pagination-layout-two .bottom-pf .dt-length,
+    .custom-table-pagination-layout-three .bottom-pa .dt-length,
+    .custom-table-pagination-layout-dispatch .bottom-dispatch .dt-length,
+    .custom-table-pagination-layout-dispatch-international .bottom-dispatch-international .dt-length,
+    .custom-table-pagination-layout .bottom-received .dt-length,
+    .custom-table-pagination-layout-two .bottom-issued .dt-length,
+    .custom-table-pagination-layout-three .bottom-summary .dt-length,
+    .custom-table-pagination-layout-otif .bottom-otif .dt-length,
+    .custom-table-pagination-layout-arrival-international .bottom-arrival .dt-length,
+    .custom-table-pagination-layout-bl-date-international .bottom-bl-date .dt-length,
+    .custom-table-pagination-layout-product .bottom-product .dt-length,
+    .custom-table-pagination-layout-all-orders .bottom-all-orders .dt-length,
+    .custom-table-pagination-layout-pending-orders .bottom-pending-orders .dt-length,
+    .custom-table-pagination-layout-completed-orders .bottom-completed-orders .dt-length {
+        order: 1;
+    }
+
+    .custom-table-pagination-layout .bottom-all .dt-info,
+    .custom-table-pagination-layout-two .bottom-pf .dt-info,
+    .custom-table-pagination-layout-three .bottom-pa .dt-info,
+    .custom-table-pagination-layout-dispatch .bottom-dispatch .dt-info,
+    .custom-table-pagination-layout-dispatch-international .bottom-dispatch-international .dt-info,
+    .custom-table-pagination-layout .bottom-received .dt-info,
+    .custom-table-pagination-layout-two .bottom-issued .dt-info,
+    .custom-table-pagination-layout-three .bottom-summary .dt-info,
+    .custom-table-pagination-layout-otif .bottom-otif .dt-info,
+    .custom-table-pagination-layout-arrival-international .bottom-arrival .dt-info,
+    .custom-table-pagination-layout-bl-date-international .bottom-bl-date .dt-info,
+    .custom-table-pagination-layout-product .bottom-product .dt-info,
+    .custom-table-pagination-layout-all-orders .bottom-all-orders .dt-info,
+    .custom-table-pagination-layout-pending-orders .bottom-pending-orders .dt-info,
+    .custom-table-pagination-layout-completed-orders .bottom-completed-orders .dt-info {
+        order: 2;
+        text-align: center;
+    }
+
     .product-data thead {
         display: none;
     }
@@ -1578,6 +1650,47 @@ h6,
     
     table.datatables-basic button.last-status-btn, table.datatables-basic button.delivery-dates-btn {
         display: none !important;
+    }
+
+    /* Mobile Pagination Styles for Orders, Dispatches */
+    .pagination-container nav > div {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 16px;
+    }
+
+    .pagination-container nav > div > div:first-child {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        width: 100%;
+    }
+
+    .pagination-container nav > div > div:first-child > .text-muted {
+        margin-left: 0 !important;
+        margin-top: 8px;
+    }
+
+    .pagination-container .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    .pagination-container .pagination .page-item {
+        margin: 2px 0;
+    }
+
+    /* DataTables Pagination - ensure numbers wrap */
+    .dt-paging nav,
+    .dt-paging .pagination {
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 4px;
+    }
+
+    .dt-paging .pagination .page-item {
+        margin: 2px 0;
     }
 }
 
