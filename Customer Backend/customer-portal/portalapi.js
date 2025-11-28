@@ -43,10 +43,13 @@ async function callOrders(
   { from, to, status, q, cursor, limit, sourceTag },
   logger = console
 ) {
+  const startTime = performance.now();
+  
   if (!ledgerIds || ledgerIds.length === 0) {
     return [];
   }
   
+  const step1Start = performance.now();
   const r = (await pool).request();
   
   const fromDate = from ? new Date(from) : null;
@@ -65,11 +68,32 @@ async function callOrders(
   r.input("AfterDate", sql.DateTime2, afterDate);
   r.input("AfterJobId", sql.Int, afterJobId);
   r.input("Limit", sql.Int, limitValue);
+  const prepareTime = (performance.now() - step1Start).toFixed(2);
   
+  const step2Start = performance.now();
   const rs = await r.execute("dbo.portal_orders_list");
   const rows = rs.recordset || [];
+  const executeTime = (performance.now() - step2Start).toFixed(2);
   
-  rows.forEach((r) => (r._source = sourceTag)); // 👈 tag
+  const step3Start = performance.now();
+  rows.forEach((r) => (r._source = sourceTag));
+  const tagTime = (performance.now() - step3Start).toFixed(2);
+  
+  const totalTime = (performance.now() - startTime).toFixed(2);
+  
+  if (logger && typeof logger.info === 'function') {
+    logger.info({
+      msg: `[ORDERS API] callOrders timings for ${sourceTag}`,
+      timings: {
+        prepare: prepareTime,
+        execute: executeTime,
+        tag: tagTime,
+        total: totalTime,
+        rowCount: rows.length
+      }
+    });
+  }
+  
   return rows;
 }
 
@@ -247,8 +271,11 @@ fastify.get("/dashboard", async (req, reply) => {
 });
   // GET /api/orders?tab=all|pending|completed&range=30d|90d|180d|365d&q=&limit=25&cursor=
   fastify.get("/orders", async (req, reply) => {
-    // req.log.info("[ORDERS API] /api/orders endpoint called");
+    const startTime = performance.now();
+    const stepTimings = {};
     
+    // Step 1: Parse query parameters
+    const step1Start = performance.now();
     const {
       tab = "all",
       range = "90d",
@@ -257,22 +284,20 @@ fastify.get("/dashboard", async (req, reply) => {
       cursor,
     } = req.query || {};
     
-    // req.log.info("[ORDERS API] Query parameters:", { tab, range, q, limit, cursor: cursor ? "present" : "none" });
-    
     const status = ["all", "pending", "completed"].includes(
       String(tab).toLowerCase()
     )
       ? String(tab).toLowerCase()
       : "all";
-    const win = parseRange(String(range));
+    stepTimings.parseQueryParams = (performance.now() - step1Start).toFixed(2);
     
-    // req.log.info("[ORDERS API] Date range parsed", {
-    //   range,
-    //   supportedRanges: "30d (Last 30 days), 90d (Last 90 days), 180d (Last 180 days), 365d (Last 365 days)",
-    //   from: win.from?.toISOString(),
-    //   to: win.to?.toISOString()
-    // });
-
+    // Step 2: Parse date range
+    const step2Start = performance.now();
+    const win = parseRange(String(range));
+    stepTimings.parseDateRange = (performance.now() - step2Start).toFixed(2);
+    
+    // Step 3: Decode cursor
+    const step3Start = performance.now();
     let cur = null;
     if (cursor) {
       try {
@@ -282,26 +307,24 @@ fastify.get("/dashboard", async (req, reply) => {
         cur = { date: new Date(d), id: Number(id) };
       } catch {}
     }
+    stepTimings.decodeCursor = (performance.now() - step3Start).toFixed(2);
 
+    // Step 4: Get MongoDB connection and find tenant
+    const step4Start = performance.now();
     const mongo = await getDb();
     const tenant = await mongo
       .collection("tenants")
       .findOne({ email: req.user.email });
     if (!tenant) {
-      // req.log.warn("[ORDERS API] Tenant binding missing for email:", req.user.email);
       return reply.code(400).send({ error: "Tenant binding missing" });
     }
-
-    // req.log.info("[ORDERS API] Tenant found:", { 
-    //   email: req.user.email,
-    //   ledgerIds_db1: tenant.ledgerIds_db1?.length || 0,
-    //   ledgerIds_db2: tenant.ledgerIds_db2?.length || 0
-    // });
+    stepTimings.findTenant = (performance.now() - step4Start).toFixed(2);
 
     const ids1 = tenant.ledgerIds_db1 || [];
     const ids2 = tenant.ledgerIds_db2 || [];
 
-    // req.log.info("[ORDERS API] Calling callOrders for both databases");
+    // Step 5: Call callOrders for both databases (parallel)
+    const step5Start = performance.now();
     const [rows1, rows2] = await Promise.all([
       callOrders(db1(), ids1, {
         from: win.from,
@@ -322,31 +345,51 @@ fastify.get("/dashboard", async (req, reply) => {
         sourceTag: "db2",
       }, req.log),
     ]);
+    stepTimings.fetchOrders = (performance.now() - step5Start).toFixed(2);
+    stepTimings.db1Rows = rows1.length;
+    stepTimings.db2Rows = rows2.length;
 
-    // req.log.info("[ORDERS API] Results:", {
-    //   db1_rows: rows1.length,
-    //   db2_rows: rows2.length
-    // });
-
+    // Step 6: Merge and sort results
+    const step6Start = performance.now();
     const merged = [...rows1, ...rows2].sort((a, b) => {
       const da = new Date(a._cursorDate).getTime();
       const dbb = new Date(b._cursorDate).getTime();
       if (da !== dbb) return dbb - da;
       return (b._cursorId || 0) - (a._cursorId || 0);
     });
+    stepTimings.mergeAndSort = (performance.now() - step6Start).toFixed(2);
 
+    // Step 7: Slice for pagination
+    const step7Start = performance.now();
     const page = merged.slice(0, Number(limit));
+    stepTimings.pagination = (performance.now() - step7Start).toFixed(2);
+
+    // Step 8: Generate nextCursor
+    const step8Start = performance.now();
     const last = page[page.length - 1];
     const nextCursor = last
       ? Buffer.from(`${last._cursorDate}|${last._cursorId}`, "utf8").toString(
           "base64"
         )
       : null;
+    stepTimings.generateCursor = (performance.now() - step8Start).toFixed(2);
 
+    // Step 9: Clean up internal fields
+    const step9Start = performance.now();
     page.forEach((r) => {
-      // Optional: normalize field names (e.g., keep DB-cased names)
       delete r._cursorDate;
       delete r._cursorId;
+    });
+    stepTimings.cleanup = (performance.now() - step9Start).toFixed(2);
+
+    // Total time
+    stepTimings.total = (performance.now() - startTime).toFixed(2);
+    stepTimings.finalItemCount = page.length;
+
+    // Log all timings
+    req.log.info({
+      msg: "[ORDERS API] Performance timings",
+      timings: stepTimings
     });
 
     return { items: page, nextCursor };
