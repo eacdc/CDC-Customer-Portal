@@ -434,7 +434,83 @@
     }
 
     .order-card .order-card-extra {
-        display: block !important;
+        display: none !important;
+    }
+
+    /* Desktop-only: Position card body as relative for absolute positioning */
+    .order-card .card-body {
+        position: relative;
+    }
+
+    /* Desktop-only: Right panel positioned absolutely */
+    .order-card-right-panel {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 300px;
+        display: flex !important;
+        flex-direction: column;
+        text-align: right;
+        align-items: flex-end;
+        gap: 0.65rem;
+        padding: 0;
+    }
+
+    /* Desktop-only: Style info items as horizontal label-value pairs in single column */
+    .order-card-right-panel .order-card-info-item {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .order-card-right-panel .order-card-info-item small {
+        letter-spacing: 0.04em;
+        font-size: 0.7rem;
+        color: rgba(47, 43, 61, 0.6);
+        margin-bottom: 0;
+        white-space: nowrap;
+    }
+
+    .order-card-right-panel .order-card-info-item span {
+        white-space: nowrap;
+        font-weight: 500;
+    }
+
+    .order-card-right-panel .order-card-info-item .delivery-dates-btn {
+        white-space: nowrap;
+        margin-top: 0;
+    }
+
+    /* Desktop-only: Core content styling */
+    .order-card-core h5 {
+        font-weight: 600;
+    }
+
+    .order-card-meta-row,
+    .order-card-qty-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        row-gap: 0.75rem;
+    }
+
+    .order-card-meta-item,
+    .order-card-qty-item {
+        min-width: 140px;
+    }
+
+    .order-card-meta-item small,
+    .order-card-qty-item small {
+        letter-spacing: 0.04em;
+        font-size: 0.7rem;
+        color: rgba(47, 43, 61, 0.6);
+    }
+
+    .order-card-qty-row {
+        align-items: center;
     }
 }
 

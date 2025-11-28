@@ -275,11 +275,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
               <!-- Always Visible: Show Details Toggle Button (Mobile) and Action Buttons (Desktop) -->
               <div class="order-card-actions d-flex flex-wrap align-items-center gap-3 mt-3">
-                <button type="button" class="btn btn-sm btn-label-secondary process-details-btn d-none d-md-inline-block" data-jobid="${jobId}" data-source="${source}">
+                <button type="button" class="btn btn-sm btn-label-secondary process-details-btn d-none d-lg-inline-block" data-jobid="${jobId}" data-source="${source}">
                   Process Details
                 </button>
-                <a href="javascript:void(0);" class="text-primary delivery-dates-btn d-none d-md-inline-block" data-jobid="${jobId}" data-source="${source}">Delivery Dates</a>
-                <button type="button" class="btn btn-sm btn-link order-card-toggle d-md-none ms-auto" aria-expanded="false">
+                <button type="button" class="btn btn-sm btn-link order-card-toggle d-lg-none ms-auto" aria-expanded="false">
                   Show Details
                 </button>
               </div>
@@ -287,31 +286,66 @@ document.addEventListener('DOMContentLoaded', () => {
               <!-- Hidden on Mobile: Extra Details -->
               <div class="order-card-extra mt-4">
                 <div class="row">
-                  <div class="col-12 col-md-8">
+                  <div class="col-12">
                     <p class="text-muted mb-2">PO No. ${poNumber}</p>
-                    <p class="mb-0"><strong>Committed Delivery:</strong> ${committedDelivery}</p>
-                  </div>
-                  <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
-                    <p class="text-muted mb-1">PO Date: ${poDate}</p>
-                    <p class="text-muted mb-1">Approval: ${approvalDate}</p>
-                    <p class="mb-0"><strong>Job Card No. #${jobCardNo}</strong></p>
                   </div>
                 </div>
-
-                <div class="row mt-3 gy-2 align-items-center">
-                  <div class="col-sm-auto">
+                <div class="row">
+                  <div class="col-12">
+                    <p class="mb-2"><strong>Committed Delivery:</strong> ${committedDelivery}</p>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-12">
+                    <p class="text-muted mb-1">PO Date: ${poDate}</p>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-12">
+                    <p class="text-muted mb-1">Approval: ${approvalDate}</p>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-12">
+                    <p class="mb-2"><strong>Job Card No. #${jobCardNo}</strong></p>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-12">
                     <p class="mb-0"><strong>Packed QTY:</strong> ${packedQty}</p>
                   </div>
                 </div>
 
                 <!-- Action Buttons at the bottom of expandable section (Mobile only) -->
-                <div class="order-card-extra-actions d-flex flex-wrap align-items-center gap-3 mt-4 d-md-none">
+                <div class="order-card-extra-actions d-flex flex-wrap align-items-center gap-3 mt-4 d-lg-none">
                   <button type="button" class="btn btn-sm btn-label-secondary process-details-btn" data-jobid="${jobId}" data-source="${source}">
                     Process Details
                   </button>
                   <a href="javascript:void(0);" class="text-primary delivery-dates-btn" data-jobid="${jobId}" data-source="${source}">Delivery Dates</a>
                 </div>
               </div>
+            </div>
+          </div>
+          <!-- Desktop-only right panel -->
+          <div class="order-card-right-panel d-none d-lg-flex">
+            <div class="order-card-info-item">
+              <small class="text-muted text-uppercase">PO No.</small>
+              <span class="fw-semibold">${poNumber}</span>
+            </div>
+            <div class="order-card-info-item">
+              <small class="text-muted text-uppercase">PO Date</small>
+              <span>${poDate}</span>
+            </div>
+            <div class="order-card-info-item">
+              <small class="text-muted text-uppercase">Approval Date</small>
+              <span>${approvalDate}</span>
+            </div>
+            <div class="order-card-info-item">
+              <small class="text-muted text-uppercase">Job Card No.</small>
+              <span class="fw-semibold">#${jobCardNo}</span>
+            </div>
+            <div class="order-card-info-item">
+              <a href="javascript:void(0);" class="btn btn-sm btn-label-primary delivery-dates-btn" data-jobid="${jobId}" data-source="${source}">Delivery Dates</a>
             </div>
           </div>
         </div>
