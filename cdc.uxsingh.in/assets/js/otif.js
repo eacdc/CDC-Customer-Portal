@@ -193,7 +193,6 @@ document.addEventListener('DOMContentLoaded', () => {
       // Ensure thead exists with all column headers
       let thead = dt_table.querySelector('thead');
       if (!thead) {
-        console.log('Creating thead for OTIF table');
         thead = document.createElement('thead');
         const tr = document.createElement('tr');
         const columnTitles = [
@@ -210,15 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         thead.appendChild(tr);
         dt_table.insertBefore(thead, dt_table.firstChild);
-      } else {
-        console.log('OTIF table thead already exists with', thead.querySelectorAll('th').length, 'columns');
       }
-
-      // Debug: Log table structure before initialization
-      console.log('Initializing OTIF DataTable');
-      console.log('Table HTML:', dt_table.outerHTML.substring(0, 500));
-      console.log('Has thead:', !!dt_table.querySelector('thead'));
-      console.log('Number of th elements:', dt_table.querySelectorAll('thead th').length);
 
       state.dataTable = new DataTable(dt_table, {
         ajax: {
@@ -395,18 +386,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         drawCallback: function() {
           // Table drawn successfully
-          console.log('Table drawn, checking headers');
-          console.log('thead visible:', $('.otif-data thead').is(':visible'));
-          console.log('thead length:', $('.otif-data thead').length);
-          console.log('th count:', $('.otif-data thead th').length);
         },
 
         initComplete: function() {
-          console.log('DataTable initialized successfully');
-          console.log('thead visible:', $('.otif-data thead').is(':visible'));
-          console.log('thead display:', $('.otif-data thead').css('display'));
-          console.log('th elements:', $('.otif-data thead th').length);
-          
           // Move search input to custom container
           $('.dt-custom-search-otif').appendTo(searchWrapper);
 

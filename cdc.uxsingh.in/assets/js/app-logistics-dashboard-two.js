@@ -75,7 +75,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 const poDate = new Date(item.PODate);
                 return poDate >= fromDate && poDate <= toDate;
             } catch (error) {
-                console.warn('Invalid PODate format:', item.PODate);
                 return false;
             }
         });

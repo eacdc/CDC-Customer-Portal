@@ -983,13 +983,6 @@
       const completedWithDelay = Number(otif.completedWithDelay || 0);
       const yetUndelivered = Number(otif.yetUndelivered || 0);
 
-      // Debug: Log the values being set
-      console.log('Setting OTIF values:', {
-        plannedDeliveries,
-        completedOnTime,
-        completedWithDelay,
-        yetUndelivered
-      });
 
       // Update values correctly - mapping as specified:
       // "Completed" = completedOnTime
@@ -1117,8 +1110,6 @@
       })
       .then((body) => {
         const otif = body?.otifSummary || null;
-        // Debug: Log the OTIF data to verify
-        console.log('OTIF Summary from API:', otif);
         renderOtifSummary(otif);
       })
       .catch((err) => {

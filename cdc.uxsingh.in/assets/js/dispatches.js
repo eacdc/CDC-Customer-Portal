@@ -70,21 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // Reset cursor when loading with new date range
       state.nextCursor = null;
-      console.log('[DISPATCHES] Loading dispatches with state:', {
-        dateRange: state.dateRange,
-        customDates: state.customDates,
-        defaultRange: DEFAULT_RANGE
-      });
       
       const dispatches = await fetchDispatches();
-      console.log('[DISPATCHES] Loaded dispatches:', {
-        count: dispatches.length,
-        dateRange: state.dateRange,
-        sampleDates: dispatches.slice(0, 5).map(d => ({
-          DispatchDate: d.DispatchDate,
-          dateObj: d.DispatchDate ? new Date(d.DispatchDate) : null
-        }))
-      });
       
       state.dispatches = dispatches;
       state.filteredDispatches = dispatches; // Initialize filtered dispatches
@@ -100,35 +87,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiBase = getApiBase();
     const dateRange = state.dateRange || DEFAULT_RANGE;
     
-    console.log('[DISPATCHES] Date filter state:', {
-      dateRange,
-      customDates: state.customDates,
-      defaultRange: DEFAULT_RANGE
-    });
-    
     let url = `${apiBase}/dispatches?limit=${encodeURIComponent(DEFAULT_LIMIT)}`;
     
     if (state.customDates) {
       // Custom date range - backend supports from/to parameters
       url += `&from=${encodeURIComponent(state.customDates.from)}&to=${encodeURIComponent(state.customDates.to)}`;
-      console.log('[DISPATCHES] Using custom date range:', {
-        from: state.customDates.from,
-        to: state.customDates.to,
-        fromDate: new Date(state.customDates.from),
-        toDate: new Date(state.customDates.to)
-      });
     } else {
       // Predefined range (1m, 3m, 1y, etc.)
       url += `&range=${encodeURIComponent(dateRange)}`;
-      console.log('[DISPATCHES] Using predefined range:', dateRange);
     }
 
     if (state.nextCursor) {
       url += `&cursor=${encodeURIComponent(state.nextCursor)}`;
-      console.log('[DISPATCHES] Using cursor for pagination');
     }
-
-    console.log('[DISPATCHES] Fetching from URL:', url);
 
     const response = await fetch(url, {
       headers: buildAuthHeaders()
@@ -147,21 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const body = await response.json();
-    console.log('[DISPATCHES] API response:', {
-      itemCount: body?.items?.length || 0,
-      hasNextCursor: !!body?.nextCursor,
-      firstItem: body?.items?.[0] ? {
-        DispatchDate: body.items[0].DispatchDate,
-        PODate: body.items[0].PODate,
-        JobNum: body.items[0].JobNum,
-        DispatchId: body.items[0].DispatchId
-      } : null,
-      allDispatchDates: body?.items?.map(item => ({
-        DispatchDate: item.DispatchDate,
-        formatted: item.DispatchDate ? new Date(item.DispatchDate).toISOString() : null
-      })) || []
-    });
-    
     state.nextCursor = body?.nextCursor || null;
     return body?.items || [];
   }

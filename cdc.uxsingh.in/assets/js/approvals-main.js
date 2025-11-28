@@ -362,7 +362,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
 
         // Wait for the DataTable to initialize, then move pagination
         dt_dashboard.on('draw', function () {
-            console.log("last");
             var paginateElement = document.querySelector('.bottom-all');
             var customPaginationContainer = document.querySelector('.custom-table-pagination-layout');
 
@@ -561,7 +560,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
 
                 // Wait for the DataTable to initialize, then move pagination
                 dt_dashboard.on('draw', function () {
-                    console.log("last");
                     var paginateElement = document.querySelector('.bottom-pf');
                     var customPaginationContainer = document.querySelector('.custom-table-pagination-layout-two');
 
@@ -602,8 +600,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
     // });
 
     document.querySelector('#profile-tab').addEventListener('shown.bs.tab', function () {
-        console.log("Tab shown");
-
         if (!$.fn.DataTable.isDataTable('.all-approvals-pending-files')) {
             $('.all-approvals-pending-files').DataTable({
                 responsive: true,
@@ -813,7 +809,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
 
             // Wait for the DataTable to initialize, then move pagination
             dt_dashboard.on('draw', function () {
-                console.log("last");
                 var paginateElement = document.querySelector('.bottom-pa');
                 var customPaginationContainer = document.querySelector('.custom-table-pagination-layout-three');
 
@@ -853,8 +848,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
     // });
 
     document.querySelector('#contact-tab').addEventListener('shown.bs.tab', function () {
-        console.log("Tab shown");
-
         if (!$.fn.DataTable.isDataTable('.all-approvals-pending-approvals')) {
             $('.all-approvals-pending-approvals').DataTable({
                 responsive: true,

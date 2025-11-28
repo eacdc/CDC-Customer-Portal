@@ -43,23 +43,7 @@ async function callOrders(
   { from, to, status, q, cursor, limit, sourceTag },
   logger = console
 ) {
-  // Helper to safely log - handles both Pino and console loggers
-  const log = (message, ...args) => {
-    if (logger && typeof logger.info === 'function') {
-      logger.info(message, ...args);
-    } else if (logger && typeof logger.log === 'function') {
-      logger.log(message, ...args);
-    } else {
-      console.log(message, ...args);
-    }
-  };
-  
-  // Log even if ledgerIds is empty
-  log(`[ORDERS API] callOrders called for source: ${sourceTag}`);
-  log(`[ORDERS API] LedgerIds:`, ledgerIds);
-  
   if (!ledgerIds || ledgerIds.length === 0) {
-    log(`[ORDERS API] No ledgerIds for ${sourceTag}, returning empty array`);
     return [];
   }
   
@@ -82,24 +66,8 @@ async function callOrders(
   r.input("AfterJobId", sql.Int, afterJobId);
   r.input("Limit", sql.Int, limitValue);
   
-  // Log the procedure call with parameters
-  log(`[ORDERS API] Calling stored procedure: dbo.portal_orders_list`);
-  log(`[ORDERS API] Source: ${sourceTag}`);
-  log(`[ORDERS API] Parameters:`, {
-    LedgerIds: ledgerIds,
-    FromDate: fromDate ? fromDate.toISOString() : null,
-    ToDate: toDate ? toDate.toISOString() : null,
-    Status: statusValue,
-    Search: searchValue,
-    AfterDate: afterDate ? new Date(afterDate).toISOString() : null,
-    AfterJobId: afterJobId,
-    Limit: limitValue
-  });
-  
   const rs = await r.execute("dbo.portal_orders_list");
   const rows = rs.recordset || [];
-  
-  log(`[ORDERS API] Procedure returned ${rows.length} rows from ${sourceTag}`);
   
   rows.forEach((r) => (r._source = sourceTag)); // 👈 tag
   return rows;
@@ -568,10 +536,7 @@ fastify.get("/dashboard", async (req, reply) => {
         //   toDate: win.to.toISOString()
         // });
       } catch (err) {
-        req.log.warn({
-          msg: "[APPROVALS] Failed to parse custom dates, falling back to range",
-          error: err.message
-        });
+        req.log.error(err, "[APPROVALS] Failed to parse custom dates, falling back to range");
         win = parseRange(String(range));
       }
     } else {
@@ -787,10 +752,7 @@ fastify.get("/dashboard", async (req, reply) => {
         //   toDateIST: `${win.to.getUTCFullYear()}-${String(win.to.getUTCMonth() + 1).padStart(2, '0')}-${String(win.to.getUTCDate()).padStart(2, '0')} ${String(win.to.getUTCHours()).padStart(2, '0')}:${String(win.to.getUTCMinutes()).padStart(2, '0')}:${String(win.to.getUTCSeconds()).padStart(2, '0')} IST`
         // });
       } catch (err) {
-        req.log.warn({
-          msg: "[DISPATCHES] Failed to parse custom dates, falling back to range",
-          error: err.message
-        });
+        req.log.error(err, "[DISPATCHES] Failed to parse custom dates, falling back to range");
         win = parseRange(String(range));
       }
     } else {
@@ -1100,10 +1062,7 @@ fastify.get("/dashboard", async (req, reply) => {
         //   }
         // });
       } catch (err) {
-        req.log.warn({
-          msg: "[OTIF] Failed to parse custom dates, falling back to range",
-          error: err.message
-        });
+        req.log.error(err, "[OTIF] Failed to parse custom dates, falling back to range");
         win = parseRange(String(range));
       }
     } else {
@@ -1250,13 +1209,6 @@ fastify.get("/dashboard", async (req, reply) => {
 
       const rs = await r.execute("dbo.portal_otif_list");
       const rows = rs.recordset || [];
-      
-      // Log the exact JSON data returned from SQL procedure
-      req.log.info({
-        msg: `[OTIF] Raw SQL procedure data for ${tag}`,
-        rawDataJSON: JSON.stringify(rows, null, 2),
-        rowCount: rows.length
-      });
       
       // req.log.info({
       //   msg: `[OTIF] Stored procedure result for ${tag}`,
