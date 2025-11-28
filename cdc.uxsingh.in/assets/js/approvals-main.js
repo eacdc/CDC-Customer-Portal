@@ -219,8 +219,8 @@ document.addEventListener('DOMContentLoaded', function (e) {
 
             paging: true,
             pageLength: tabState.all.pageSize,
-            lengthChange: true,  // Enable the default DataTables length menu
-            lengthMenu: [AVAILABLE_PAGE_SIZES],  // Set available page sizes
+            lengthChange: true,
+            lengthMenu: [[10, 25, 50, 100], ['10', '25', '50', '100']],  // Fixed: nested array format
             searching: true,
             info: true,
             responsive: false,
@@ -250,6 +250,12 @@ document.addEventListener('DOMContentLoaded', function (e) {
             // dom: '<"dt-custom-search-vehicles"f>rt<"dt-footer-wrapper"lpi>',
             initComplete: function() {
               tabState.all.dataTable = dt_dashboard;
+              
+              // Update pageSize when user changes it
+              dt_dashboard.on('length.dt', function (e, settings, len) {
+                tabState.all.pageSize = len;
+              });
+              
               // Move search input to your custom container
               $('.dt-custom-search-vehicles').appendTo('.search-here');
 
@@ -444,8 +450,8 @@ document.addEventListener('DOMContentLoaded', function (e) {
 
                     paging: true,
                     pageLength: tabState.pending_files.pageSize,
-                    lengthChange: true,  // Enable the default DataTables length menu
-                    lengthMenu: [AVAILABLE_PAGE_SIZES],  // Set available page sizes
+                    lengthChange: true,
+                    lengthMenu: [[10, 25, 50, 100], ['10', '25', '50', '100']],  // Fixed format
                     searching: true,
                     info: true,
                     responsive: false,
@@ -473,6 +479,12 @@ document.addEventListener('DOMContentLoaded', function (e) {
                     // dom: '<"dt-custom-search-vehicles"f>rt<"dt-footer-wrapper"lpi>',
                     initComplete: function() {
                       tabState.pending_files.dataTable = dt_dashboard;
+                      
+                      // Update pageSize when user changes it
+                      dt_dashboard.on('length.dt', function (e, settings, len) {
+                        tabState.pending_files.pageSize = len;
+                      });
+                      
                       // Move search input to your custom container
                       $('.dt-custom-search-vehicles-pf').appendTo('.search-here-pf');
 
@@ -659,8 +671,8 @@ document.addEventListener('DOMContentLoaded', function (e) {
 
                 paging: true,
                 pageLength: tabState.pending_approval.pageSize,
-                lengthChange: true,  // Enable the default DataTables length menu
-                lengthMenu: [AVAILABLE_PAGE_SIZES],  // Set available page sizes
+                lengthChange: true,
+                lengthMenu: [[10, 25, 50, 100], ['10', '25', '50', '100']],  // Fixed format
                 searching: true,
                 info: true,
                 responsive: false,
@@ -690,6 +702,12 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 // dom: '<"dt-custom-search-vehicles"f>rt<"dt-footer-wrapper"lpi>',
                 initComplete: function() {
                   tabState.pending_approval.dataTable = dt_dashboard;
+                  
+                  // Update pageSize when user changes it
+                  dt_dashboard.on('length.dt', function (e, settings, len) {
+                    tabState.pending_approval.pageSize = len;
+                  });
+                  
                   // Move search input to your custom container
                   $('.dt-custom-search-vehicles-pa').appendTo('.search-here-pa');
 
