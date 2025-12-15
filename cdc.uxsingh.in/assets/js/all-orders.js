@@ -128,12 +128,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const orders = await loadOrders(tab);
-      // Filter orders by PoDate based on selected date range
-      const filteredOrders = filterOrdersByDateRange(orders, tab);
-      tabState[tab].orders = filteredOrders;
-      
-      // If there's a search query, the API already filtered, so use orders as-is
-      tabState[tab].filteredOrders = filteredOrders; // API already filtered if search query exists
+      // Backend already filters by date; use response as-is
+      tabState[tab].orders = orders;
+      tabState[tab].filteredOrders = orders;
       
       tabState[tab].currentPage = 1; // Reset to page 1
       renderOrdersWithPagination(tab);
@@ -651,59 +648,6 @@ document.addEventListener('DOMContentLoaded', () => {
       'custom': 'Custom Date'
     };
     return labels[range] || 'Last 90 Days';
-  }
-
-  function getDateRange(tab) {
-    const state = tabState[tab];
-    const now = new Date();
-    let fromDate, toDate;
-
-    if (state.customDates) {
-      fromDate = new Date(state.customDates.from);
-      toDate = new Date(state.customDates.to);
-      // Set to end of day for toDate
-      toDate.setHours(23, 59, 59, 999);
-    } else {
-      const range = state.dateRange || DEFAULT_RANGE;
-      toDate = new Date(now);
-      toDate.setHours(23, 59, 59, 999);
-
-      fromDate = new Date(now);
-      // Support 30d, 90d, 180d, 365d
-      if (range === '30d') {
-        fromDate.setDate(fromDate.getDate() - 30);
-      } else if (range === '90d') {
-        fromDate.setDate(fromDate.getDate() - 90);
-      } else if (range === '180d') {
-        fromDate.setDate(fromDate.getDate() - 180);
-      } else if (range === '365d') {
-        fromDate.setDate(fromDate.getDate() - 365);
-      } else {
-        // Default to last 90 days
-        fromDate.setDate(fromDate.getDate() - 90);
-      }
-      fromDate.setHours(0, 0, 0, 0);
-    }
-
-    return { fromDate, toDate };
-  }
-
-  function filterOrdersByDateRange(orders, tab) {
-    if (!orders || orders.length === 0) return orders;
-
-    const { fromDate, toDate } = getDateRange(tab);
-    
-    return orders.filter(order => {
-      if (!order.PoDate) return false;
-      
-      try {
-        const poDate = new Date(order.PoDate);
-        // Check if PoDate is within the range
-        return poDate >= fromDate && poDate <= toDate;
-      } catch (error) {
-        return false;
-      }
-    });
   }
 
   function initDateRangeHandlers() {
