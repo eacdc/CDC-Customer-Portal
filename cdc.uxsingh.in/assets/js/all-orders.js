@@ -276,6 +276,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button type="button" class="btn btn-sm btn-label-secondary process-details-btn d-none d-lg-inline-block" data-jobid="${jobId}" data-source="${source}">
                   Process Details
                 </button>
+                <div class="d-none d-lg-flex align-items-center gap-3">
+                  <div class="order-card-date-field">
+                    <small class="text-muted text-uppercase d-block" style="font-size: 0.625rem; letter-spacing: 0.04em;">Committed Delivery</small>
+                    <span style="font-size: 0.875rem; font-weight: 500;">${committedDelivery}</span>
+                  </div>
+                  <div class="order-card-date-field">
+                    <small class="text-muted text-uppercase d-block" style="font-size: 0.625rem; letter-spacing: 0.04em;">Finish Plan Date</small>
+                    <span style="font-size: 0.875rem; font-weight: 500;">${finishPlanDate}</span>
+                  </div>
+                </div>
                 <button type="button" class="btn btn-sm btn-link order-card-toggle d-lg-none ms-auto" aria-expanded="false">
                   Show Details
                 </button>
@@ -338,14 +348,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="order-card-info-item">
               <small class="text-muted text-uppercase">PO Date</small>
               <span>${poDate}</span>
-            </div>
-            <div class="order-card-info-item">
-              <small class="text-muted text-uppercase">Committed Delivery</small>
-              <span>${committedDelivery}</span>
-            </div>
-            <div class="order-card-info-item">
-              <small class="text-muted text-uppercase">Finish Plan Date</small>
-              <span>${finishPlanDate}</span>
             </div>
             <div class="order-card-info-item">
               <small class="text-muted text-uppercase">Approval Date</small>
