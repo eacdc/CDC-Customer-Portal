@@ -232,6 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const poDate = formatDate(order.PoDate);
     const approvalDate = formatDate(order.ApprovalDate);
     const committedDelivery = formatDate(order.CommittedDeliveryDate);
+    const finishPlanDate = formatDate(order.FinishPlanDate);
     const imageUrl = resolveImageUrl(order.ImageUrl);
     const title = order.Title || 'No Title';
     const poNumber = order.PoNumber || '-';
@@ -294,6 +295,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="row">
                   <div class="col-12">
+                    <p class="mb-2"><strong>Finish Plan Date:</strong> ${finishPlanDate}</p>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-12">
                     <p class="text-muted mb-1">PO Date: ${poDate}</p>
                   </div>
                 </div>
@@ -332,6 +338,14 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="order-card-info-item">
               <small class="text-muted text-uppercase">PO Date</small>
               <span>${poDate}</span>
+            </div>
+            <div class="order-card-info-item">
+              <small class="text-muted text-uppercase">Committed Delivery</small>
+              <span>${committedDelivery}</span>
+            </div>
+            <div class="order-card-info-item">
+              <small class="text-muted text-uppercase">Finish Plan Date</small>
+              <span>${finishPlanDate}</span>
             </div>
             <div class="order-card-info-item">
               <small class="text-muted text-uppercase">Approval Date</small>
@@ -613,6 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
       order.PoDate,
       order.ApprovalDate,
       order.CommittedDeliveryDate,
+      order.FinishPlanDate,
       order.OrderQty,
       order.QtyPacked,
       order.QtyDelivered,

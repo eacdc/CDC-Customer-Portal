@@ -488,7 +488,7 @@
         flex-direction: column;
         text-align: right;
         align-items: flex-end;
-        gap: 0.65rem;
+        gap: 0.5rem;
         padding: 0;
     }
 
@@ -504,7 +504,7 @@
 
     .order-card-right-panel .order-card-info-item small {
         letter-spacing: 0.04em;
-        font-size: 0.7rem;
+        font-size: 0.625rem;
         color: rgba(47, 43, 61, 0.6);
         margin-bottom: 0;
         white-space: nowrap;
@@ -513,6 +513,7 @@
     .order-card-right-panel .order-card-info-item span {
         white-space: nowrap;
         font-weight: 500;
+        font-size: 0.875rem;
     }
 
     .order-card-right-panel .order-card-info-item .delivery-dates-btn {
