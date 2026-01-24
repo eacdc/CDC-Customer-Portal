@@ -1,0 +1,16 @@
+{
+  "no_of_titles": "1.0",
+  "len": 297,
+  "brd": 210,
+  "Qty": "10000.0",
+  "binding_style": "SS+PB",
+  "components": "Cover$Text",
+  "gsm": "250$80",
+  "material": "FBB$Maplitho Gr A",
+  "front_print": "4$4",
+  "back_print": "0$4",
+  "front_surface": "Gloss Lam$None",
+  "back_surface": "None$None",
+  "page_number": "4$176"
+}
+

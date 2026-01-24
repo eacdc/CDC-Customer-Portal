@@ -7,6 +7,8 @@ import { getDb, closeMongo } from "./lib/mongo.js";
 import { clientInfo } from "./utils/clientInfo.js"; // optional tiny util; see note below
 import authPlugin from "./auth.js";
 import portalApiPlugin from "./portalapi.js";
+import pckEstPlugin from "./pck_est/routes.js";
+import commEstPlugin from "./comm_est/routes.js";
 
 const app = Fastify({
   logger: true,
@@ -36,7 +38,10 @@ app.get("/api/health", async () => ({
 // --- Auth guard (applies to ALL non-auth API routes)
 app.addHook("preHandler", async (req, reply) => {
   if (!req.url.startsWith("/api/")) return;
-  if (req.url.startsWith("/api/health") || req.url.startsWith("/api/auth"))
+  if (req.url.startsWith("/api/health") || 
+      req.url.startsWith("/api/auth") ||
+      req.url.startsWith("/api/pck-est/health") ||
+      req.url.startsWith("/api/comm-est/health"))
     return;
 
   const auth = req.headers.authorization || "";
@@ -93,6 +98,8 @@ app.addHook("onResponse", async (req, reply) => {
 // --- Mount route plugins
 await app.register(authPlugin, { prefix: "/api/auth" });
 await app.register(portalApiPlugin, { prefix: "/api" });
+await app.register(pckEstPlugin, { prefix: "/api" });
+await app.register(commEstPlugin, { prefix: "/api" });
 
 // --- start + graceful shutdown
 const port = process.env.PORT || 8080;

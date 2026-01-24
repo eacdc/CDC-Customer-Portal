@@ -4,6 +4,9 @@ import sql from "mssql";
 import { getDb } from "./lib/mongo.js";
 import { db1 } from "./lib/db1.js";
 import { db2 } from "./lib/db2.js";
+import { getChatAgentByKey, getAllChatAgents } from "./lib/chat-agents.js";
+import { calculatePricing } from "./pck_est/calculator.js";
+import { calCulate } from "./comm_est/calculator.js";
 
 
 // --- helpers
@@ -35,6 +38,544 @@ function toIdListTVP(ids) {
   t.columns.add("Id", sql.Int, { nullable: false });
   (ids || []).forEach((id) => t.rows.add(id));
   return t;
+}
+
+const AI_NOT_CONFIGURED_MSG =
+  "AI is not configured. Add OPENAI_API_KEY to enable replies.";
+
+/** Tool definition for Order Status Agent: get pending job/order details from orders API. */
+const ORDER_STATUS_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "get_pending_job_details",
+      description: "Retrieves pending job/order details for the logged-in user. Always use this for any job status, order status, or pending jobs query. Data is dynamic—never rely on prior conversation. Returns an array of job objects. Each job may include: JobCardNo or JobBookingId (Doc ID), Title (Description), OrderQty, QtyDelivered, QtyPacked, CommittedDeliveryDate, FinishPlanDate, FinalOrderStatus, PoNumber, PoDate, ApprovalDate, and other available columns.",
+      parameters: {
+        type: "object",
+        properties: {
+          search: {
+            type: "string",
+            description: "Optional. Search term to filter by job number (Doc ID / JobCardNo) or job name (Description / Title). Leave empty or omit to get all pending jobs."
+          },
+          date_range: {
+            type: "string",
+            enum: ["30d", "90d", "180d", "365d"],
+            description: "Optional. Date range for pending jobs. Default: 365d"
+          },
+          limit: {
+            type: "integer",
+            description: "Optional. Maximum number of jobs to return. Default: 100"
+          }
+        }
+      }
+    }
+  }
+];
+
+/** Tool for Packaging Quote Agent: call pck-est to get estimated pricing. Call only after gathering all mandatory parameters and receiving user confirmation. */
+const PACKAGING_QUOTE_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "calculate_packaging_quote",
+      description: "Calculates the estimated price in Rupees for a packaging box quote. Call this ONLY after you have gathered all mandatory parameters (product type, quantity, dimensions in mm, paper type, paper GSM, front color count, front surface finish) and the user has confirmed. For Top-Bottom Box use ptype 'Top-Bottom Box'; for outer box pricing include matBot, gsmBot, frontColBot, frontSur. Paper: FBB, CBB, Grey Back Board, White Back Board. Surface: Drip Off Coating, Aqueous Gloss/Matt, UV Gloss/Matt, Gloss/Matt Lamination, Soft Touch, Spot UV, Metpet, or None. Foil sq in: 0,4,15,25,50,75. Window sq in: 0,4,8,12,20,40. Corrugation: 0, 3, or 5 ply.",
+      parameters: {
+        type: "object",
+        properties: {
+          ptype: { type: "string", description: "Product type: RTI, Crash Lock, Haugland, Universal, Top-Bottom Box" },
+          qty: { type: "integer", description: "Quantity" },
+          len: { type: "number", description: "Length in mm" },
+          brd: { type: "number", description: "Breadth in mm" },
+          height: { type: "number", description: "Height in mm" },
+          matin: { type: "string", description: "Paper type: FBB, CBB, Grey Back Board, White Back Board (or exact names from sheet)" },
+          gsmTop: { type: "number", description: "Paper GSM for inner/top" },
+          frontColIn: { type: "integer", description: "Front print color count" },
+          frontSurIn: { type: "string", description: "Front surface finish or None" },
+          backColIn: { type: "integer", description: "Back color count, default 0" },
+          backSurIn: { type: "string", description: "Back surface finish or None" },
+          corrLayIn: { type: "integer", description: "Corrugation: 0, 3, or 5 ply" },
+          kraftGsmIn: { type: "number", description: "Kraft GSM if corrugation" },
+          foilIn: { type: "number", description: "Foil stamping sq in: 0,4,15,25,50,75" },
+          windowIn: { type: "number", description: "Window patching sq in: 0,4,8,12,20,40" },
+          matBot: { type: "string", description: "Bottom/outer paper type (Top-Bottom or outer box)" },
+          gsmBot: { type: "number", description: "Bottom/outer GSM" },
+          frontColBot: { type: "integer", description: "Bottom/outer front print color count" },
+          frontSur: { type: "string", description: "Bottom/outer surface finish" }
+        },
+        required: ["ptype", "qty", "len", "brd", "height", "matin", "gsmTop", "frontColIn", "frontSurIn"]
+      }
+    }
+  }
+];
+
+/** Tool for Book Quote Agent: call comm-est to get estimated pricing. Call only after gathering all required parameters and user confirmation. */
+const BOOK_QUOTE_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "calculate_book_quote",
+      description: "Calculates the estimated price in Rupees for a book printing quote. Call ONLY after you have gathered all required parameters and the user has confirmed. Components: Text, Cover, End Paper, PLC, Gate Fold Cover, Binding Board, Foam, Sticker Paper, Text - 2. Binding: SS+PB, Plain Board Book, HC + Board Book, HC+Foam+Board Book, etc. Material/paper: FBB, CBB, Maplitho Gr A, Gloss Art, Matt Art, Bible Paper, etc. Surface: Gloss Lam, Matt Lam, None.",
+      parameters: {
+        type: "object",
+        properties: {
+          len: { type: "number", description: "Length (trim size) in mm" },
+          brd: { type: "number", description: "Breadth in mm" },
+          Qty: { type: "number", description: "Quantity" },
+          binding_style: { type: "string", description: "Binding style e.g. SS+PB, Plain Board Book, HC + Board Book" },
+          no_of_titles: { type: "number", description: "Number of titles, default 1" },
+          parts: {
+            type: "array",
+            description: "Each component: comp, gsm, material, pages, and optionally front_print, back_print, front_surface, back_surface",
+            items: {
+              type: "object",
+              properties: {
+                comp: { type: "string", description: "Component: Text, Cover, End Paper, PLC, Gate Fold Cover, Binding Board, Foam, Sticker Paper, Text - 2" },
+                gsm: { type: "number", description: "GSM for this component" },
+                material: { type: "string", description: "Paper type: FBB, CBB, Maplitho Gr A, Gloss Art, Matt Art, etc." },
+                pages: { type: "integer", description: "Page count for this component" },
+                front_print: { type: "integer", description: "Front print colors, default 0" },
+                back_print: { type: "integer", description: "Back print colors, default 0" },
+                front_surface: { type: "string", description: "Front surface e.g. Gloss Lam, Matt Lam, None" },
+                back_surface: { type: "string", description: "Back surface, default None" }
+              },
+              required: ["comp", "gsm", "material", "pages"]
+            }
+          }
+        },
+        required: ["len", "brd", "Qty", "binding_style", "parts"]
+      }
+    }
+  }
+];
+
+/**
+ * Fetch pending orders for a user (by email). Used by the Order Status Agent tool.
+ * @param {Object} mongo - MongoDB db instance (from getDb)
+ * @param {string} email - User email
+ * @param {{ search?: string, range?: string, limit?: number }} opts
+ * @returns {Promise<Array>} Array of order/job objects (internal _cursorDate, _cursorId removed)
+ */
+async function fetchPendingOrdersForUser(mongo, email, opts = {}) {
+  const { search = "", range = "365d", limit = 100 } = opts;
+  const tenant = await mongo.collection("tenants").findOne({ email });
+  if (!tenant) return [];
+
+  const ids1 = tenant.ledgerIds_db1 || [];
+  const ids2 = tenant.ledgerIds_db2 || [];
+  const win = parseRange(String(range));
+  const lim = Math.min(Math.max(Number(limit) || 100, 1), 200);
+
+  const [rows1, rows2] = await Promise.all([
+    callOrders(db1(), ids1, {
+      from: win.from,
+      to: win.to,
+      status: "pending",
+      q: search || "",
+      cursor: null,
+      limit: String(lim),
+      sourceTag: "db1"
+    }),
+    callOrders(db2(), ids2, {
+      from: win.from,
+      to: win.to,
+      status: "pending",
+      q: search || "",
+      cursor: null,
+      limit: String(lim),
+      sourceTag: "db2"
+    })
+  ]);
+
+  const merged = [...rows1, ...rows2].sort((a, b) => {
+    const da = new Date(a._cursorDate || 0).getTime();
+    const db = new Date(b._cursorDate || 0).getTime();
+    if (da !== db) return db - da;
+    return (b._cursorId || 0) - (a._cursorId || 0);
+  });
+
+  const page = merged.slice(0, lim);
+  page.forEach((r) => {
+    delete r._cursorDate;
+    delete r._cursorId;
+  });
+  return page;
+}
+
+/**
+ * Call OpenAI Chat Completions. Returns assistant content or AI_NOT_CONFIGURED_MSG.
+ * @param {Array<{role: string, content: string}>} messages - [system, ...history, user]
+ * @returns {Promise<string>}
+ */
+async function callChatLlm(messages) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key || typeof key !== "string" || !key.trim()) {
+    return AI_NOT_CONFIGURED_MSG;
+  }
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key.trim()}`,
+      },
+      body: JSON.stringify({ model, messages }),
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      return `${AI_NOT_CONFIGURED_MSG} (${res.status}: ${(t || "").slice(0, 120)})`;
+    }
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content;
+    return typeof text === "string" && text.trim()
+      ? text.trim()
+      : AI_NOT_CONFIGURED_MSG;
+  } catch (e) {
+    return `${AI_NOT_CONFIGURED_MSG} (${e?.message || "error"})`;
+  }
+}
+
+/**
+ * Run a tool by name for the Order Status Agent. Returns JSON string of result or error.
+ */
+async function runOrderStatusTool(name, args, { mongo, email }) {
+  if (name !== "get_pending_job_details") {
+    return JSON.stringify({ error: `Unknown tool: ${name}` });
+  }
+  try {
+    const search = (args && typeof args.search === "string") ? args.search : "";
+    const range = (args && ["30d", "90d", "180d", "365d"].includes(args.date_range))
+      ? args.date_range
+      : "365d";
+    const limit = (args && Number.isInteger(args.limit) && args.limit >= 1)
+      ? Math.min(args.limit, 200)
+      : 100;
+    const items = await fetchPendingOrdersForUser(mongo, email, { search, range, limit });
+    return JSON.stringify(items);
+  } catch (e) {
+    return JSON.stringify({ error: String(e?.message || "Failed to fetch pending jobs") });
+  }
+}
+
+/**
+ * Run Packaging Quote tool: map LLM args to pck-est input, call calculatePricing, return price in Rupees.
+ */
+async function runPackagingQuoteTool(name, args) {
+  if (name !== "calculate_packaging_quote") {
+    return JSON.stringify({ error: `Unknown tool: ${name}` });
+  }
+  try {
+    const a = args || {};
+    let ptype = String(a.ptype || "").trim();
+    if (ptype === "Top-Bottom Box" || ptype === "Top-Bottom") ptype = "Top Bottom";
+
+    const frontSurIn = String(a.frontSurIn || "").trim().toUpperCase();
+    const backSurIn = String(a.backSurIn || "").trim().toUpperCase();
+
+    const input = {
+      len: Number(a.len),
+      brd: Number(a.brd),
+      height: Number(a.height),
+      qty: Number(a.qty),
+      matin: String(a.matin || ""),
+      gsmTop: Number(a.gsmTop),
+      ptype,
+      frontColIn: Number(a.frontColIn) || 0,
+      backColIn: Number(a.backColIn) || 0,
+      frontSurIn: frontSurIn === "NONE" ? "" : frontSurIn,
+      backSurIn: backSurIn === "NONE" ? "" : backSurIn,
+      corrLayIn: Number(a.corrLayIn) || 0,
+      kraftGsmIn: Number(a.kraftGsmIn) || 0,
+      windowIn: Number(a.windowIn) || 0,
+      fooinIn: Number(a.foilIn) || 0,
+      matBot: String(a.matBot || ""),
+      gsmBot: Number(a.gsmBot) || 0,
+      frontColBot: Number(a.frontColBot) || 0,
+      frontSur: String(a.frontSur || "").trim()
+    };
+
+    const result = await calculatePricing(input);
+    const pin = Number(result?.pricing?.price_per_unit_In) || 0;
+    const pout = Number(result?.pricing?.price_per_unit_Out) || 0;
+
+    let total;
+    if (ptype === "Top Bottom") {
+      total = pin + pout;
+    } else {
+      const hasOuter = (a.matBot && String(a.matBot).trim()) || (a.gsmBot && Number(a.gsmBot) > 0);
+      total = hasOuter ? pin * 10 + pout : pin;
+    }
+
+    const totalRupees = Math.round(total * 100) / 100;
+    return JSON.stringify({
+      total_price_rupees: totalRupees,
+      price_per_unit_inner: pin,
+      price_per_unit_outer: pout,
+      product_type: ptype,
+      note: ptype === "Top Bottom" ? "Combined inner + bottom." : (pout > 0 ? "10 inner boxes per outer." : "Inner box only.")
+    });
+  } catch (e) {
+    return JSON.stringify({ error: String(e?.message || "Pricing calculation failed") });
+  }
+}
+
+/**
+ * Run Book Quote tool: map LLM args to comm-est input, call calCulate, return price in Rupees.
+ */
+async function runBookQuoteTool(name, args) {
+  if (name !== "calculate_book_quote") {
+    return JSON.stringify({ error: `Unknown tool: ${name}` });
+  }
+  try {
+    const a = args || {};
+    const parts = Array.isArray(a.parts) ? a.parts : [];
+    if (parts.length === 0) {
+      return JSON.stringify({ error: "At least one component (part) is required" });
+    }
+    const noOfTitles = Number(a.no_of_titles) || 1;
+    const Qty = Number(a.Qty);
+    if (!Qty || Qty < 1) {
+      return JSON.stringify({ error: "Valid quantity is required" });
+    }
+    const build = (fn) => parts.map((p) => String(fn(p) ?? "")).join("$");
+    const input = {
+      len: Number(a.len),
+      brd: Number(a.brd),
+      Qty: String(Qty),
+      binding_style: String(a.binding_style || ""),
+      no_of_titles: String(noOfTitles),
+      components: build((p) => p.comp),
+      gsm: build((p) => p.gsm),
+      material: build((p) => p.material),
+      page_number: build((p) => p.pages),
+      front_print: build((p) => (p.front_print != null ? p.front_print : 0)),
+      back_print: build((p) => (p.back_print != null ? p.back_print : 0)),
+      front_surface: build((p) => (p.front_surface != null && p.front_surface !== "" ? p.front_surface : "None")),
+      back_surface: build((p) => (p.back_surface != null && p.back_surface !== "" ? p.back_surface : "None"))
+    };
+    const result = await calCulate(input);
+    const pricePerUnit = Number(result?.price_per_unit) || 0;
+    const totalRupees = Math.round(pricePerUnit * (Qty / noOfTitles) * 100) / 100;
+    return JSON.stringify({
+      total_price_rupees: totalRupees,
+      price_per_unit: pricePerUnit,
+      note: "Price per unit for the book."
+    });
+  } catch (e) {
+    return JSON.stringify({ error: String(e?.message || "Book pricing calculation failed") });
+  }
+}
+
+/**
+ * Call OpenAI Chat Completions with tools for the Order Status Agent.
+ * Handles tool_calls in a loop (max 5 rounds), then returns final assistant content.
+ * @param {Array<{role: string, content?: string, tool_calls?: Array}>} messages
+ * @param {{ mongo: Object, email: string, log?: Object }} ctx
+ * @returns {Promise<string>}
+ */
+async function callOrderStatusLlm(messages, ctx) {
+  const { mongo, email, log } = ctx || {};
+  const key = process.env.OPENAI_API_KEY;
+  if (!key || typeof key !== "string" || !key.trim()) {
+    return AI_NOT_CONFIGURED_MSG;
+  }
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const maxRounds = 5;
+  let current = [...messages];
+  let lastContent = "";
+
+  for (let round = 0; round < maxRounds; round++) {
+    const body = {
+      model,
+      messages: current,
+      tools: ORDER_STATUS_TOOLS,
+      tool_choice: "auto"
+    };
+    let res;
+    try {
+      res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key.trim()}`
+        },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      return `${AI_NOT_CONFIGURED_MSG} (${e?.message || "error"})`;
+    }
+    if (!res.ok) {
+      const t = await res.text();
+      return `${AI_NOT_CONFIGURED_MSG} (${res.status}: ${(t || "").slice(0, 120)})`;
+    }
+    const data = await res.json();
+    const msg = data?.choices?.[0]?.message;
+    if (!msg) return lastContent || AI_NOT_CONFIGURED_MSG;
+
+    lastContent = (typeof msg.content === "string" && msg.content.trim()) ? msg.content.trim() : "";
+
+    const toolCalls = msg.tool_calls;
+    if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
+      return lastContent || AI_NOT_CONFIGURED_MSG;
+    }
+
+    // Append assistant message (with tool_calls)
+    current = [...current, { role: "assistant", content: msg.content || null, tool_calls: toolCalls }];
+
+    for (const tc of toolCalls) {
+      const fn = tc.function;
+      const name = fn?.name || "";
+      let args = {};
+      try {
+        if (typeof fn?.arguments === "string" && fn.arguments.trim()) {
+          args = JSON.parse(fn.arguments);
+        }
+      } catch (_) {}
+      const result = await runOrderStatusTool(name, args, { mongo, email });
+      current.push({ role: "tool", tool_call_id: tc.id, content: result });
+    }
+  }
+
+  return lastContent || AI_NOT_CONFIGURED_MSG;
+}
+
+/**
+ * Call OpenAI Chat Completions with tools for the Packaging Quote Agent.
+ * Handles tool_calls in a loop (max 5 rounds). Uses calculate_packaging_quote to get pricing from pck-est.
+ * @param {Array<{role: string, content?: string, tool_calls?: Array}>} messages
+ * @param {{ log?: Object }} ctx
+ * @returns {Promise<string>}
+ */
+async function callPackagingQuoteLlm(messages, ctx) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key || typeof key !== "string" || !key.trim()) {
+    return AI_NOT_CONFIGURED_MSG;
+  }
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const maxRounds = 5;
+  let current = [...messages];
+  let lastContent = "";
+
+  for (let round = 0; round < maxRounds; round++) {
+    const body = {
+      model,
+      messages: current,
+      tools: PACKAGING_QUOTE_TOOLS,
+      tool_choice: "auto"
+    };
+    let res;
+    try {
+      res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key.trim()}`
+        },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      return `${AI_NOT_CONFIGURED_MSG} (${e?.message || "error"})`;
+    }
+    if (!res.ok) {
+      const t = await res.text();
+      return `${AI_NOT_CONFIGURED_MSG} (${res.status}: ${(t || "").slice(0, 120)})`;
+    }
+    const data = await res.json();
+    const msg = data?.choices?.[0]?.message;
+    if (!msg) return lastContent || AI_NOT_CONFIGURED_MSG;
+
+    lastContent = (typeof msg.content === "string" && msg.content.trim()) ? msg.content.trim() : "";
+
+    const toolCalls = msg.tool_calls;
+    if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
+      return lastContent || AI_NOT_CONFIGURED_MSG;
+    }
+
+    current = [...current, { role: "assistant", content: msg.content || null, tool_calls: toolCalls }];
+
+    for (const tc of toolCalls) {
+      const fn = tc.function;
+      const name = fn?.name || "";
+      let args = {};
+      try {
+        if (typeof fn?.arguments === "string" && fn.arguments.trim()) {
+          args = JSON.parse(fn.arguments);
+        }
+      } catch (_) {}
+      const result = await runPackagingQuoteTool(name, args);
+      current.push({ role: "tool", tool_call_id: tc.id, content: result });
+    }
+  }
+
+  return lastContent || AI_NOT_CONFIGURED_MSG;
+}
+
+/**
+ * Call OpenAI Chat Completions with tools for the Book Quote Agent.
+ * Handles tool_calls in a loop (max 5 rounds). Uses calculate_book_quote to get pricing from comm-est.
+ */
+async function callBookQuoteLlm(messages, ctx) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key || typeof key !== "string" || !key.trim()) {
+    return AI_NOT_CONFIGURED_MSG;
+  }
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const maxRounds = 5;
+  let current = [...messages];
+  let lastContent = "";
+
+  for (let round = 0; round < maxRounds; round++) {
+    const body = {
+      model,
+      messages: current,
+      tools: BOOK_QUOTE_TOOLS,
+      tool_choice: "auto"
+    };
+    let res;
+    try {
+      res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key.trim()}`
+        },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      return `${AI_NOT_CONFIGURED_MSG} (${e?.message || "error"})`;
+    }
+    if (!res.ok) {
+      const t = await res.text();
+      return `${AI_NOT_CONFIGURED_MSG} (${res.status}: ${(t || "").slice(0, 120)})`;
+    }
+    const data = await res.json();
+    const msg = data?.choices?.[0]?.message;
+    if (!msg) return lastContent || AI_NOT_CONFIGURED_MSG;
+
+    lastContent = (typeof msg.content === "string" && msg.content.trim()) ? msg.content.trim() : "";
+
+    const toolCalls = msg.tool_calls;
+    if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
+      return lastContent || AI_NOT_CONFIGURED_MSG;
+    }
+
+    current = [...current, { role: "assistant", content: msg.content || null, tool_calls: toolCalls }];
+
+    for (const tc of toolCalls) {
+      const fn = tc.function;
+      const name = fn?.name || "";
+      let args = {};
+      try {
+        if (typeof fn?.arguments === "string" && fn.arguments.trim()) {
+          args = JSON.parse(fn.arguments);
+        }
+      } catch (_) {}
+      const result = await runBookQuoteTool(name, args);
+      current.push({ role: "tool", tool_call_id: tc.id, content: result });
+    }
+  }
+
+  return lastContent || AI_NOT_CONFIGURED_MSG;
 }
 
 async function callOrders(
@@ -1422,4 +1963,204 @@ fastify.get("/dashboard", async (req, reply) => {
       return rows;
     }
   );
+
+  /**
+   * CHAT HISTORY + PERSISTENCE
+   *
+   * Collection: chat_sessions
+   * Shape:
+   * {
+   *   _id: ObjectId,
+   *   userId: string,        // typically req.user.email
+   *   agentKey: string,      // e.g. "packaging-quote"
+   *   agentName: string,
+   *   messages: [
+   *     { role: "user" | "assistant", content: string, ts: Date }
+   *   ],
+   *   createdAt: Date,
+   *   updatedAt: Date
+   * }
+   */
+
+  // GET /api/chat/agents – list all active chat agents (for chatbot UI)
+  fastify.get("/chat/agents", async (req, reply) => {
+    try {
+      const agents = await getAllChatAgents();
+      const list = (agents || []).map((a) => ({
+        agentKey: a.agentKey,
+        name: a.name,
+        buttonText: a.buttonText,
+        description: a.description || "",
+      }));
+      return { agents: list };
+    } catch (err) {
+      req.log.error(err, "Error in GET /api/chat/agents");
+      return reply
+        .code(500)
+        .send({ error: "Failed to load chat agents", details: err.message });
+    }
+  });
+
+  // GET /api/chat/history?agentKey=packaging-quote
+  // Returns existing chat for this user+agent.
+  // If no history exists, returns a single initial assistant message
+  // derived from the agent's job/description.
+  fastify.get("/chat/history", async (req, reply) => {
+    try {
+      const { agentKey } = req.query || {};
+
+      if (!agentKey || typeof agentKey !== "string") {
+        return reply.code(400).send({ error: "agentKey is required" });
+      }
+
+      const userId = req.user?.email || req.user?.id || null;
+      if (!userId) {
+        return reply.code(401).send({ error: "User not authenticated" });
+      }
+
+      const db = await getDb();
+      const agent = await getChatAgentByKey(agentKey);
+      if (!agent) {
+        return reply.code(404).send({ error: "Chat agent not found" });
+      }
+
+      let session = await db.collection("chat_sessions").findOne({
+        userId,
+        agentKey,
+      });
+
+      if (!session) {
+        // No history → create session with initial assistant message (persisted)
+        const initialText =
+          agent.initialMessage ||
+          `Hi, I am ${agent.name}. ${agent.description || "How can I help you today?"}`;
+
+        const initialMessage = {
+          role: "assistant",
+          content: initialText,
+          ts: new Date(),
+        };
+
+        await db.collection("chat_sessions").insertOne({
+          userId,
+          agentKey,
+          agentName: agent.name,
+          messages: [initialMessage],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        return {
+          hasHistory: false,
+          agent: {
+            agentKey: agent.agentKey,
+            name: agent.name,
+            buttonText: agent.buttonText,
+            description: agent.description,
+          },
+          messages: [initialMessage],
+        };
+      }
+
+      return {
+        hasHistory: true,
+        agent: {
+          agentKey: agent.agentKey,
+          name: agent.name,
+          buttonText: agent.buttonText,
+          description: agent.description,
+        },
+        messages: session.messages || [],
+      };
+    } catch (err) {
+      req.log.error(err, "Error in GET /api/chat/history");
+      return reply
+        .code(500)
+        .send({ error: "Failed to load chat history", details: err.message });
+    }
+  });
+
+  // POST /api/chat/message
+  // Body: { agentKey: string, message: { role: "user", content: string } }
+  // Appends user + generated assistant to session. Returns { ok, assistant: { role, content } }.
+  fastify.post("/chat/message", async (req, reply) => {
+    try {
+      const { agentKey, message } = req.body || {};
+
+      if (!agentKey || typeof agentKey !== "string") {
+        return reply.code(400).send({ error: "agentKey is required" });
+      }
+
+      if (
+        !message ||
+        typeof message.content !== "string" ||
+        message.role !== "user"
+      ) {
+        return reply.code(400).send({
+          error: 'message with role "user" and content is required',
+        });
+      }
+
+      const userId = req.user?.email || req.user?.id || null;
+      if (!userId) {
+        return reply.code(401).send({ error: "User not authenticated" });
+      }
+
+      const db = await getDb();
+      const agent = await getChatAgentByKey(agentKey);
+      if (!agent) {
+        return reply.code(404).send({ error: "Chat agent not found" });
+      }
+
+      const now = new Date();
+      const userContent = String(message.content).trim();
+      const userMsg = { role: "user", content: userContent, ts: now };
+
+      const session = await db.collection("chat_sessions").findOne({
+        userId,
+        agentKey,
+      });
+
+      const initialText =
+        agent.initialMessage ||
+        `Hi, I am ${agent.name}. ${agent.description || "How can I help you today?"}`;
+      const initialMsg = { role: "assistant", content: initialText, ts: now };
+
+      const existing = session?.messages || [];
+      const forLlm = [
+        { role: "system", content: agent.systemPrompt || "You are a helpful assistant." },
+        ...existing.map((m) => ({ role: m.role, content: m.content || "" })),
+        { role: "user", content: userContent },
+      ];
+
+      const assistantContent =
+        agentKey === "order-status"
+          ? await callOrderStatusLlm(forLlm, { mongo: db, email: userId, log: req.log })
+          : agentKey === "packaging-quote"
+          ? await callPackagingQuoteLlm(forLlm, { log: req.log })
+          : agentKey === "book-quote"
+          ? await callBookQuoteLlm(forLlm, { log: req.log })
+          : await callChatLlm(forLlm);
+      const assistantMsg = { role: "assistant", content: assistantContent, ts: new Date() };
+
+      const toPush = !session ? [initialMsg, userMsg, assistantMsg] : [userMsg, assistantMsg];
+
+      await db.collection("chat_sessions").updateOne(
+        { userId, agentKey },
+        {
+          $setOnInsert: { agentName: agent.name, createdAt: now },
+          $set: { updatedAt: now },
+          $push: { messages: { $each: toPush } },
+        },
+        { upsert: true }
+      );
+
+      return { ok: true, assistant: { role: "assistant", content: assistantContent } };
+    } catch (err) {
+      req.log.error(err, "Error in POST /api/chat/message");
+      return reply
+        .code(500)
+        .send({ error: "Failed to save chat message", details: err.message });
+    }
+  });
 }

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "seed:chat-agents": "node seed-chat-agents.js"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +17,7 @@
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.3",
     "fastify": "^4.29.1",
+    "googleapis": "^170.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^7.0.0",
     "mssql": "^12.1.0"
