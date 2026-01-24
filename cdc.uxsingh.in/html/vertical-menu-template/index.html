@@ -714,19 +714,10 @@
     <div class="fsc-body fsd">
       <h3><b>Hello there</b> <br> How can we help?</h3>
       <div class="chat-questions">
-        <p class="chat-q">Instant quote for your packaging project</p>
-        <p class="chat-q">Instant quote for a book</p>
-        <p class="chat-q">Get order status</p>
-        <p class="chat-q">Know about printing</p>
-        <p class="chat-q">Know about CDC</p>
-      </div>
-    </div>
-
-    <div class="fsc-footer">
-      <div class="fsc-text-inpt">
-        <img src="../../assets/new-img-folder/mic.svg" class="" alt="mic" />
-        <input type="text" placeholder="Type message" name="chat" />
-        <img src="../../assets/new-img-folder/send-btn.svg" class="" alt="send-btn" />
+        <p class="chat-q" data-agent-key="packaging-quote">Instant quote for your packaging project</p>
+        <p class="chat-q" data-agent-key="book-quote">Instant quote for a book</p>
+        <p class="chat-q" data-agent-key="order-status">Get order status</p>
+        <p class="chat-q" data-agent-key="cdc-info">Know about CDC</p>
       </div>
     </div>
   </div>
@@ -734,6 +725,11 @@
   <div class="first-chat-screen second-screen">
     <div class="fsc-header">
       <div class="fsc-left">
+        <button type="button" class="chat-back-btn" title="Back to agents" aria-label="Back to agents">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
         <img src="../../assets/new-img-folder/ask-cdc.svg" class="" alt="chatbot-logo" />
         <h6>ASK CDC</h6>
       </div>
@@ -752,26 +748,19 @@
       </div>
     </div>
 
-    <div class="fsc-body">
-      <div>
-        <p class="user">Instant quote for your packaging project</p>
-      </div>
-      <div>
-        <p class="bot">Typing...</p>
-      </div>
-    </div>
+    <div class="fsc-body"><div class="fsc-body-inner"></div></div>
 
-    <div class="fsc-footer">
+    <div class="fsc-footer" data-loading="false">
       <div class="fsc-text-inpt">
         <img src="../../assets/new-img-folder/mic.svg" class="" alt="mic" />
-        <input type="text" placeholder="Type message" name="chat" />
-        <img src="../../assets/new-img-folder/send-btn.svg" class="" alt="send-btn" />
+        <input type="text" class="chat-input" placeholder="Type message" name="chat" />
+        <img src="../../assets/new-img-folder/send-btn.svg" class="chat-send-btn" alt="send-btn" />
       </div>
     </div>
 
     <div class="exit-popup">
       <h3>Confirm Exit?</h3>
-      <p>On exiting, all chat history will be cleared</p>
+      <p>Your chat history is saved. Close the window?</p>
       <div class="d-flex gap-3 align-items-center justify-content-center">
         <button class="confirm">Confirm</button>
         <button class="cancel">Cancel</button>
@@ -824,226 +813,7 @@
   <!-- Loading Overlay -->
   <script src="../../assets/js/loading-overlay.js"></script>
 
-  <script>
-    // document.addEventListener("DOMContentLoaded", function () {
-    //   const chatbotBtn = document.getElementById("chatbot-btn");
-    //   const chatScreen = document.querySelector(".first-chat-screen");
-    //   const closeBtn = chatScreen.querySelector(".fsc-right .close");
-    //   const minimiseBtn = chatScreen.querySelector(".fsc-right .minimise");
-    //   const chatBody = chatScreen.querySelector(".fsc-body");
-
-    //   // Initial styles for animations
-    //   chatScreen.style.display = "none";
-    //   chatScreen.style.opacity = "0";
-    //   chatScreen.style.transform = "scale(0.8)";
-    //   chatScreen.style.transition = "opacity 0.4s ease, transform 0.4s ease";
-
-    //   chatbotBtn.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-
-    //   // Allow smooth transition for minimise
-    //   chatBody.style.transition = "max-height 0.4s ease, opacity 0.3s ease, margin-top 0.3s ease";
-    //   chatBody.style.overflow = "hidden";
-
-    //   let isMinimised = false;
-
-    //   // Show Chat
-    //   chatbotBtn.addEventListener("click", function () {
-    //     chatbotBtn.style.opacity = "0";
-    //     chatbotBtn.style.transform = "scale(0.8)";
-    //     setTimeout(() => {
-    //       chatbotBtn.style.display = "none";
-    //       chatScreen.style.display = "block";
-    //       setTimeout(() => {
-    //         chatScreen.style.opacity = "1";
-    //         chatScreen.style.transform = "scale(1)";
-    //       }, 20);
-    //     }, 300);
-    //   });
-
-    //   // Close Chat
-    //   closeBtn.addEventListener("click", function () {
-    //     chatScreen.style.opacity = "0";
-    //     chatScreen.style.transform = "scale(0.8)";
-    //     setTimeout(() => {
-    //       chatScreen.style.display = "none";
-    //       chatbotBtn.style.display = "block";
-    //       setTimeout(() => {
-    //         chatbotBtn.style.opacity = "1";
-    //         chatbotBtn.style.transform = "scale(1)";
-    //       }, 20);
-    //     }, 400);
-    //   });
-
-    //   // Minimise Chat Body
-    //   minimiseBtn.addEventListener("click", function () {
-    //     if (!isMinimised) {
-    //       chatBody.style.maxHeight = "0";
-    //       chatBody.style.opacity = "0";
-    //       chatBody.style.marginTop = "0"; // collapse top space
-    //       isMinimised = true;
-    //     } else {
-    //       chatBody.style.maxHeight = "500px"; // large enough for full content
-    //       chatBody.style.opacity = "1";
-    //       chatBody.style.marginTop = "16px"; // original top margin
-    //       isMinimised = false;
-    //     }
-    //   });
-    // });
-
-    document.addEventListener("DOMContentLoaded", function () {
-  const chatbotBtn = document.getElementById("chatbot-btn");
-
-  // First screen
-  const chatScreen   = document.querySelector(".first-chat-screen");
-  const closeBtn     = chatScreen.querySelector(".fsc-right .close");
-  const minimiseBtn  = chatScreen.querySelector(".fsc-right .minimise");
-  const chatBody     = chatScreen.querySelector(".fsc-body");
-  const chatFooter   = chatScreen.querySelector(".fsc-footer");
-
-  // Second screen
-  const secondScreen = document.querySelector(".first-chat-screen.second-screen");
-  const closeBtn2    = secondScreen.querySelector(".fsc-right .close");
-  const minimiseBtn2 = secondScreen.querySelector(".fsc-right .minimise");
-  const chatBody2    = secondScreen.querySelector(".fsc-body");
-  const chatFooter2  = secondScreen.querySelector(".fsc-footer");
-  const userChat     = secondScreen.querySelector(".user-chat");
-
-  // Exit popup (inside second screen)
-  const exitPopup       = secondScreen.querySelector(".exit-popup");
-  const confirmExitBtn  = secondScreen.querySelector(".exit-popup .confirm");
-  const cancelExitBtn   = secondScreen.querySelector(".exit-popup .cancel");
-
-  // Questions → go to second screen
-  const chatQuestions = document.querySelectorAll(".chat-q");
-
-  let isMinimised  = false;
-  let isMinimised2 = false;
-
-  /* Initial: keep both screens hidden; button visible */
-  [chatScreen, secondScreen].forEach(scr => {
-    scr.style.display   = "none";
-    scr.style.opacity   = "0";
-    scr.style.transform = "scale(0.8)";
-    scr.style.transition = "opacity 0.4s ease, transform 0.4s ease";
-  });
-
-  chatbotBtn.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-
-  /* ---- First screen show/close ---- */
-  chatbotBtn.addEventListener("click", function () {
-    chatbotBtn.style.opacity = "0";
-    chatbotBtn.style.transform = "scale(0.8)";
-    setTimeout(() => {
-      chatbotBtn.style.display = "none";
-      chatScreen.style.display = "block";
-      setTimeout(() => {
-        chatScreen.style.opacity = "1";
-        chatScreen.style.transform = "scale(1)";
-      }, 20);
-    }, 300);
-  });
-
-  closeBtn.addEventListener("click", function () {
-    chatScreen.style.opacity = "0";
-    chatScreen.style.transform = "scale(0.8)";
-    setTimeout(() => {
-      chatScreen.style.display = "none";
-      chatbotBtn.style.display = "block";
-      setTimeout(() => {
-        chatbotBtn.style.opacity = "1";
-        chatbotBtn.style.transform = "scale(1)";
-      }, 20);
-    }, 400);
-  });
-
-  /* ---- Minimise first screen (hide body + footer + close) ---- */
-  minimiseBtn.addEventListener("click", function () {
-    if (!isMinimised) {
-      if (chatBody)   { chatBody.style.display = "none";   chatBody.style.minHeight = "0"; }
-      if (chatFooter) { chatFooter.style.display = "none"; chatFooter.style.minHeight = "0"; }
-      if (closeBtn)   { closeBtn.style.display = "none"; }
-    } else {
-      if (chatBody)   { chatBody.style.display = "";   chatBody.style.minHeight = ""; }
-      if (chatFooter) { chatFooter.style.display = ""; chatFooter.style.minHeight = ""; }
-      if (closeBtn)   { closeBtn.style.display = ""; }
-    }
-    isMinimised = !isMinimised;
-  });
-
-  /* ---- Second screen: close shows exit popup ---- */
-  closeBtn2.addEventListener("click", function () {
-    if (!exitPopup) return;
-    exitPopup.style.display = "flex";
-    exitPopup.style.opacity = "0";
-    exitPopup.style.transform = "translate(-50%, -50%) scale(0.9)";
-    setTimeout(() => {
-      exitPopup.style.opacity = "1";
-      exitPopup.style.transform = "translate(-50%, -50%) scale(1)";
-    }, 20);
-  });
-
-  if (confirmExitBtn) {
-    confirmExitBtn.addEventListener("click", function () {
-      if (exitPopup) exitPopup.style.display = "none";
-      secondScreen.style.opacity = "0";
-      secondScreen.style.transform = "scale(0.8)";
-      setTimeout(() => {
-        secondScreen.style.display = "none";
-        chatbotBtn.style.display = "block";
-        setTimeout(() => {
-          chatbotBtn.style.opacity = "1";
-          chatbotBtn.style.transform = "scale(1)";
-        }, 20);
-      }, 400);
-    });
-  }
-
-  if (cancelExitBtn) {
-    cancelExitBtn.addEventListener("click", function () {
-      if (!exitPopup) return;
-      exitPopup.style.opacity = "0";
-      exitPopup.style.transform = "translate(-50%, -50%) scale(0.98)";
-      setTimeout(() => (exitPopup.style.display = "none"), 200);
-    });
-  }
-
-  /* ---- Minimise second screen (hide body + footer + close) ---- */
-  minimiseBtn2.addEventListener("click", function () {
-    if (!isMinimised2) {
-      if (chatBody2)   { chatBody2.style.display = "none";   chatBody2.style.minHeight = "0"; }
-      if (chatFooter2) { chatFooter2.style.display = "none"; chatFooter2.style.minHeight = "0"; }
-      if (closeBtn2)   { closeBtn2.style.display = "none"; }
-    } else {
-      if (chatBody2)   { chatBody2.style.display = "";   chatBody2.style.minHeight = ""; }
-      if (chatFooter2) { chatFooter2.style.display = ""; chatFooter2.style.minHeight = ""; }
-      if (closeBtn2)   { closeBtn2.style.display = ""; }
-    }
-    isMinimised2 = !isMinimised2;
-  });
-
-  /* ---- Question click → open second screen ---- */
-  chatQuestions.forEach(q => {
-    q.addEventListener("click", function () {
-      if (userChat) userChat.textContent = this.innerHTML.trim();
-      secondScreen.style.transition = "opacity 0.4s ease, transform 0.4s ease";
-      chatScreen.style.display = "none";
-      secondScreen.style.display = "block";
-      secondScreen.style.opacity = "0";
-      secondScreen.style.transform = "scale(0.8)";
-      setTimeout(() => {
-        secondScreen.style.opacity = "1";
-        secondScreen.style.transform = "scale(1)";
-      }, 20);
-    });
-  });
-});
-
-
-
-
-
-
-  </script>
+  <script src="../../assets/js/chatbot.js"></script>
 
   <!-- Custom Date Modal for Dashboard -->
   <div class="modal fade" id="customDateModalDashboard" tabindex="-1" aria-labelledby="customDateModalDashboardLabel" aria-hidden="true">

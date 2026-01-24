@@ -146,18 +146,27 @@
         // Intercept fetch API calls
         const originalFetch = window.fetch;
         window.fetch = function(...args) {
-            activeRequests++;
-            showLoading();
-            
+            const url = (typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url)) || '';
+            const isChatApi = url.indexOf('/chat/') !== -1;
+
+            if (!isChatApi) {
+                activeRequests++;
+                showLoading();
+            }
+
             return originalFetch.apply(this, args)
                 .then(response => {
-                    activeRequests--;
-                    hideLoading();
+                    if (!isChatApi) {
+                        activeRequests--;
+                        hideLoading();
+                    }
                     return response;
                 })
                 .catch(error => {
-                    activeRequests--;
-                    hideLoading();
+                    if (!isChatApi) {
+                        activeRequests--;
+                        hideLoading();
+                    }
                     throw error;
                 });
         };
@@ -168,24 +177,30 @@
 
         XMLHttpRequest.prototype.open = function(...args) {
             this._cdcTracked = true;
+            this._cdcRequestUrl = (typeof args[1] === 'string' ? args[1] : '') || '';
             return originalOpen.apply(this, args);
         };
 
         XMLHttpRequest.prototype.send = function(...args) {
             if (this._cdcTracked) {
-                activeRequests++;
-                showLoading();
+                const isChatApi = (this._cdcRequestUrl || '').indexOf('/chat/') !== -1;
+                if (!isChatApi) {
+                    activeRequests++;
+                    showLoading();
+                }
 
                 const onComplete = () => {
-                    activeRequests--;
-                    hideLoading();
+                    if (!isChatApi) {
+                        activeRequests--;
+                        hideLoading();
+                    }
                 };
 
                 this.addEventListener('load', onComplete);
                 this.addEventListener('error', onComplete);
                 this.addEventListener('abort', onComplete);
             }
-            
+
             return originalSend.apply(this, args);
         };
 

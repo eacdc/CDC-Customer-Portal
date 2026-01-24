@@ -489,7 +489,7 @@
         text-align: right;
         align-items: flex-end;
         gap: 0.5rem;
-        padding: 0;
+        padding: 1.5rem 1.5rem 1.5rem 0;
     }
 
     /* Desktop-only: Style info items as horizontal label-value pairs in single column */
@@ -997,12 +997,18 @@ h6,
     z-index: 1111;
     right: 20px;
     bottom: 20px;
-    max-width: 400px;
+    max-width: 560px;
     width: 100%;
+    height: 672px;
+    max-height: 672px;
+    min-height: 480px;
+    display: flex;
+    flex-direction: column;
     /* background: linear-gradient(319deg, rgba(115, 103, 240, 0.70) -2.33%, #7367F0 98.15%); */
     background-color: #7367F0;
     border-radius: 20px;
     overflow: hidden;
+    box-sizing: border-box;
     /* padding: 16px; */
     box-shadow: 0 5px 40px 0 rgba(0, 0, 0, 0.16);
 }
@@ -1012,6 +1018,7 @@ h6,
     align-items: center;
     justify-content: space-between;
     padding: 16px;
+    flex-shrink: 0;
 }
 
 .first-chat-screen .fsc-header .fsc-left {
@@ -1028,6 +1035,21 @@ h6,
     color: #FFF;
 }
 
+.first-chat-screen .fsc-header .chat-back-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    margin: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.first-chat-screen .fsc-header .chat-back-btn:hover {
+    opacity: 0.9;
+}
+
 .first-chat-screen .fsc-header svg {
     cursor: pointer;
 }
@@ -1035,10 +1057,19 @@ h6,
 .first-chat-screen .fsc-body {
     /* margin-top: 16px; */
     padding: 16px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 .first-chat-screen .fsc-body.fsd {
     padding-top: 32px;
+    padding-bottom: 32px;
+    display: flex;
+    flex-direction: column;
+}
+.first-chat-screen .fsc-body.fsd h3 {
+    flex-shrink: 0;
 }
 
 .first-chat-screen .fsc-body h3 {
@@ -1050,39 +1081,60 @@ h6,
     padding: 0 20px;
 }
 
+.first-chat-screen .fsc-body.fsd .chat-questions {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+}
 .first-chat-screen .chat-questions {
-    border-radius: 10px;
+    border-radius: 14px;
     background: #FFF;
-    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.08);
-    padding: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    padding: 12px;
     margin-top: 16px;
 }
 
 .first-chat-screen .chat-questions p.chat-q {
-    font-size: 14px;
+    font-size: 17px;
     font-style: normal;
-    font-weight: 400;
-    line-height: 22px;
-    color: #000;
-    padding: 10px 12px;
+    font-weight: 500;
+    line-height: 26px;
+    color: rgba(47, 43, 61, 0.9);
+    padding: 14px 40px 14px 18px;
     position: relative;
     cursor: pointer;
+    flex-shrink: 0;
+    border-radius: 10px;
+    border-left: 3px solid transparent;
+    transition: background 0.2s ease, border-left-color 0.2s ease, box-shadow 0.2s ease;
+}
+.first-chat-screen .chat-questions p.chat-q:hover {
+    background: rgba(115, 103, 240, 0.06);
+    border-left-color: #7367F0;
+    box-shadow: 0 2px 8px rgba(115, 103, 240, 0.12);
 }
 
 .first-chat-screen .chat-questions p.chat-q::after {
     content: url(../../assets/new-img-folder/q-arrow.svg);
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     position: absolute;
-    right: 6px;
-    top: 55%;
+    right: 12px;
+    top: 50%;
     transform: translateY(-50%);
+    opacity: 0.7;
+}
+.first-chat-screen .chat-questions p.chat-q:hover::after {
+    opacity: 1;
 }
 
 .first-chat-screen .fsc-footer {
     background-color: #fff;
     margin-top: 24px;
     padding: 20px 16px;
+    flex-shrink: 0;
 }
 
 .first-chat-screen .fsc-text-inpt {
@@ -1124,27 +1176,82 @@ h6,
 
 .first-chat-screen.second-screen .fsc-body {
     background-color: #fff;
+    padding: 16px;
     padding-bottom: 40px;
     display: flex;
     flex-direction: column;
-    justify-content: end;
-    gap: 12px;
-    min-height: 354px;
-    /* display: none; */
+    flex: 1 1 0;
+    min-height: 0;
     overflow: hidden;
-    transition: min-height 0.3s ease;
+}
+
+.first-chat-screen.second-screen .fsc-body-inner {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+    padding-right: 12px;
+    overflow-y: scroll !important;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: auto;
+    scrollbar-gutter: stable;
+    -ms-overflow-style: scroll;
+}
+
+.first-chat-screen.second-screen .fsc-body-inner > div {
+    margin-bottom: 12px;
+}
+
+.first-chat-screen.second-screen .fsc-body-inner > div:last-child {
+    margin-bottom: 0;
+}
+
+.first-chat-screen.second-screen .fsc-body-inner::-webkit-scrollbar {
+    width: 12px;
+}
+
+.first-chat-screen.second-screen .fsc-body-inner::-webkit-scrollbar-track {
+    background: #e8e8e8;
+    border-radius: 6px;
+}
+
+.first-chat-screen.second-screen .fsc-body-inner::-webkit-scrollbar-thumb {
+    background: #7367F0;
+    border-radius: 6px;
+}
+
+.first-chat-screen.second-screen .fsc-body-inner::-webkit-scrollbar-thumb:hover {
+    background: #5b50d6;
 }
 
 .first-chat-screen.second-screen .fsc-footer {
     margin: 0;
 }
 
-.first-chat-screen.second-screen .fsc-body div:nth-child(odd) {
+.first-chat-screen.second-screen .fsc-body div:has(> p.user) {
     text-align: right;
 }
 
-.first-chat-screen.second-screen .fsc-body div:nth-child(even) {
+.first-chat-screen.second-screen .fsc-body-inner > div:has(> p.user)::before {
+    content: "you";
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(47, 43, 61, 0.6);
+    margin-bottom: 4px;
+}
+
+.first-chat-screen.second-screen .fsc-body div:has(> p.bot) {
     text-align: left;
+}
+
+.first-chat-screen.second-screen .fsc-body-inner > div:has(> p.bot)::before {
+    content: "assistant";
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(47, 43, 61, 0.6);
+    margin-bottom: 4px;
 }
 
 .first-chat-screen.second-screen .fsc-body p.user {
@@ -1171,6 +1278,17 @@ h6,
     background: #EBECF5;
     padding: 10px;
     display: inline-block;
+    max-width: 70%;
+}
+
+.first-chat-screen.second-screen .fsc-body p.user strong,
+.first-chat-screen.second-screen .fsc-body p.bot strong {
+    font-weight: 700;
+}
+
+.first-chat-screen.second-screen .fsc-body p.user em,
+.first-chat-screen.second-screen .fsc-body p.bot em {
+    font-style: italic;
 }
 
 .exit-popup {
@@ -1633,6 +1751,9 @@ h6,
         bottom: 0;
         width: 95%;
         right: 2.5%;
+        max-width: 560px;
+        height: 85vh;
+        max-height: 85vh;
     }
 
     #chatbot-btn img {
