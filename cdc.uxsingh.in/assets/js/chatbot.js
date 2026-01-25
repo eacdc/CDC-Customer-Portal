@@ -59,14 +59,10 @@ document.addEventListener('DOMContentLoaded', function () {
   const secondScreen = document.querySelector('.first-chat-screen.second-screen');
   if (!chatbotBtn || !chatScreen || !secondScreen) return;
 
-  const closeBtn = chatScreen.querySelector('.fsc-right .close');
   const minimiseBtn = chatScreen.querySelector('.fsc-right .minimise');
-  const chatBody = chatScreen.querySelector('.fsc-body');
-  const chatFooter = chatScreen.querySelector('.fsc-footer');
   const chatQuestionsEl = chatScreen.querySelector('.chat-questions');
 
   const backBtn = secondScreen.querySelector('.chat-back-btn');
-  const closeBtn2 = secondScreen.querySelector('.fsc-right .close');
   const minimiseBtn2 = secondScreen.querySelector('.fsc-right .minimise');
   let chatBody2 = secondScreen.querySelector('.fsc-body-inner');
   if (!chatBody2) {
@@ -136,8 +132,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const chatInput = secondScreen.querySelector('.chat-input, input[name="chat"]');
   const sendBtn = secondScreen.querySelector('.chat-send-btn, .fsc-text-inpt img[alt="send-btn"]');
 
-  let isMinimised = false;
-  let isMinimised2 = false;
+  /** When user minimizes, remember which screen/agent was open so reopening shows the same. */
+  let lastAgentKeyWhenMinimised = null;
 
   // ---- Populate agents (from API or fallback) ----
   async function fetchAndRenderAgents() {
@@ -304,15 +300,30 @@ document.addEventListener('DOMContentLoaded', function () {
     chatbotBtn.style.transform = 'scale(0.8)';
     setTimeout(() => {
       chatbotBtn.style.display = 'none';
-      chatScreen.style.display = 'flex';
-      setTimeout(() => {
-        chatScreen.style.opacity = '1';
-        chatScreen.style.transform = 'scale(1)';
-      }, 20);
+      if (lastAgentKeyWhenMinimised) {
+        chatScreen.style.display = 'none';
+        secondScreen.dataset.agentKey = lastAgentKeyWhenMinimised;
+        secondScreen.style.display = 'flex';
+        secondScreen.style.opacity = '0';
+        secondScreen.style.transform = 'scale(0.8)';
+        loadChatHistory(lastAgentKeyWhenMinimised);
+        setTimeout(() => {
+          secondScreen.style.opacity = '1';
+          secondScreen.style.transform = 'scale(1)';
+        }, 20);
+      } else {
+        chatScreen.style.display = 'flex';
+        secondScreen.style.display = 'none';
+        setTimeout(() => {
+          chatScreen.style.opacity = '1';
+          chatScreen.style.transform = 'scale(1)';
+        }, 20);
+      }
     }, 300);
   });
 
-  closeBtn.addEventListener('click', function () {
+  minimiseBtn.addEventListener('click', function () {
+    lastAgentKeyWhenMinimised = null;
     chatScreen.style.opacity = '0';
     chatScreen.style.transform = 'scale(0.8)';
     setTimeout(() => {
@@ -325,24 +336,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 400);
   });
 
-  minimiseBtn.addEventListener('click', function () {
-    isMinimised = !isMinimised;
-    if (chatBody) chatBody.style.display = isMinimised ? 'none' : '';
-    if (chatFooter) chatFooter.style.display = isMinimised ? 'none' : '';
-    if (closeBtn) closeBtn.style.display = isMinimised ? 'none' : '';
-  });
-
-  // ---- UI: second screen (close → exit popup) ----
-  closeBtn2.addEventListener('click', function () {
-    if (!exitPopup) return;
-    exitPopup.style.display = 'flex';
-    exitPopup.style.opacity = '0';
-    exitPopup.style.transform = 'translate(-50%, -50%) scale(0.9)';
-    setTimeout(() => {
-      exitPopup.style.opacity = '1';
-      exitPopup.style.transform = 'translate(-50%, -50%) scale(1)';
-    }, 20);
-  });
+  // ---- UI: second screen ----
 
   if (confirmExitBtn) {
     confirmExitBtn.addEventListener('click', function () {
@@ -370,10 +364,17 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   minimiseBtn2.addEventListener('click', function () {
-    isMinimised2 = !isMinimised2;
-    if (chatBody2) chatBody2.style.display = isMinimised2 ? 'none' : '';
-    if (chatFooter2) chatFooter2.style.display = isMinimised2 ? 'none' : '';
-    if (closeBtn2) closeBtn2.style.display = isMinimised2 ? 'none' : '';
+    lastAgentKeyWhenMinimised = secondScreen.dataset.agentKey || null;
+    secondScreen.style.opacity = '0';
+    secondScreen.style.transform = 'scale(0.8)';
+    setTimeout(() => {
+      secondScreen.style.display = 'none';
+      chatbotBtn.style.display = 'block';
+      setTimeout(() => {
+        chatbotBtn.style.opacity = '1';
+        chatbotBtn.style.transform = 'scale(1)';
+      }, 20);
+    }, 400);
   });
 
   // ---- Back button: second screen → first (all agents) ----
