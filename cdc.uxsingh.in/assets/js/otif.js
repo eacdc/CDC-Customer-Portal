@@ -399,6 +399,8 @@ document.addEventListener('DOMContentLoaded', () => {
           // Move search input to custom container
           $('.dt-custom-search-otif').appendTo(searchWrapper);
 
+          initOtifExport();
+
           // Remove default label text
           $(searchWrapper + ' label').contents().filter(function() {
             return this.nodeType === 3;
@@ -460,6 +462,83 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
     }, 100);
+  }
+
+  function initOtifExport() {
+    const btn = document.querySelector('.btn-otif-export');
+    if (!btn || !state.dataTable) return;
+    btn.addEventListener('click', async function() {
+      if (!state.dataTable) return;
+      const searchTerm = state.dataTable.search();
+      const params = new URLSearchParams();
+      if (state.customDates) {
+        params.set('from', state.customDates.from);
+        params.set('to', state.customDates.to);
+      } else {
+        params.set('range', state.dateRange || DEFAULT_RANGE);
+      }
+      params.set('q', searchTerm);
+      params.set('limit', '5000');
+      const url = getApiBase() + '/otif?' + params.toString();
+      btn.disabled = true;
+      try {
+        const res = await fetch(url, { headers: buildAuthHeaders() });
+        if (!res.ok) {
+          if (res.status === 401) {
+            showGlobalError('Your session has expired. Please sign out and sign in again.');
+          } else {
+            alert('Failed to export OTIF data');
+          }
+          return;
+        }
+        const json = await res.json();
+        const items = json && json.items ? json.items : [];
+        const headers = [
+          'Product', 'PO Number', 'PO Date', 'Jobcard No.', 'QTY',
+          'Approval Date', 'Delivered Date', 'Last GPN Date',
+          'Committed Dlv Date', 'Qty Delivered', 'Order Status',
+          'Delay Days', 'Approval To GPN Days'
+        ];
+        const escapeCsv = (val) => {
+          const s = val == null ? '' : String(val).trim();
+          if (/["\r\n,]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+          return s;
+        };
+        const rowToCells = (row) => {
+          const delay = row.DelayDays != null ? (Number(row.DelayDays) < 0 ? 0 : Number(row.DelayDays)) : '';
+          const approvalToGpn = row.ApprovalToGpnDays != null ? (Number(row.ApprovalToGpnDays) < 0 ? 0 : Number(row.ApprovalToGpnDays)) : '';
+          return [
+            row.ItemName || '',
+            row.PONumber ?? '',
+            formatDate(row.PODate),
+            row.JobCardNumber ?? '',
+            row.OrderQty ?? '',
+            formatDate(row.ApprovalDate),
+            formatDate(row.LastDeliveryDate),
+            formatDate(row.LastGpnDate),
+            formatDate(row.CommittedDeliveryDate),
+            row.QtyDelivered ?? '',
+            row.OrderStatus ?? '',
+            delay,
+            approvalToGpn
+          ];
+        };
+        const rows = [headers.map(escapeCsv).join(',')];
+        items.forEach((row) => rows.push(rowToCells(row).map(escapeCsv).join(',')));
+        const csv = '\uFEFF' + rows.join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'OTIF_export.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } catch (err) {
+        console.error('Export error:', err);
+        alert('Failed to export OTIF data');
+      } finally {
+        btn.disabled = false;
+      }
+    });
   }
 
   function showGlobalError(message) {
