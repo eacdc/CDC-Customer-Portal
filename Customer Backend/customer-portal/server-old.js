@@ -349,7 +349,7 @@ async function callOrders(
   r.input("AfterDate", sql.DateTime2, cursor?.date || null);
   r.input("AfterJobId", sql.Int, cursor?.id || null);
   r.input("Limit", sql.Int, Number(limit) + 5); // fetch a few extra to merge
-  const rs = await r.execute("dbo.portal_orders_list");
+  const rs = await r.execute("dbo.portal_orders_list2");
   return rs.recordset || [];
 }
 

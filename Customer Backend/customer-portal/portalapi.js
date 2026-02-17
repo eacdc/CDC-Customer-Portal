@@ -43,28 +43,24 @@ function toIdListTVP(ids) {
 const AI_NOT_CONFIGURED_MSG =
   "AI is not configured. Add OPENAI_API_KEY to enable replies.";
 
-/** Tool definition for Order Status Agent: get pending job/order details from orders API. */
+/** Tool definition for Order Status Agent: get pending and completed job/order details from orders API. */
 const ORDER_STATUS_TOOLS = [
   {
     type: "function",
     function: {
       name: "get_pending_job_details",
-      description: "Retrieves pending job/order details for the logged-in user. Always use this for any job status, order status, or pending jobs query. Data is dynamic—never rely on prior conversation. Returns an array of job objects. Each job may include: JobCardNo or JobBookingId (Doc ID), Title (Description), OrderQty, QtyDelivered, QtyPacked, CommittedDeliveryDate, FinishPlanDate, FinalOrderStatus, PoNumber, PoDate, ApprovalDate, and other available columns.",
+      description: "Retrieves pending and completed job/order details for the logged-in user. Always use this for any job status, order status, or pending jobs query. Data is dynamic—never rely on prior conversation. Returns an object with 'pending' (all pending jobs) and 'completed' (top 50 completed jobs sorted by FinishPlanDate newest first) arrays. Each job may include: JobCardNo or JobBookingId (Doc ID), Title (Description), OrderQty, QtyDelivered, QtyPacked, CommittedDeliveryDate, FinishPlanDate, FinalOrderStatus, PoNumber, PoDate, ApprovalDate, and other available columns.",
       parameters: {
         type: "object",
         properties: {
           search: {
             type: "string",
-            description: "Optional. Search term to filter by job number (Doc ID / JobCardNo) or job name (Description / Title). Leave empty or omit to get all pending jobs."
+            description: "Optional. Search term to filter by job number (Doc ID / JobCardNo) or job name (Description / Title). Leave empty or omit to get all jobs."
           },
           date_range: {
             type: "string",
             enum: ["30d", "90d", "180d", "365d"],
-            description: "Optional. Date range for pending jobs. Default: 365d"
-          },
-          limit: {
-            type: "integer",
-            description: "Optional. Maximum number of jobs to return. Default: 100"
+            description: "Optional. Date range for jobs. Default: 365d"
           }
         }
       }
@@ -149,30 +145,36 @@ const BOOK_QUOTE_TOOLS = [
 ];
 
 /**
- * Fetch pending orders for a user (by email). Used by the Order Status Agent tool.
+ * Fetch pending and completed orders for a user (by email). Used by the Order Status Agent tool.
+ * Returns all pending jobs and top 50 completed jobs sorted by FinishPlanDate (newest first).
  * @param {Object} mongo - MongoDB db instance (from getDb)
  * @param {string} email - User email
- * @param {{ search?: string, range?: string, limit?: number }} opts
- * @returns {Promise<Array>} Array of order/job objects (internal _cursorDate, _cursorId removed)
+ * @param {{ search?: string, range?: string }} opts
+ * @returns {Promise<{pending: Array, completed: Array}>} Object with pending and completed arrays
  */
 async function fetchPendingOrdersForUser(mongo, email, opts = {}) {
-  const { search = "", range = "365d", limit = 100 } = opts;
+  const { search = "", range = "365d" } = opts;
   const tenant = await mongo.collection("tenants").findOne({ email });
-  if (!tenant) return [];
+  if (!tenant) return { pending: [], completed: [] };
 
   const ids1 = tenant.ledgerIds_db1 || [];
   const ids2 = tenant.ledgerIds_db2 || [];
   const win = parseRange(String(range));
-  const lim = Math.min(Math.max(Number(limit) || 100, 1), 200);
+  
+  // Fetch pending jobs - use a high limit to get all (or no limit if API supports it)
+  const pendingLimit = "10000"; // High limit to get all pending jobs
+  
+  // Fetch completed jobs - fetch more from each DB to ensure we get truly top 50 after merge
+  const completedLimit = "100"; // Fetch 100 from each DB, then take top 50 after sorting
 
-  const [rows1, rows2] = await Promise.all([
+  const [pendingRows1, pendingRows2, completedRows1, completedRows2] = await Promise.all([
     callOrders(db1(), ids1, {
       from: win.from,
       to: win.to,
       status: "pending",
       q: search || "",
       cursor: null,
-      limit: String(lim),
+      limit: pendingLimit,
       sourceTag: "db1"
     }),
     callOrders(db2(), ids2, {
@@ -181,24 +183,65 @@ async function fetchPendingOrdersForUser(mongo, email, opts = {}) {
       status: "pending",
       q: search || "",
       cursor: null,
-      limit: String(lim),
+      limit: pendingLimit,
+      sourceTag: "db2"
+    }),
+    callOrders(db1(), ids1, {
+      from: win.from,
+      to: win.to,
+      status: "completed",
+      q: search || "",
+      cursor: null,
+      limit: completedLimit,
+      sourceTag: "db1"
+    }),
+    callOrders(db2(), ids2, {
+      from: win.from,
+      to: win.to,
+      status: "completed",
+      q: search || "",
+      cursor: null,
+      limit: completedLimit,
       sourceTag: "db2"
     })
   ]);
 
-  const merged = [...rows1, ...rows2].sort((a, b) => {
+  // Merge and process pending jobs
+  const pendingMerged = [...pendingRows1, ...pendingRows2].sort((a, b) => {
     const da = new Date(a._cursorDate || 0).getTime();
     const db = new Date(b._cursorDate || 0).getTime();
     if (da !== db) return db - da;
     return (b._cursorId || 0) - (a._cursorId || 0);
   });
-
-  const page = merged.slice(0, lim);
-  page.forEach((r) => {
+  
+  pendingMerged.forEach((r) => {
     delete r._cursorDate;
     delete r._cursorId;
   });
-  return page;
+
+  // Merge and process completed jobs - sort by FinishPlanDate descending (newest first)
+  const completedMerged = [...completedRows1, ...completedRows2].sort((a, b) => {
+    const dateA = a.FinishPlanDate ? new Date(a.FinishPlanDate).getTime() : 0;
+    const dateB = b.FinishPlanDate ? new Date(b.FinishPlanDate).getTime() : 0;
+    if (dateB !== dateA) return dateB - dateA; // Descending (newest first)
+    // If dates are equal, use cursor date/id as tiebreaker
+    const da = new Date(a._cursorDate || 0).getTime();
+    const db = new Date(b._cursorDate || 0).getTime();
+    if (da !== db) return db - da;
+    return (b._cursorId || 0) - (a._cursorId || 0);
+  });
+  
+  // Take top 50 completed jobs
+  const completedTop50 = completedMerged.slice(0, 50);
+  completedTop50.forEach((r) => {
+    delete r._cursorDate;
+    delete r._cursorId;
+  });
+
+  return {
+    pending: pendingMerged,
+    completed: completedTop50
+  };
 }
 
 /**
@@ -247,13 +290,10 @@ async function runOrderStatusTool(name, args, { mongo, email }) {
     const range = (args && ["30d", "90d", "180d", "365d"].includes(args.date_range))
       ? args.date_range
       : "365d";
-    const limit = (args && Number.isInteger(args.limit) && args.limit >= 1)
-      ? Math.min(args.limit, 200)
-      : 100;
-    const items = await fetchPendingOrdersForUser(mongo, email, { search, range, limit });
-    return JSON.stringify(items);
+    const result = await fetchPendingOrdersForUser(mongo, email, { search, range });
+    return JSON.stringify(result);
   } catch (e) {
-    return JSON.stringify({ error: String(e?.message || "Failed to fetch pending jobs") });
+    return JSON.stringify({ error: String(e?.message || "Failed to fetch job details") });
   }
 }
 
@@ -612,7 +652,7 @@ async function callOrders(
   const prepareTime = (performance.now() - step1Start).toFixed(2);
   
   const step2Start = performance.now();
-  const rs = await r.execute("dbo.portal_orders_list");
+  const rs = await r.execute("dbo.portal_orders_list2");
   const rows = rs.recordset || [];
   const executeTime = (performance.now() - step2Start).toFixed(2);
   
