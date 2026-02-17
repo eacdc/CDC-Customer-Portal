@@ -233,7 +233,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const approvalDate = formatDate(order.ApprovalDate);
     const committedDelivery = formatDate(order.CommittedDeliveryDate);
     const finishPlanDate = formatDate(order.FinishPlanDate);
-    const imageUrl = resolveImageUrl(order.ImageUrl);
+    const segmentName = order.SegmentName || '';
+    const imageUrl = resolveImageUrl(order.ImageUrl, segmentName);
+    const fallbackImageUrl = resolveImageUrl(null, segmentName);
     const title = order.Title || 'No Title';
     const poNumber = order.PoNumber || '-';
     const jobCardNo = order.JobCardNo || '-';
@@ -258,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="row align-items-start">
             <!-- Product Image - Always visible -->
             <div class="col-auto">
-              <img src="${imageUrl}" alt="Product" class="rounded" style="width: 100px; height: 100px; object-fit: contain; background-color: #e0e0e0;" onerror="this.onerror=null;this.src='${resolveImageUrl(null)}';">
+              <img src="${imageUrl}" alt="Product" class="rounded" style="width: 100px; height: 100px; object-fit: contain; background-color: #f5f5f5;" decoding="async" onerror="this.onerror=null;this.src='${fallbackImageUrl}';">
             </div>
             
             <!-- Main Content -->
@@ -1153,8 +1155,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return headers;
   }
 
-  function resolveImageUrl(rawUrl) {
-    const fallback = '/assets/img/products/1.png';
+  function resolveImageUrl(rawUrl, segmentName) {
+    const defaultBySegment = {
+      'Commercial': '/assets/img/products/default-book.jpeg',
+      'Packaging': '/assets/img/products/default-packaging.jpeg'
+    };
+    const fallback = (segmentName && defaultBySegment[segmentName])
+      ? defaultBySegment[segmentName]
+      : '/assets/img/products/1.png';
     if (!rawUrl) return fallback;
     try {
       const url = String(rawUrl).trim();
