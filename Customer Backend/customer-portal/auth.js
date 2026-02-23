@@ -59,12 +59,50 @@ async function validateEmailKey(pool, email, key) {
   };
 }
 
+/** For @cdcprinters.com: validate via sales procedure (returns ledger list + same output params). */
+async function validateSalesEmailLedger(pool, email, salesLedgerID) {
+  const r = pool.request();
+  r.input("Email", sql.NVarChar(320), email.trim().toLowerCase());
+  r.input("SalesLedgerID", sql.Int, salesLedgerID);
+  r.output("IsSuccess", sql.Bit);
+  r.output("LedgerIDsCsv", sql.NVarChar(sql.MAX));
+  r.output("Message", sql.NVarChar(200));
+  r.output("ContactName", sql.NVarChar(200));
+  const rs = await r.execute("dbo.portal_validate_sales_email_ledger_and_get_customers");
+  const ledgerData = extractLedgerData(rs.recordset);
+  return {
+    ok: !!rs.output.IsSuccess,
+    csv: rs.output.LedgerIDsCsv || "",
+    message: rs.output.Message || "",
+    contactName: rs.output.ContactName || "",
+    ledgers: ledgerData.ledgers,
+    ledgerNames: ledgerData.ledgerNames,
+  };
+}
+
 async function tryValidate(poolFactory, email, key) {
   try {
     const pool = await poolFactory();
     if (!pool)
       return { ok: false, ledgers: [], csv: "", message: "DB not configured", contactName: "" };
     return await validateEmailKey(pool, email, key);
+  } catch (e) {
+    return {
+      ok: false,
+      ledgers: [],
+      csv: "",
+      message: e.message || "DB error",
+      contactName: "",
+    };
+  }
+}
+
+async function tryValidateSalesEmail(poolFactory, email, salesLedgerID) {
+  try {
+    const pool = await poolFactory();
+    if (!pool)
+      return { ok: false, ledgers: [], csv: "", message: "DB not configured", contactName: "" };
+    return await validateSalesEmailLedger(pool, email, salesLedgerID);
   } catch (e) {
     return {
       ok: false,
@@ -93,8 +131,18 @@ export default async function authPlugin(fastify, opts) {
         return reply
           .code(400)
           .send({ error: "Password must be at least 6 chars" });
-      if (!customer_key)
-        return reply.code(400).send({ error: "customer_key is required" });
+
+      const isCdcSalesEmail = emailNorm.endsWith("@cdcprinters.com");
+      if (isCdcSalesEmail) {
+        const salesLedgerID = customer_key != null ? Number(customer_key) : NaN;
+        if (!Number.isFinite(salesLedgerID) || salesLedgerID < 1)
+          return reply
+            .code(400)
+            .send({ error: "Valid customer key (Sales Ledger ID) is required for @cdcprinters.com email" });
+      } else {
+        if (!customer_key)
+          return reply.code(400).send({ error: "customer_key is required" });
+      }
 
       const mongo = await getDb();
       if (await mongo.collection("users").findOne({ email: emailNorm })) {
@@ -103,10 +151,19 @@ export default async function authPlugin(fastify, opts) {
           .send({ error: "This email is already registered" });
       }
 
-      const [v1, v2] = await Promise.all([
-        tryValidate(db1, emailNorm, customer_key),
-        tryValidate(db2, emailNorm, customer_key),
-      ]);
+      let v1, v2;
+      if (isCdcSalesEmail) {
+        const salesLedgerID = Number(customer_key);
+        [v1, v2] = await Promise.all([
+          tryValidateSalesEmail(db1, emailNorm, salesLedgerID),
+          tryValidateSalesEmail(db2, emailNorm, salesLedgerID),
+        ]);
+      } else {
+        [v1, v2] = await Promise.all([
+          tryValidate(db1, emailNorm, customer_key),
+          tryValidate(db2, emailNorm, customer_key),
+        ]);
+      }
 
       const ok1 = v1.ok && v1.ledgers?.length > 0;
       const ok2 = v2.ok && v2.ledgers?.length > 0;
@@ -137,7 +194,8 @@ export default async function authPlugin(fastify, opts) {
         });
       await mongo.collection("tenants").insertOne({
         email: emailNorm,
-        customer_key,
+        customer_key: isCdcSalesEmail ? String(customer_key) : customer_key,
+        ...(isCdcSalesEmail && { sales_ledger_id: Number(customer_key) }),
         contactName,
         ledgerIds_db1: ok1 ? v1.ledgers : [],
         ledgerIds_db2: ok2 ? v2.ledgers : [],
@@ -162,7 +220,8 @@ export default async function authPlugin(fastify, opts) {
         },
         tenant: {
           email: emailNorm,
-          customer_key,
+          customer_key: isCdcSalesEmail ? String(customer_key) : customer_key,
+          ...(isCdcSalesEmail && { sales_ledger_id: Number(customer_key) }),
           contactName,
           has_db1: !!ok1,
           has_db2: !!ok2,
@@ -196,11 +255,13 @@ export default async function authPlugin(fastify, opts) {
       return reply.code(401).send({ error: "Invalid email or password" });
     }
 
-    // 🔄 Refresh ledger IDs from MSSQL
-    const [v1, v2] = await Promise.all([
-      tryFetchLedgers(db1, emailNorm),
-      tryFetchLedgers(db2, emailNorm),
-    ]);
+    // 🔄 Refresh ledger IDs from MSSQL (use sales procedure for @cdcprinters.com)
+    const isCdcSalesEmail = emailNorm.endsWith("@cdcprinters.com");
+    const [v1, v2] = await Promise.all(
+      isCdcSalesEmail
+        ? [tryFetchLedgersSalesEmail(db1, emailNorm), tryFetchLedgersSalesEmail(db2, emailNorm)]
+        : [tryFetchLedgers(db1, emailNorm), tryFetchLedgers(db2, emailNorm)]
+    );
 
     const ok1 = v1.ok && v1.ledgers?.length > 0;
     const ok2 = v2.ok && v2.ledgers?.length > 0;
@@ -240,9 +301,10 @@ export default async function authPlugin(fastify, opts) {
       );
     } else {
       // Fallback: if somehow tenant is missing but user exists, recreate a minimal tenant
+      // Use unique sentinel so unique index on customer_key is satisfied (MongoDB rejects multiple nulls)
       await db.collection("tenants").insertOne({
         email: emailNorm,
-        customer_key: null, // unknown at login; can be filled later if needed
+        customer_key: `__no_key:${emailNorm}`,
         contactName: contactName || null,
         createdAt: now,
         ...tenantUpdate,
@@ -274,10 +336,15 @@ export default async function authPlugin(fastify, opts) {
       userAgent: ua,
     });
 
-    // build final tenant view to return
+    // build final tenant view to return (mask __no_key: sentinel so client sees null)
+    const rawKey = tenant?.customer_key;
+    const customerKeyForClient =
+      typeof rawKey === "string" && rawKey.startsWith("__no_key:")
+        ? null
+        : (rawKey ?? null);
     const tenantFinal = {
       email: emailNorm,
-      customer_key: tenant?.customer_key || null,
+      customer_key: customerKeyForClient,
       has_db1: !!ok1,
       has_db2: !!ok2,
       ledgerIds_db1: ok1 ? v1.ledgers : [],
@@ -341,6 +408,26 @@ async function fetchLedgersForEmail(pool, email) {
   };
 }
 
+/** For @cdcprinters.com login: get ledgers via sales procedure (same recordset shape + IsSuccess, LedgerIDsCsv, Message). */
+async function fetchLedgersForSalesEmail(pool, email) {
+  const r = pool.request();
+  r.input("Email", sql.NVarChar(320), email.trim().toLowerCase());
+  r.output("IsSuccess", sql.Bit);
+  r.output("LedgerIDsCsv", sql.NVarChar(sql.MAX));
+  r.output("Message", sql.NVarChar(200));
+
+  const rs = await r.execute("dbo.portal_get_ledgers_for_sales_email");
+  const ledgerData = extractLedgerData(rs.recordset);
+
+  return {
+    ok: !!rs.output.IsSuccess,
+    csv: rs.output.LedgerIDsCsv || "",
+    message: rs.output.Message || "",
+    ledgers: ledgerData.ledgers,
+    ledgerNames: ledgerData.ledgerNames,
+  };
+}
+
 async function tryFetchLedgers(poolFactory, email) {
   try {
     const pool = await poolFactory();
@@ -348,6 +435,23 @@ async function tryFetchLedgers(poolFactory, email) {
       return { ok: false, ledgers: [], csv: "", message: "DB not configured" };
     }
     return await fetchLedgersForEmail(pool, email);
+  } catch (e) {
+    return {
+      ok: false,
+      ledgers: [],
+      csv: "",
+      message: e.message || "DB error",
+    };
+  }
+}
+
+async function tryFetchLedgersSalesEmail(poolFactory, email) {
+  try {
+    const pool = await poolFactory();
+    if (!pool) {
+      return { ok: false, ledgers: [], csv: "", message: "DB not configured" };
+    }
+    return await fetchLedgersForSalesEmail(pool, email);
   } catch (e) {
     return {
       ok: false,

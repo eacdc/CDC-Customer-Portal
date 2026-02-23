@@ -903,29 +903,55 @@ fastify.get("/dashboard", async (req, reply) => {
 
     const ids1 = tenant.ledgerIds_db1 || [];
     const ids2 = tenant.ledgerIds_db2 || [];
+    const names1 = tenant.ledgerNames_db1 || [];
+    const names2 = tenant.ledgerNames_db2 || [];
 
-    // Step 5: Call callOrders for both databases (parallel)
+    // Step 5: Call callOrders per ledger so we can tag each row with LedgerId and LedgerName
     const step5Start = performance.now();
-    const [rows1, rows2] = await Promise.all([
-      callOrders(db1(), ids1, {
-        from: win.from,
-        to: win.to,
-        status,
-        q,
-        cursor: cur,
-        limit,
-        sourceTag: "db1",
-      }, req.log),
-      callOrders(db2(), ids2, {
-        from: win.from,
-        to: win.to,
-        status,
-        q,
-        cursor: cur,
-        limit,
-        sourceTag: "db2",
-      }, req.log),
-    ]);
+    const opts1 = {
+      from: win.from,
+      to: win.to,
+      status,
+      q,
+      cursor: cur,
+      limit,
+      sourceTag: "db1",
+    };
+    const opts2 = {
+      from: win.from,
+      to: win.to,
+      status,
+      q,
+      cursor: cur,
+      limit,
+      sourceTag: "db2",
+    };
+    const rows1Batches = await Promise.all(
+      ids1.map((ledgerId, i) =>
+        callOrders(db1(), [ledgerId], opts1, req.log).then((rows) => {
+          const ledgerName = names1[i] ?? "";
+          rows.forEach((r) => {
+            r.LedgerId = ledgerId;
+            r.LedgerName = ledgerName;
+          });
+          return rows;
+        })
+      )
+    );
+    const rows2Batches = await Promise.all(
+      ids2.map((ledgerId, i) =>
+        callOrders(db2(), [ledgerId], opts2, req.log).then((rows) => {
+          const ledgerName = names2[i] ?? "";
+          rows.forEach((r) => {
+            r.LedgerId = ledgerId;
+            r.LedgerName = ledgerName;
+          });
+          return rows;
+        })
+      )
+    );
+    const rows1 = rows1Batches.flat();
+    const rows2 = rows2Batches.flat();
     stepTimings.fetchOrders = (performance.now() - step5Start).toFixed(2);
     stepTimings.db1Rows = rows1.length;
     stepTimings.db2Rows = rows2.length;
@@ -1229,23 +1255,57 @@ fastify.get("/dashboard", async (req, reply) => {
       return rows;
     };
 
-    // choose source
+    // choose source — call per ledger to tag each row with LedgerId and LedgerName
     const ids1 = tenant.ledgerIds_db1 || [];
     const ids2 = tenant.ledgerIds_db2 || [];
+    const names1 = tenant.ledgerNames_db1 || [];
+    const names2 = tenant.ledgerNames_db2 || [];
+
+    const tagRows = (rows, ledgerId, ledgerName) => {
+      rows.forEach((row) => {
+        row.LedgerId = ledgerId;
+        row.LedgerName = ledgerName ?? "";
+      });
+      return rows;
+    };
 
     let merged;
     if (source === "db1") {
-      merged = await execOne(db1(), ids1, "db1");
+      const batches = await Promise.all(
+        ids1.map((ledgerId, i) =>
+          execOne(db1(), [ledgerId], "db1").then((rows) =>
+            tagRows(rows, ledgerId, names1[i])
+          )
+        )
+      );
+      merged = batches.flat();
     } else if (source === "db2") {
-      merged = await execOne(db2(), ids2, "db2");
+      const batches = await Promise.all(
+        ids2.map((ledgerId, i) =>
+          execOne(db2(), [ledgerId], "db2").then((rows) =>
+            tagRows(rows, ledgerId, names2[i])
+          )
+        )
+      );
+      merged = batches.flat();
     } else {
-      const [a, b] = await Promise.allSettled([
-        execOne(db1(), ids1, "db1"),
-        execOne(db2(), ids2, "db2"),
+      const [a, b] = await Promise.all([
+        Promise.all(
+          ids1.map((ledgerId, i) =>
+            execOne(db1(), [ledgerId], "db1").then((rows) =>
+              tagRows(rows, ledgerId, names1[i])
+            )
+          )
+        ).then((arr) => arr.flat()),
+        Promise.all(
+          ids2.map((ledgerId, i) =>
+            execOne(db2(), [ledgerId], "db2").then((rows) =>
+              tagRows(rows, ledgerId, names2[i])
+            )
+          )
+        ).then((arr) => arr.flat()),
       ]);
-      const rows1 = a.status === "fulfilled" ? a.value : [];
-      const rows2 = b.status === "fulfilled" ? b.value : [];
-      merged = [...rows1, ...rows2];
+      merged = [...a, ...b];
     }
 
     // Filter by PODate after SQL procedure returns
@@ -1419,6 +1479,8 @@ fastify.get("/dashboard", async (req, reply) => {
 
     const ids1 = tenant.ledgerIds_db1 || [];
     const ids2 = tenant.ledgerIds_db2 || [];
+    const names1 = tenant.ledgerNames_db1 || [];
+    const names2 = tenant.ledgerNames_db2 || [];
 
     const tvp = (ids) => {
       const t = new sql.Table("dbo.IdList");
@@ -1503,19 +1565,51 @@ fastify.get("/dashboard", async (req, reply) => {
       return rows;
     };
 
+    const tagDispatchRows = (rows, ledgerId, ledgerName) => {
+      rows.forEach((row) => {
+        row.LedgerId = ledgerId;
+        row.LedgerName = ledgerName ?? "";
+      });
+      return rows;
+    };
+
     let merged = [];
     if (source === "db1") {
-      merged = await execOne(db1(), ids1, "db1");
+      const batches = await Promise.all(
+        ids1.map((ledgerId, i) =>
+          execOne(db1(), [ledgerId], "db1").then((rows) =>
+            tagDispatchRows(rows, ledgerId, names1[i])
+          )
+        )
+      );
+      merged = batches.flat();
     } else if (source === "db2") {
-      merged = await execOne(db2(), ids2, "db2");
+      const batches = await Promise.all(
+        ids2.map((ledgerId, i) =>
+          execOne(db2(), [ledgerId], "db2").then((rows) =>
+            tagDispatchRows(rows, ledgerId, names2[i])
+          )
+        )
+      );
+      merged = batches.flat();
     } else {
-      const [a, b] = await Promise.allSettled([
-        execOne(db1(), ids1, "db1"),
-        execOne(db2(), ids2, "db2"),
+      const [a, b] = await Promise.all([
+        Promise.all(
+          ids1.map((ledgerId, i) =>
+            execOne(db1(), [ledgerId], "db1").then((rows) =>
+              tagDispatchRows(rows, ledgerId, names1[i])
+            )
+          )
+        ).then((arr) => arr.flat()),
+        Promise.all(
+          ids2.map((ledgerId, i) =>
+            execOne(db2(), [ledgerId], "db2").then((rows) =>
+              tagDispatchRows(rows, ledgerId, names2[i])
+            )
+          )
+        ).then((arr) => arr.flat()),
       ]);
-      const rows1 = a.status === "fulfilled" ? a.value : [];
-      const rows2 = b.status === "fulfilled" ? b.value : [];
-      merged = [...rows1, ...rows2];
+      merged = [...a, ...b];
     }
 
     // Filter results to match the actual IST date range (if custom dates were used)
@@ -1729,6 +1823,8 @@ fastify.get("/dashboard", async (req, reply) => {
 
     const ids1 = tenant.ledgerIds_db1 || [];
     const ids2 = tenant.ledgerIds_db2 || [];
+    const names1 = tenant.ledgerNames_db1 || [];
+    const names2 = tenant.ledgerNames_db2 || [];
 
     const tvp = (ids) => {
       const t = new sql.Table("dbo.IdList");
@@ -1851,19 +1947,51 @@ fastify.get("/dashboard", async (req, reply) => {
       return rows;
     };
 
+    const tagOtifRows = (rows, ledgerId, ledgerName) => {
+      rows.forEach((row) => {
+        row.LedgerId = ledgerId;
+        row.LedgerName = ledgerName ?? "";
+      });
+      return rows;
+    };
+
     let merged = [];
     if (source === "db1") {
-      merged = await execOne(db1(), ids1, "db1");
+      const batches = await Promise.all(
+        ids1.map((ledgerId, i) =>
+          execOne(db1(), [ledgerId], "db1").then((rows) =>
+            tagOtifRows(rows, ledgerId, names1[i])
+          )
+        )
+      );
+      merged = batches.flat();
     } else if (source === "db2") {
-      merged = await execOne(db2(), ids2, "db2");
+      const batches = await Promise.all(
+        ids2.map((ledgerId, i) =>
+          execOne(db2(), [ledgerId], "db2").then((rows) =>
+            tagOtifRows(rows, ledgerId, names2[i])
+          )
+        )
+      );
+      merged = batches.flat();
     } else {
-      const [a, b] = await Promise.allSettled([
-        execOne(db1(), ids1, "db1"),
-        execOne(db2(), ids2, "db2"),
+      const [a, b] = await Promise.all([
+        Promise.all(
+          ids1.map((ledgerId, i) =>
+            execOne(db1(), [ledgerId], "db1").then((rows) =>
+              tagOtifRows(rows, ledgerId, names1[i])
+            )
+          )
+        ).then((arr) => arr.flat()),
+        Promise.all(
+          ids2.map((ledgerId, i) =>
+            execOne(db2(), [ledgerId], "db2").then((rows) =>
+              tagOtifRows(rows, ledgerId, names2[i])
+            )
+          )
+        ).then((arr) => arr.flat()),
       ]);
-      const rows1 = a.status === "fulfilled" ? a.value : [];
-      const rows2 = b.status === "fulfilled" ? b.value : [];
-      merged = [...rows1, ...rows2];
+      merged = [...a, ...b];
     }
 
     // All date filtering is done in SQL procedure - no JavaScript filtering needed
