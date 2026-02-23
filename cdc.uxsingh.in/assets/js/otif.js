@@ -29,6 +29,27 @@ document.addEventListener('DOMContentLoaded', () => {
   initDateRangeHandlers();
   initOtifTable();
 
+  function getRowLedgerName(row) {
+    if (!row || typeof row !== 'object') return '';
+    return (row.LedgerName || row.CustomerName || row.Ledger || '').toString().trim();
+  }
+
+  function applyLedgerFilter(rows) {
+    if (typeof window.getSelectedLedgerNames !== 'function') return rows || [];
+    const selected = window.getSelectedLedgerNames();
+    if (!Array.isArray(selected) || selected.length === 0) return [];
+    const set = new Set(selected.map((s) => String(s).trim()).filter(Boolean));
+    if (set.size === 0) return [];
+    return (rows || []).filter((row) => {
+      const name = getRowLedgerName(row);
+      return name && set.has(name);
+    });
+  }
+
+  window.addEventListener('ledgerFilterChange', () => {
+    if (state.dataTable) state.dataTable.ajax.reload();
+  });
+
   function getStoredSession() {
     try {
       const raw = localStorage.getItem(OTIF_SESSION_KEY);
@@ -63,8 +84,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return headers;
   }
 
-  function resolveImageUrl(rawUrl) {
-    const fallback = '/assets/img/products/1.png';
+  function resolveImageUrl(rawUrl, segmentName) {
+    const defaultBySegment = {
+      'Commercial': '/assets/img/products/default-book.jpeg',
+      'Packaging': '/assets/img/products/default-packaging.jpeg'
+    };
+    const fallback = (segmentName && defaultBySegment[segmentName])
+      ? defaultBySegment[segmentName]
+      : '/assets/img/products/default-book.jpeg';
     if (!rawUrl) return fallback;
     try {
       const url = String(rawUrl).trim();
@@ -228,10 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
             d.limit = DEFAULT_LIMIT;
           },
           dataSrc: function(json) {
-            if (json && json.items) {
-              return json.items;
-            }
-            return json || [];
+            const raw = (json && json.items) ? json.items : (json || []);
+            return applyLedgerFilter(Array.isArray(raw) ? raw : []);
           },
           error: function(xhr, error, thrown) {
             console.error('Error loading OTIF data:', error);
@@ -260,10 +285,12 @@ document.addEventListener('DOMContentLoaded', () => {
             className: 'text-start align-middle',
             render: function(data, type, row) {
               const itemName = row.ItemName || 'No Item';
-              const imageUrl = resolveImageUrl(row.ImageUrl);
+              const segmentName = row.SegmentName || '';
+              const imageUrl = resolveImageUrl(row.ImageUrl, segmentName);
+              const fallbackUrl = resolveImageUrl(null, segmentName);
               return `
                 <div class="d-flex align-items-center gap-2">
-                  <img src="${imageUrl}" alt="${itemName}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;" onerror="this.onerror=null;this.src='${resolveImageUrl(null)}';">
+                  <img src="${imageUrl}" alt="${itemName}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;" onerror="this.onerror=null;this.src='${fallbackUrl}';">
                   <span>${itemName}</span>
                 </div>
               `;

@@ -180,6 +180,29 @@ document.addEventListener('DOMContentLoaded', function (e) {
   // Initialize date range handlers
   initDateRangeHandlers();
 
+  function getRowLedgerName(row) {
+    if (!row || typeof row !== 'object') return '';
+    return (row.LedgerName || row.CustomerName || row.Ledger || '').toString().trim();
+  }
+
+  function applyLedgerFilter(rows) {
+    if (typeof window.getSelectedLedgerNames !== 'function') return rows || [];
+    const selected = window.getSelectedLedgerNames();
+    if (!Array.isArray(selected) || selected.length === 0) return [];
+    const set = new Set(selected.map(function(s) { return String(s).trim(); }).filter(Boolean));
+    if (set.size === 0) return [];
+    return (rows || []).filter(function(row) {
+      const name = getRowLedgerName(row);
+      return name && set.has(name);
+    });
+  }
+
+  window.addEventListener('ledgerFilterChange', function() {
+    if (tabState.all.dataTable) tabState.all.dataTable.ajax.reload();
+    if (tabState.pending_files.dataTable) tabState.pending_files.dataTable.ajax.reload();
+    if (tabState.pending_approval.dataTable) tabState.pending_approval.dataTable.ajax.reload();
+  });
+
   // DataTable (js)
   // --------------------------------------------------------------------
   const dt_dashboard_table = document.querySelector('.all-approvals');
@@ -200,10 +223,8 @@ document.addEventListener('DOMContentLoaded', function (e) {
           }
         },
         dataSrc: function(json) {
-          if (json && json.items) {
-            return json.items;
-          }
-          return json || [];
+          const raw = (json && json.items) ? json.items : (json || []);
+          return applyLedgerFilter(Array.isArray(raw) ? raw : []);
         },
         error: function(xhr, error, thrown) {
           console.error('Error loading approvals:', error);
@@ -430,11 +451,8 @@ document.addEventListener('DOMContentLoaded', function (e) {
                           }
                         },
                         dataSrc: function(json) {
-                          // Return items directly - date filtering is done in backend
-                          if (json && json.items) {
-                            return json.items;
-                          }
-                          return json || [];
+                          const raw = (json && json.items) ? json.items : (json || []);
+                          return applyLedgerFilter(Array.isArray(raw) ? raw : []);
                         },
                         error: function(xhr, error, thrown) {
                           console.error('Error loading pending files:', error);
@@ -651,11 +669,8 @@ document.addEventListener('DOMContentLoaded', function (e) {
                       }
                     },
                     dataSrc: function(json) {
-                      // Return items directly - date filtering is done in backend
-                      if (json && json.items) {
-                        return json.items;
-                      }
-                      return json || [];
+                      const raw = (json && json.items) ? json.items : (json || []);
+                      return applyLedgerFilter(Array.isArray(raw) ? raw : []);
                     },
                     error: function(xhr, error, thrown) {
                       console.error('Error loading pending approvals:', error);

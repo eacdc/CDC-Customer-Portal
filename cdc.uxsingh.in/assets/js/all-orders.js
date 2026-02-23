@@ -91,6 +91,18 @@ document.addEventListener('DOMContentLoaded', () => {
   loadOrdersForTab('pending', 'pending-orders-container');
   loadOrdersForTab('completed', 'completed-orders-container');
 
+  // Re-apply ledger filter when CDC Printers ledger dropdown changes
+  window.addEventListener('ledgerFilterChange', () => {
+    ['all', 'pending', 'completed'].forEach((tab) => {
+      const state = tabState[tab];
+      if (state && state.orders) {
+        state.filteredOrders = applyLedgerFilter(state.orders);
+        state.currentPage = 1;
+        renderOrdersWithPagination(tab);
+      }
+    });
+  });
+
   // Bind modal handlers
   bindModalHandlers();
 
@@ -130,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const orders = await loadOrders(tab);
       // Backend already filters by date; use response as-is
       tabState[tab].orders = orders;
-      tabState[tab].filteredOrders = orders;
+      tabState[tab].filteredOrders = applyLedgerFilter(orders);
       
       tabState[tab].currentPage = 1; // Reset to page 1
       renderOrdersWithPagination(tab);
@@ -138,6 +150,24 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error loading orders:', error);
       container.innerHTML = `<div class="col-12 text-center"><p class="text-danger">${error.userMessage || 'Failed to load orders.'}</p></div>`;
     }
+  }
+
+  function getOrderLedgerName(order) {
+    if (!order || typeof order !== 'object') return '';
+    const name = (order.LedgerName || order.CustomerName || order.Ledger || '').toString().trim();
+    return name;
+  }
+
+  function applyLedgerFilter(orders) {
+    if (typeof window.getSelectedLedgerNames !== 'function') return orders || [];
+    const selected = window.getSelectedLedgerNames();
+    if (!Array.isArray(selected) || selected.length === 0) return [];
+    const set = new Set(selected.map((s) => String(s).trim()).filter(Boolean));
+    if (set.size === 0) return [];
+    return (orders || []).filter((order) => {
+      const name = getOrderLedgerName(order);
+      return name && set.has(name);
+    });
   }
 
   async function loadOrders(tab) {

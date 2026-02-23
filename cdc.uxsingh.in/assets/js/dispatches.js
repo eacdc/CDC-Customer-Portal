@@ -39,6 +39,31 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load dispatches
   loadDispatches();
 
+  window.addEventListener('ledgerFilterChange', () => {
+    if (state.dispatches) {
+      state.filteredDispatches = applyLedgerFilter(state.dispatches);
+      state.currentPage = 1;
+      applySearchFilter();
+    }
+  });
+
+  function getRowLedgerName(row) {
+    if (!row || typeof row !== 'object') return '';
+    return (row.LedgerName || row.CustomerName || row.Ledger || '').toString().trim();
+  }
+
+  function applyLedgerFilter(rows) {
+    if (typeof window.getSelectedLedgerNames !== 'function') return rows || [];
+    const selected = window.getSelectedLedgerNames();
+    if (!Array.isArray(selected) || selected.length === 0) return [];
+    const set = new Set(selected.map((s) => String(s).trim()).filter(Boolean));
+    if (set.size === 0) return [];
+    return (rows || []).filter((row) => {
+      const name = getRowLedgerName(row);
+      return name && set.has(name);
+    });
+  }
+
   function getStoredSession() {
     try {
       const raw = localStorage.getItem(DISPATCHES_SESSION_KEY);
@@ -76,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const dispatches = await fetchDispatches();
       
       state.dispatches = dispatches;
-      state.filteredDispatches = dispatches; // Initialize filtered dispatches
+      state.filteredDispatches = applyLedgerFilter(dispatches);
       state.currentPage = 1; // Reset to page 1
       applySearchFilter();
     } catch (error) {
@@ -224,11 +249,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!container || !state) return;
 
     const query = state.searchInput ? state.searchInput.value.trim().toLowerCase() : '';
-    const source = Array.isArray(state.dispatches) ? state.dispatches : [];
-
+    const afterLedger = applyLedgerFilter(state.dispatches || []);
     const filtered = query
-      ? source.filter(dispatch => matchesSearch(dispatch, query))
-      : source;
+      ? afterLedger.filter(dispatch => matchesSearch(dispatch, query))
+      : afterLedger;
 
     // Update filtered dispatches and reset to page 1
     state.filteredDispatches = filtered;

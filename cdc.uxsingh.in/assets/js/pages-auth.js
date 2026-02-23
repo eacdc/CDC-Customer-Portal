@@ -362,7 +362,8 @@ document.addEventListener('DOMContentLoaded', function () {
           });
         }
 
-        if (isLogin) {
+        // Redirect after success: both login and register send user to the same post-auth page
+        if (isLogin || isRegister) {
           const targetHref = resolveRedirectTarget(successRedirect);
           setTimeout(() => {
             window.location.href = targetHref;
