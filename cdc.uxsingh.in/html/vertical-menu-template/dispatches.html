@@ -758,6 +758,25 @@
   <!-- Loading Overlay -->
   <script src="../../assets/js/loading-overlay.js"></script>
 
+  <!-- Shipment Details Modal (same as Orders page) -->
+  <div class="modal fade last-status-pt dd" id="shipmentDetailsModal">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5>Shipment Details</h5><button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <table class="table">
+            <thead>
+              <tr id="shipmentDetailsTableHeader"></tr>
+            </thead>
+            <tbody id="shipmentDetailsContent"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Custom Date Modal for Dispatches -->
   <div class="modal fade" id="customDateModalDispatches" tabindex="-1" aria-labelledby="customDateModalDispatchesLabel" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">

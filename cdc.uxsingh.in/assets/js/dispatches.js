@@ -36,6 +36,28 @@ document.addEventListener('DOMContentLoaded', () => {
   initSearchInput();
   initDateRangeHandlers();
 
+  // Track button: open Shipment Details modal (same as Orders page)
+  document.addEventListener('click', async function(e) {
+    const btn = e.target.closest('.dispatch-track-btn');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const jobId = btn.getAttribute('data-job-id') || '0';
+    const containerNo = (btn.getAttribute('data-container-no') || '').trim();
+    const source = btn.getAttribute('data-source') || 'db1';
+    if (!containerNo) {
+      alert('No container number for this dispatch.');
+      return;
+    }
+    try {
+      const rows = await loadShipmentDetails(jobId, containerNo, source);
+      displayShipmentDetailsModal(rows, containerNo);
+    } catch (err) {
+      console.error('[DISPATCHES] Shipment details error:', err);
+      alert(err.userMessage || 'Failed to load shipment details.');
+    }
+  });
+
   // Load dispatches
   loadDispatches();
 
@@ -169,21 +191,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const col = document.createElement('div');
     col.className = 'col-12';
 
+    const segmentName = dispatch.SegmentName || dispatch.segmentname || '';
+    const imageUrl = resolveImageUrl(dispatch.ImageUrl, segmentName);
+    const fallbackImageUrl = resolveImageUrl(null, segmentName);
+
     const dispatchDate = formatDate(dispatch.DispatchDate);
     const poDate = formatDate(dispatch.PODate);
-    const imageUrl = resolveImageUrl(dispatch.ImageUrl);
     const item = dispatch.Item || 'No Item';
     const jobNum = dispatch.JobNum || '-';
     const qtyDispatched = dispatch.QtyDispatched || '0';
     const dispatchId = dispatch.DispatchId || '-';
 
+    const containerNo = (dispatch.ContainerNo ?? dispatch.containerno ?? '').toString().trim();
+    const showTrack = containerNo.length > 5;
+    const jobId = dispatch.JobBookingId ?? dispatch.jobbookingid ?? 0;
+    const source = dispatch._source ?? 'db1';
+
+    const trackButtonHtml = showTrack
+      ? ` <a href="javascript:void(0);" class="btn btn-sm btn-label-primary dispatch-track-btn ms-2" data-job-id="${jobId}" data-container-no="${containerNo}" data-source="${source}" title="Track"><i class="icon-base ti tabler-map-pin me-1"></i>Track</a>`
+      : '';
+
     col.innerHTML = `
       <div class="card dispatch-card">
         <div class="card-body p-4">
           <div class="row align-items-start">
-            <!-- Product Image -->
+            <!-- Product Image (segment-based default) -->
             <div class="col-auto dispatch-card-image">
-              <img src="${imageUrl}" alt="Product" class="rounded" style="width: 100px; height: 100px; object-fit: contain; background-color: #e0e0e0;" onerror="this.onerror=null;this.src='${resolveImageUrl(null)}';">
+              <img src="${imageUrl}" alt="Product" class="rounded" style="width: 100px; height: 100px; object-fit: contain; background-color: #e0e0e0;" onerror="this.onerror=null;this.src='${fallbackImageUrl}';">
             </div>
             
             <!-- Dispatch Details -->
@@ -200,10 +234,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
               </div>
               
-              <!-- Dispatch Stats -->
+              <!-- Dispatch Stats: Qty Dispatched + Track button (when container has 5+ chars) -->
               <div class="row mt-3 align-items-center">
-                <div class="col-auto">
-                  <p class="mb-0"><strong>Qty Dispatched:</strong> ${qtyDispatched}</p>
+                <div class="col-auto d-flex align-items-center flex-wrap">
+                  <p class="mb-0"><strong>Qty Dispatched:</strong> ${qtyDispatched}</p>${trackButtonHtml}
                 </div>
               </div>
             </div>
@@ -525,6 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function buildAuthHeaders() {
     const headers = {
+      'Accept': 'application/json',
       'Content-Type': 'application/json'
     };
     if (session?.token) {
@@ -533,8 +568,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return headers;
   }
 
-  function resolveImageUrl(rawUrl) {
-    const fallback = '/assets/img/products/1.png';
+  function resolveImageUrl(rawUrl, segmentName) {
+    const defaultBySegment = {
+      'Commercial': '/assets/img/products/default-book.jpeg',
+      'Packaging': '/assets/img/products/default-packaging.jpeg'
+    };
+    const fallback = (segmentName && defaultBySegment[segmentName])
+      ? defaultBySegment[segmentName]
+      : '/assets/img/products/1.png';
     if (!rawUrl) return fallback;
     try {
       const url = String(rawUrl).trim();
@@ -544,6 +585,63 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch {
       return fallback;
     }
+  }
+
+  async function loadShipmentDetails(jobId, containerNo, source) {
+    if (!containerNo) throw userFacingError('Container number is missing.');
+    const apiBase = getApiBase();
+    let url = `${apiBase}/orders/${encodeURIComponent(jobId)}/shipment-details?containerNo=${encodeURIComponent(containerNo)}`;
+    if (source) url += `&source=${encodeURIComponent(source)}`;
+    const response = await fetch(url, { headers: buildAuthHeaders() });
+    if (response.status === 404) return [];
+    if (!response.ok) {
+      const body = await safeJson(response);
+      throw userFacingError(body?.error || 'Unable to load shipment details.');
+    }
+    const body = await response.json();
+    return Array.isArray(body) ? body : [];
+  }
+
+  function displayShipmentDetailsModal(rows, containerNo) {
+    const modalElement = document.getElementById('shipmentDetailsModal');
+    const headerRow = document.getElementById('shipmentDetailsTableHeader');
+    const tbody = document.getElementById('shipmentDetailsContent');
+    if (!modalElement || !headerRow || !tbody) return;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      headerRow.innerHTML = '<th>Container Number</th>';
+      tbody.innerHTML = `<tr><td class="text-center">${containerNo ? escapeHtml(String(containerNo).trim()) : '—'}</td></tr>`;
+    } else {
+      const first = rows[0];
+      const keys = Object.keys(first).filter(k => first[k] !== undefined && first[k] !== null && typeof first[k] !== 'object');
+      if (keys.length === 0) keys.push(...Object.keys(first));
+      const toLabel = (k) => (k && String(k).toLowerCase() === 'link') ? 'Track' : k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+      const isLinkKey = (k) => k && String(k).toLowerCase() === 'link';
+      const isUrl = (v) => typeof v === 'string' && /^https?:\/\/\S+/i.test(v.trim());
+      headerRow.innerHTML = keys.map(k => `<th>${toLabel(k)}</th>`).join('');
+      tbody.innerHTML = rows.map(row => {
+        return `<tr>${keys.map(k => {
+          const v = row[k];
+          if (isLinkKey(k) && isUrl(v)) {
+            const url = String(v).trim();
+            return `<td><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="d-inline-flex align-items-center gap-1 text-primary" title="Track"><i class="icon-base ti tabler-map-pin"></i> Track</a></td>`;
+          }
+          const display = v === undefined || v === null ? '-' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+          const formatted = (v instanceof Date || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v))) ? formatDate(v) : display;
+          return `<td>${escapeHtml(formatted)}</td>`;
+        }).join('')}</tr>`;
+      }).join('');
+    }
+    let modal = bootstrap.Modal.getInstance(modalElement);
+    if (!modal) modal = new bootstrap.Modal(modalElement);
+    modal.show();
+  }
+
+  function escapeHtml(str) {
+    if (str == null) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
   }
 
   async function safeJson(response) {

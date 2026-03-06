@@ -193,7 +193,22 @@ document.addEventListener('DOMContentLoaded', () => {
       // Predefined range
       url += `&range=${encodeURIComponent(dateRange)}`;
     }
-    
+
+    // Log exact request used to load orders (backend uses this to call dbo.portal_orders_list2)
+    const queryParams = {
+      tab,
+      limit: DEFAULT_LIMIT,
+      ...(searchQuery && { q: searchQuery }),
+      ...(state.customDates
+        ? { from: state.customDates.from, to: state.customDates.to }
+        : { range: dateRange })
+    };
+    console.log('[ORDERS] Request (calls dbo.portal_orders_list2):', {
+      url,
+      method: 'GET',
+      queryParams
+    });
+
     const startTime = performance.now();
     const response = await fetch(url, {
       headers: buildAuthHeaders()
@@ -275,6 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const status = order.FinalOrderStatus || 'Pending';
     const jobId = order.JobBookingId || order.jobbookingid || '';
     const source = order.source || order.sourceTag || '';
+    const containerNo = order.ContainerNo ?? order.containerno ?? '';
 
     // Status badge color
     let statusClass = 'bg-label-warning';
@@ -366,6 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   <button type="button" class="btn btn-sm btn-label-secondary process-details-btn" data-jobid="${jobId}" data-source="${source}">
                     Process Details
                   </button>
+                  <a href="javascript:void(0);" class="btn btn-sm btn-label-primary shipment-details-btn" data-jobid="${jobId}" data-source="${source}" data-container-no="${containerNo}">Shipment Details</a>
                   <a href="javascript:void(0);" class="text-primary delivery-dates-btn" data-jobid="${jobId}" data-source="${source}">Delivery Dates</a>
                 </div>
               </div>
@@ -389,7 +406,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <small class="text-muted text-uppercase">Job Card No.</small>
               <span class="fw-semibold">#${jobCardNo}</span>
             </div>
-            <div class="order-card-info-item">
+            <div class="order-card-info-item d-flex flex-wrap gap-2 align-items-center">
+              <a href="javascript:void(0);" class="btn btn-sm btn-label-primary shipment-details-btn" data-jobid="${jobId}" data-source="${source}" data-container-no="${containerNo}">Shipment Details</a>
               <a href="javascript:void(0);" class="btn btn-sm btn-label-primary delivery-dates-btn" data-jobid="${jobId}" data-source="${source}">Delivery Dates</a>
             </div>
           </div>
@@ -872,6 +890,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
+
+    // Shipment Details button handler
+    document.addEventListener('click', async function(e) {
+      const btn = e.target.closest('.shipment-details-btn');
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const jobId = btn.getAttribute('data-jobid');
+        const source = btn.getAttribute('data-source');
+        const containerNo = (btn.getAttribute('data-container-no') || '').trim();
+        
+        if (!containerNo) {
+          alert('No container number for this order. Shipment details are not available.');
+          return;
+        }
+        if (!jobId || jobId.trim() === '') {
+          alert('Order identifier is missing. Cannot load shipment details.');
+          return;
+        }
+
+        try {
+          const rows = await loadShipmentDetails(jobId, containerNo, source);
+          displayShipmentDetailsModal(rows, containerNo);
+        } catch (error) {
+          console.error('Error loading shipment details:', error);
+          alert(error.userMessage || 'Failed to load shipment details.');
+        }
+      }
+    });
   }
 
   async function loadProcesses(jobId, source) {
@@ -922,6 +969,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const body = await response.json();
     return Array.isArray(body) ? body : body?.items || [];
+  }
+
+  async function loadShipmentDetails(jobId, containerNo, source) {
+    if (!jobId || !containerNo) {
+      throw userFacingError('Order identifier or container number is missing.');
+    }
+    const apiBase = getApiBase();
+    let url = `${apiBase}/orders/${encodeURIComponent(jobId)}/shipment-details?containerNo=${encodeURIComponent(containerNo)}`;
+    if (source) url += `&source=${encodeURIComponent(source)}`;
+
+    const response = await fetch(url, {
+      headers: buildAuthHeaders()
+    });
+
+    if (response.status === 404) {
+      return [];
+    }
+    if (!response.ok) {
+      const body = await safeJson(response);
+      throw userFacingError(body?.error || 'Unable to load shipment details.');
+    }
+    const body = await response.json();
+    return Array.isArray(body) ? body : [];
   }
 
   async function loadInspections(jobId, processId, source) {
@@ -1170,6 +1240,69 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error showing delivery dates modal:', error);
       alert('Failed to display delivery dates modal');
     }
+  }
+
+  function displayShipmentDetailsModal(rows, containerNo) {
+    const modalElement = document.getElementById('shipmentDetailsModal');
+    const headerRow = document.getElementById('shipmentDetailsTableHeader');
+    const tbody = document.getElementById('shipmentDetailsContent');
+
+    if (!modalElement || !headerRow || !tbody) {
+      console.error('Shipment details modal elements not found');
+      alert('Modal elements not found. Please refresh the page.');
+      return;
+    }
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      headerRow.innerHTML = '<th>Container Number</th>';
+      const displayNo = containerNo ? escapeHtml(String(containerNo).trim()) : '—';
+      tbody.innerHTML = `<tr><td class="text-center">${displayNo}</td></tr>`;
+    } else {
+      const first = rows[0];
+      const keys = Object.keys(first).filter(k => first[k] !== undefined && first[k] !== null && typeof first[k] !== 'object');
+      if (keys.length === 0) {
+        keys.push(...Object.keys(first));
+      }
+      const toLabel = (k) => {
+        if (k && String(k).toLowerCase() === 'link') return 'Track';
+        return k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+      };
+      const isLinkKey = (k) => k && String(k).toLowerCase() === 'link';
+      const isUrl = (v) => typeof v === 'string' && /^https?:\/\/\S+/i.test(v.trim());
+      headerRow.innerHTML = keys.map(k => `<th>${toLabel(k)}</th>`).join('');
+      tbody.innerHTML = rows.map(row => {
+        return `<tr>${keys.map(k => {
+          const v = row[k];
+          if (isLinkKey(k) && isUrl(v)) {
+            const url = String(v).trim();
+            const safeUrl = escapeHtml(url);
+            return `<td><a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="d-inline-flex align-items-center gap-1 text-primary" title="Track"><i class="icon-base ti tabler-map-pin"></i> Track</a></td>`;
+          }
+          const display = v === undefined || v === null ? '-' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+          const formatted = (v instanceof Date || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v))) ? formatDate(v) : display;
+          return `<td>${escapeHtml(formatted)}</td>`;
+        }).join('')}</tr>`;
+      }).join('');
+    }
+
+    try {
+      let modal = bootstrap.Modal.getInstance(modalElement);
+      if (!modal) {
+        modal = new bootstrap.Modal(modalElement);
+      }
+      modal.show();
+    } catch (error) {
+      console.error('Error showing shipment details modal:', error);
+      alert('Failed to display shipment details modal');
+    }
+  }
+
+  function escapeHtml(str) {
+    if (str == null) return '';
+    const s = String(str);
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
   }
 
   function buildAuthHeaders() {
