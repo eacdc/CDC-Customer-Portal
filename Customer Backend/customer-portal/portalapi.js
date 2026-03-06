@@ -650,7 +650,25 @@ async function callOrders(
   r.input("AfterJobId", sql.Int, afterJobId);
   r.input("Limit", sql.Int, limitValue);
   const prepareTime = (performance.now() - step1Start).toFixed(2);
-  
+
+  const procedureCallLog = {
+    procedure: "dbo.portal_orders_list2",
+    LedgerIds: ledgerIds,
+    FromDate: fromDate ? fromDate.toISOString?.() ?? String(fromDate) : null,
+    ToDate: toDate ? toDate.toISOString?.() ?? String(toDate) : null,
+    Status: statusValue,
+    Search: searchValue,
+    AfterDate: afterDate ? (afterDate.toISOString?.() ?? String(afterDate)) : null,
+    AfterJobId: afterJobId,
+    Limit: limitValue,
+    sourceTag,
+  };
+  if (logger && typeof logger.info === "function") {
+    logger.info({ msg: "[ORDERS API] portal_orders_list2 call", ...procedureCallLog });
+  } else {
+    console.log("[ORDERS API] portal_orders_list2 call", procedureCallLog);
+  }
+
   const step2Start = performance.now();
   const rs = await r.execute("dbo.portal_orders_list2");
   const rows = rs.recordset || [];
@@ -1117,6 +1135,43 @@ fastify.get("/dashboard", async (req, reply) => {
     return chosen;
   });
 
+  // GET /api/orders/:jobId/shipment-details?containerNo=XXX&source=db1|db2
+  // Returns rows from ShipmentETA where containernumber = containerNo (ContainerNo from portal_orders_list2).
+  fastify.get("/orders/:jobId/shipment-details", async (req, reply) => {
+    const { jobId } = req.params;
+    const { containerNo, source } = req.query || {};
+
+    if (!containerNo || String(containerNo).trim() === "") {
+      return reply.code(400).send({ error: "containerNo is required" });
+    }
+
+    const mongo = await getDb();
+    const tenant = await mongo
+      .collection("tenants")
+      .findOne({ email: req.user.email });
+    if (!tenant)
+      return reply.code(400).send({ error: "Tenant binding missing" });
+
+    const pool = source === "db2" ? db2() : db1();
+    const ids = source === "db2" ? (tenant.ledgerIds_db2 || []) : (tenant.ledgerIds_db1 || []);
+
+    try {
+      const r = (await pool).request();
+      r.input("ContainerNo", sql.NVarChar(100), String(containerNo).trim());
+      const rs = await r.query(
+        "SELECT * FROM dbo.ShipmentETA WHERE containernumber = @ContainerNo"
+      );
+      const rows = rs.recordset || [];
+      return rows;
+    } catch (err) {
+      req.log?.error?.({ err, jobId, containerNo }, "ShipmentETA query failed");
+      return reply.code(500).send({
+        error: "Unable to load shipment details.",
+        message: err?.message || String(err),
+      });
+    }
+  });
+
   // GET /api/approvals?tab=all|pending_approval|pending_files&range=30d|90d|180d|365d&q=&limit=25&cursor=base64(date|id)&source=db1|db2
   // Also supports: /api/approvals?from=YYYY-MM-DD&to=YYYY-MM-DD for custom date ranges
   fastify.get("/approvals", async (req, reply) => {
@@ -1545,7 +1600,7 @@ fastify.get("/dashboard", async (req, reply) => {
       r.input("AfterId", sql.BigInt, after?.id || null);
       r.input("Limit", sql.Int, Number(limit) + 5);
 
-      const rs = await r.execute("dbo.portal_dispatches_list");
+      const rs = await r.execute("dbo.portal_dispatches_list2");
       const rows = rs.recordset || [];
       
       // req.log.info({
