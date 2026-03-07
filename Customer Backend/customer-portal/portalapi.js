@@ -696,6 +696,60 @@ async function callOrders(
   return rows;
 }
 
+/**
+ * Call GetPaperLedger_ByClient_Manu for one ledger. Params: LedgerId, StartDate, EndDate.
+ * @returns {Promise<object[]>} recordset rows (ItemName, RowType, VoucherDate, QtyReceived, QtyIssued, ...)
+ */
+async function callPaperLedger(pool, ledgerId, fromDate, toDate, sourceTag, logger = console) {
+  const r = (await pool).request();
+  r.input("LedgerId", sql.Int, ledgerId);
+  r.input("StartDate", sql.Date, fromDate);
+  r.input("EndDate", sql.Date, toDate);
+  const rs = await r.execute("dbo.GetPaperLedger_ByClient_Manu");
+  const rows = rs.recordset || [];
+  rows.forEach((row) => {
+    row._source = sourceTag;
+  });
+  if (logger && typeof logger.info === "function") {
+    logger.info({
+      msg: "[PAPER-LEDGER] GetPaperLedger_ByClient_Manu call",
+      ledgerId,
+      fromDate: fromDate ? fromDate.toISOString?.() ?? String(fromDate) : null,
+      toDate: toDate ? toDate.toISOString?.() ?? String(toDate) : null,
+      sourceTag,
+      rowCount: rows.length
+    });
+  }
+  return rows;
+}
+
+/**
+ * Call GetPaperLedgerSummary_ByClient_Manu for one ledger. Params: LedgerId, StartDate, EndDate.
+ * @returns {Promise<object[]>} recordset rows (ItemName, Opening, Receipt, Issued, Closing, ...)
+ */
+async function callPaperLedgerSummary(pool, ledgerId, fromDate, toDate, sourceTag, logger = console) {
+  const r = (await pool).request();
+  r.input("LedgerId", sql.Int, ledgerId);
+  r.input("StartDate", sql.Date, fromDate);
+  r.input("EndDate", sql.Date, toDate);
+  const rs = await r.execute("dbo.GetPaperLedgerSummary_ByClient_Manu");
+  const rows = rs.recordset || [];
+  rows.forEach((row) => {
+    row._source = sourceTag;
+  });
+  if (logger && typeof logger.info === "function") {
+    logger.info({
+      msg: "[PAPER-LEDGER-SUMMARY] GetPaperLedgerSummary_ByClient_Manu call",
+      ledgerId,
+      fromDate: fromDate ? fromDate.toISOString?.() ?? String(fromDate) : null,
+      toDate: toDate ? toDate.toISOString?.() ?? String(toDate) : null,
+      sourceTag,
+      rowCount: rows.length
+    });
+  }
+  return rows;
+}
+
 export default async function portalApiPlugin(fastify, opts) {
 
   // GET /dashboard
@@ -1018,6 +1072,157 @@ fastify.get("/dashboard", async (req, reply) => {
     });
 
     return { items: page, nextCursor };
+  });
+
+  // GET /api/paper-ledger?range=30d|90d|180d|365d&from=ISO&to=ISO
+  // Same behaviour as orders: run GetPaperLedger_ByClient_Manu on both DBs with corresponding ledger IDs.
+  fastify.get("/paper-ledger", async (req, reply) => {
+    try {
+      const { range = "90d", from: fromParam, to: toParam } = req.query || {};
+      let fromDate;
+      let toDate;
+      if (fromParam && toParam) {
+        fromDate = new Date(fromParam);
+        toDate = new Date(toParam);
+        if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+          return reply.code(400).send({ error: "Invalid from or to date" });
+        }
+      } else {
+        const win = parseRange(String(range));
+        fromDate = win.from;
+        toDate = win.to;
+      }
+
+      const mongo = await getDb();
+      const tenant = await mongo
+        .collection("tenants")
+        .findOne({ email: req.user.email });
+      if (!tenant) {
+        return reply.code(400).send({ error: "Tenant binding missing" });
+      }
+
+      const ids1 = tenant.ledgerIds_db1 || [];
+      const ids2 = tenant.ledgerIds_db2 || [];
+      const names1 = tenant.ledgerNames_db1 || [];
+      const names2 = tenant.ledgerNames_db2 || [];
+
+      const batches1 = await Promise.all(
+        ids1.map((id, i) =>
+          callPaperLedger(db1(), id, fromDate, toDate, "db1", req.log).then((rows) => {
+            const ledgerName = names1[i] ?? "";
+            rows.forEach((r) => {
+              r.LedgerId = id;
+              r.LedgerName = ledgerName;
+            });
+            return rows;
+          })
+        )
+      );
+      const batches2 = await Promise.all(
+        ids2.map((id, i) =>
+          callPaperLedger(db2(), id, fromDate, toDate, "db2", req.log).then((rows) => {
+            const ledgerName = names2[i] ?? "";
+            rows.forEach((r) => {
+              r.LedgerId = id;
+              r.LedgerName = ledgerName;
+            });
+            return rows;
+          })
+        )
+      );
+
+      const rows1 = batches1.flat();
+      const rows2 = batches2.flat();
+      const merged = [...rows1, ...rows2].sort((a, b) => {
+        const da = a.VoucherDate ? new Date(a.VoucherDate).getTime() : 0;
+        const db = b.VoucherDate ? new Date(b.VoucherDate).getTime() : 0;
+        if (da !== db) return db - da;
+        return 0;
+      });
+
+      return { items: merged };
+    } catch (err) {
+      req.log.error(err, "Error in GET /paper-ledger");
+      return reply.code(500).send({
+        error: "Failed to load paper ledger",
+        details: err.message
+      });
+    }
+  });
+
+  // GET /api/paper-ledger-summary?range=30d|90d|180d|365d&from=ISO&to=ISO
+  // Same inputs as paper-ledger: both DBs, corresponding ledger IDs. Procedure: GetPaperLedgerSummary_ByClient_Manu.
+  fastify.get("/paper-ledger-summary", async (req, reply) => {
+    try {
+      const { range = "90d", from: fromParam, to: toParam } = req.query || {};
+      let fromDate;
+      let toDate;
+      if (fromParam && toParam) {
+        fromDate = new Date(fromParam);
+        toDate = new Date(toParam);
+        if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+          return reply.code(400).send({ error: "Invalid from or to date" });
+        }
+      } else {
+        const win = parseRange(String(range));
+        fromDate = win.from;
+        toDate = win.to;
+      }
+
+      const mongo = await getDb();
+      const tenant = await mongo
+        .collection("tenants")
+        .findOne({ email: req.user.email });
+      if (!tenant) {
+        return reply.code(400).send({ error: "Tenant binding missing" });
+      }
+
+      const ids1 = tenant.ledgerIds_db1 || [];
+      const ids2 = tenant.ledgerIds_db2 || [];
+      const names1 = tenant.ledgerNames_db1 || [];
+      const names2 = tenant.ledgerNames_db2 || [];
+
+      const batches1 = await Promise.all(
+        ids1.map((id, i) =>
+          callPaperLedgerSummary(db1(), id, fromDate, toDate, "db1", req.log).then((rows) => {
+            const ledgerName = names1[i] ?? "";
+            rows.forEach((r) => {
+              r.LedgerId = id;
+              r.LedgerName = ledgerName;
+            });
+            return rows;
+          })
+        )
+      );
+      const batches2 = await Promise.all(
+        ids2.map((id, i) =>
+          callPaperLedgerSummary(db2(), id, fromDate, toDate, "db2", req.log).then((rows) => {
+            const ledgerName = names2[i] ?? "";
+            rows.forEach((r) => {
+              r.LedgerId = id;
+              r.LedgerName = ledgerName;
+            });
+            return rows;
+          })
+        )
+      );
+
+      const rows1 = batches1.flat();
+      const rows2 = batches2.flat();
+      const merged = [...rows1, ...rows2].sort((a, b) => {
+        const na = (a.ItemName || "").toString();
+        const nb = (b.ItemName || "").toString();
+        return na.localeCompare(nb);
+      });
+
+      return { items: merged };
+    } catch (err) {
+      req.log.error(err, "Error in GET /paper-ledger-summary");
+      return reply.code(500).send({
+        error: "Failed to load paper ledger summary",
+        details: err.message
+      });
+    }
   });
 
   // GET /api/orders/:jobId/processes?source=db1|db2
