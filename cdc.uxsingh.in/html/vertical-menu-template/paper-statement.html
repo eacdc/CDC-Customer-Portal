@@ -751,26 +751,18 @@
                                                 <div class="card-title mb-0 d-flex align-items-center custom-snb">
                                                     <div class="search-here me-4 cus-search-here"></div>
                                                     <div class="main-btn-gp">
-                                                        <div class="btn-group">
-                                                            <button type="button" class="btn btn-label-primary">Last 3
-                                                                Month</button>
-                                                            <button type="button"
-                                                                class="btn btn-label-primary dropdown-toggle dropdown-toggle-split"
-                                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <div class="btn-group date-range-group" data-tab="received">
+                                                            <button type="button" class="btn btn-label-primary date-range-btn">Last 90 Days</button>
+                                                            <button type="button" class="btn btn-label-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
                                                                 <span class="visually-hidden">Toggle Dropdown</span>
                                                             </button>
                                                             <ul class="dropdown-menu">
-                                                                <li><a class="dropdown-item"
-                                                                        href="javascript:void(0);">Last
-                                                                        Month</a></li>
-                                                                <li><a class="dropdown-item"
-                                                                        href="javascript:void(0);">Last
-                                                                        6
-                                                                        Month</a></li>
-                                                                <li><a class="dropdown-item"
-                                                                        href="javascript:void(0);">Last
-                                                                        1
-                                                                        year</a></li>
+                                                                <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="30d">Last 30 Days</a></li>
+                                                                <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="90d">Last 90 Days</a></li>
+                                                                <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="180d">Last 180 Days</a></li>
+                                                                <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="365d">Last 365 Days</a></li>
+                                                                <li><hr class="dropdown-divider"></li>
+                                                                <li><a class="dropdown-item custom-date-option" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#paperStatementCustomDateModal">Custom Date</a></li>
                                                             </ul>
                                                         </div>
                                                     </div>
@@ -780,19 +772,16 @@
                                                 <table class="paper-statement-received table">
                                                     <thead>
                                                         <tr>
-                                                            <!--<th></th>-->
-                                                            <th></th>
-                                                            <th>DATE</th>
-                                                            <th>PAPER DETAILS</th>
-                                                            <th>VENDER</th>
-                                                            <th>SUMMARY</th>
-                                                            <!-- <th class="w-20">progress</th> -->
+                                                            <th>Item Name</th>
+                                                            <th>Receipt Date</th>
+                                                            <th>Voucher No</th>
+                                                            <th>Qty Received</th>
                                                         </tr>
                                                     </thead>
                                                 </table>
                                             </div>
                                         </div>
-                                        <div class="dt-container custom-table-pagination-layout"></div>
+                                        <div id="ps-pagination-received" class="ps-pagination-outside pagination-container mt-4"></div>
                                     </div>
                                     <div class="tab-pane fade" id="profile" role="tabpanel"
                                         aria-labelledby="profile-tab">
@@ -805,26 +794,18 @@
                                                 <div class="card-title mb-0 d-flex align-items-center custom-snb">
                                                     <div class="search-here-issued me-4 cus-search-here"></div>
                                                     <div class="main-btn-gp">
-                                                        <div class="btn-group">
-                                                            <button type="button" class="btn btn-label-primary">Last 3
-                                                                Month</button>
-                                                            <button type="button"
-                                                                class="btn btn-label-primary dropdown-toggle dropdown-toggle-split"
-                                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <div class="btn-group date-range-group" data-tab="issued">
+                                                            <button type="button" class="btn btn-label-primary date-range-btn">Last 90 Days</button>
+                                                            <button type="button" class="btn btn-label-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
                                                                 <span class="visually-hidden">Toggle Dropdown</span>
                                                             </button>
                                                             <ul class="dropdown-menu">
-                                                                <li><a class="dropdown-item"
-                                                                        href="javascript:void(0);">Last
-                                                                        Month</a></li>
-                                                                <li><a class="dropdown-item"
-                                                                        href="javascript:void(0);">Last
-                                                                        6
-                                                                        Month</a></li>
-                                                                <li><a class="dropdown-item"
-                                                                        href="javascript:void(0);">Last
-                                                                        1
-                                                                        year</a></li>
+                                                                <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="30d">Last 30 Days</a></li>
+                                                                <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="90d">Last 90 Days</a></li>
+                                                                <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="180d">Last 180 Days</a></li>
+                                                                <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="365d">Last 365 Days</a></li>
+                                                                <li><hr class="dropdown-divider"></li>
+                                                                <li><a class="dropdown-item custom-date-option" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#paperStatementCustomDateModal">Custom Date</a></li>
                                                             </ul>
                                                         </div>
                                                     </div>
@@ -834,19 +815,16 @@
                                                 <table class="paper-statement-issued table">
                                                     <thead>
                                                         <tr>
-                                                            <!--<th></th>-->
-                                                            <th></th>
-                                                            <th>DATE</th>
-                                                            <th>PAPER DETAILS</th>
-                                                            <th>VENDER</th>
-                                                            <th>SUMMARY</th>
-                                                            <!-- <th class="w-20">progress</th> -->
+                                                            <th>Item Name</th>
+                                                            <th>Issue Date</th>
+                                                            <th>Voucher No</th>
+                                                            <th>Qty Issued</th>
                                                         </tr>
                                                     </thead>
                                                 </table>
                                             </div>
                                         </div>
-                                        <div class="dt-container custom-table-pagination-layout-two"></div>
+                                        <div id="ps-pagination-issued" class="ps-pagination-outside pagination-container mt-4"></div>
                                     </div>
                                     <div class="tab-pane fade" id="contact" role="tabpanel"
                                         aria-labelledby="contact-tab">
@@ -859,26 +837,18 @@
                                                 <div class="card-title mb-0 d-flex align-items-center custom-snb">
                                                     <div class="search-here-summary me-4 cus-search-here"></div>
                                                     <div class="main-btn-gp">
-                                                        <div class="btn-group">
-                                                            <button type="button" class="btn btn-label-primary">Last 3
-                                                                Month</button>
-                                                            <button type="button"
-                                                                class="btn btn-label-primary dropdown-toggle dropdown-toggle-split"
-                                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <div class="btn-group date-range-group" data-tab="summary">
+                                                            <button type="button" class="btn btn-label-primary date-range-btn">Last 90 Days</button>
+                                                            <button type="button" class="btn btn-label-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
                                                                 <span class="visually-hidden">Toggle Dropdown</span>
                                                             </button>
                                                             <ul class="dropdown-menu">
-                                                                <li><a class="dropdown-item"
-                                                                        href="javascript:void(0);">Last
-                                                                        Month</a></li>
-                                                                <li><a class="dropdown-item"
-                                                                        href="javascript:void(0);">Last
-                                                                        6
-                                                                        Month</a></li>
-                                                                <li><a class="dropdown-item"
-                                                                        href="javascript:void(0);">Last
-                                                                        1
-                                                                        year</a></li>
+                                                                <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="30d">Last 30 Days</a></li>
+                                                                <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="90d">Last 90 Days</a></li>
+                                                                <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="180d">Last 180 Days</a></li>
+                                                                <li><a class="dropdown-item date-range-option" href="javascript:void(0);" data-range="365d">Last 365 Days</a></li>
+                                                                <li><hr class="dropdown-divider"></li>
+                                                                <li><a class="dropdown-item custom-date-option" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#paperStatementCustomDateModal">Custom Date</a></li>
                                                             </ul>
                                                         </div>
                                                     </div>
@@ -888,19 +858,17 @@
                                                 <table class="paper-statement-summary table">
                                                     <thead>
                                                         <tr>
-                                                            <!--<th></th>-->
-                                                            <th></th>
-                                                            <th>DATE</th>
-                                                            <th>PAPER DETAILS</th>
-                                                            <th>VENDER</th>
-                                                            <th>SUMMARY</th>
-                                                            <!-- <th class="w-20">progress</th> -->
+                                                            <th>Item Name</th>
+                                                            <th>Opening</th>
+                                                            <th>Receipt</th>
+                                                            <th>Issued</th>
+                                                            <th>Closing</th>
                                                         </tr>
                                                     </thead>
                                                 </table>
                                             </div>
                                         </div>
-                                        <div class="dt-container custom-table-pagination-layout-three"></div>
+                                        <div id="ps-pagination-summary" class="ps-pagination-outside pagination-container mt-4"></div>
                                     </div>
                                 </div>
 
@@ -925,6 +893,33 @@
         <div class="drag-target"></div>
     </div>
     <!-- / Layout wrapper -->
+
+    <div class="modal fade" id="paperStatementCustomDateModal" tabindex="-1" aria-labelledby="paperStatementCustomDateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="paperStatementCustomDateModalLabel">Select Custom Date Range</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="paperStatementCustomDateForm">
+                        <div class="mb-3">
+                            <label for="paperStatementStartDate" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="paperStatementStartDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="paperStatementEndDate" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="paperStatementEndDate" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-label-primary" id="paperStatementApplyCustomDate">Apply</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Core JS -->
     <!-- build:js assets/vendor/js/theme.js -->
@@ -961,6 +956,7 @@
     <script src="../../assets/js/top-search-orders.js"></script>
 
     <!-- Page JS -->
+    <script src="../../assets/js/ledger-filter.js"></script>
     <script src="../../assets/js/paper-statement.js"></script>
 
     <!-- Loading Overlay -->

@@ -727,6 +727,51 @@ table.product-data a {
     --svg: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 21.73C11.304 21.9056 11.6489 21.998 12 21.998C12.3511 21.998 12.6959 21.9056 13 21.73L20 17.73C20.3037 17.5547 20.556 17.3025 20.7315 16.9989C20.907 16.6952 20.9996 16.3508 21 16V8.00002C20.9996 7.6493 20.907 7.30483 20.7315 7.00119C20.556 6.69754 20.3037 6.44539 20 6.27002L13 2.27002C12.6959 2.09449 12.3511 2.00208 12 2.00208C11.6489 2.00208 11.304 2.09449 11 2.27002L3.99998 6.27002C3.69624 6.44539 3.44396 6.69754 3.26844 7.00119C3.09292 7.30483 3.00034 7.6493 2.99998 8.00002V16C3.00034 16.3508 3.09292 16.6952 3.26844 16.9989C3.44396 17.3025 3.69624 17.5547 3.99998 17.73L11 21.73Z' stroke='%234D5154' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M12 22V12' stroke='%234D5154' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M3.29 7L12 12L20.71 7' stroke='%234D5154' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M7.5 4.27002L16.5 9.42002' stroke='%234D5154' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
+/* Paper Statement – pagination same style as Orders page */
+.ps-pagination-outside.pagination-container nav > div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+}
+.ps-pagination-outside.pagination-container nav > div > .bottom-received,
+.ps-pagination-outside.pagination-container nav > div > .bottom-issued,
+.ps-pagination-outside.pagination-container nav > div > .bottom-summary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 0.5rem;
+}
+.ps-pagination-outside .dt-length {
+    display: flex;
+    align-items: center;
+}
+.ps-pagination-outside .dt-length label {
+    margin-bottom: 0;
+    margin-right: 0.5rem;
+    color: var(--bs-secondary-color);
+}
+.ps-pagination-outside .dt-length select {
+    width: auto;
+    min-width: auto;
+}
+.ps-pagination-outside .dt-length .form-select {
+    padding: 0.25rem 2rem 0.25rem 0.5rem;
+    font-size: 0.8125rem;
+}
+.ps-pagination-outside .dt-info {
+    color: var(--bs-secondary-color);
+    margin-left: 0.5rem;
+}
+.ps-pagination-outside .dt-paging {
+    margin-left: auto;
+}
+.ps-pagination-outside .dt-paging .pagination {
+    margin-bottom: 0;
+}
+
 .custom-edit-icon-paper-statement {
     --svg: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M21.5306 5.46935L18.5306 2.46935C18.461 2.39962 18.3783 2.3443 18.2872 2.30656C18.1962 2.26882 18.0986 2.24939 18 2.24939C17.9014 2.24939 17.8038 2.26882 17.7128 2.30656C17.6217 2.3443 17.539 2.39962 17.4694 2.46935L8.46937 11.4694C8.39975 11.5391 8.34454 11.6218 8.3069 11.7128C8.26926 11.8039 8.24992 11.9015 8.25 12V15C8.25 15.1989 8.32902 15.3897 8.46967 15.5303C8.61032 15.671 8.80109 15.75 9 15.75H12C12.0985 15.7501 12.1961 15.7307 12.2871 15.6931C12.3782 15.6554 12.4609 15.6002 12.5306 15.5306L21.5306 6.53061C21.6004 6.46095 21.6557 6.37823 21.6934 6.28718C21.7312 6.19614 21.7506 6.09854 21.7506 5.99998C21.7506 5.90142 21.7312 5.80382 21.6934 5.71277C21.6557 5.62173 21.6004 5.53901 21.5306 5.46935ZM11.6897 14.25H9.75V12.3103L15.75 6.31029L17.6897 8.24998L11.6897 14.25ZM18.75 7.18967L16.8103 5.24998L18 4.06029L19.9397 5.99998L18.75 7.18967ZM21 11.25V19.5C21 19.8978 20.842 20.2793 20.5607 20.5606C20.2794 20.8419 19.8978 21 19.5 21H4.5C4.10218 21 3.72064 20.8419 3.43934 20.5606C3.15804 20.2793 3 19.8978 3 19.5V4.49998C3 4.10215 3.15804 3.72062 3.43934 3.43932C3.72064 3.15801 4.10218 2.99998 4.5 2.99998H12.75C12.9489 2.99998 13.1397 3.079 13.2803 3.21965C13.421 3.3603 13.5 3.55107 13.5 3.74998C13.5 3.94889 13.421 4.13966 13.2803 4.28031C13.1397 4.42096 12.9489 4.49998 12.75 4.49998H4.5V19.5H19.5V11.25C19.5 11.0511 19.579 10.8603 19.7197 10.7197C19.8603 10.579 20.0511 10.5 20.25 10.5C20.4489 10.5 20.6397 10.579 20.7803 10.7197C20.921 10.8603 21 11.0511 21 11.25Z' fill='%234D5154'/%3E%3C/svg%3E");
 }
