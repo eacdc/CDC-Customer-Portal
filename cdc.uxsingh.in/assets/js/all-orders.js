@@ -1347,13 +1347,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function resolveImageUrl(rawUrl, segmentName) {
+    // Only use strictly defined defaults: Packaging and Books (Commercial). No other images.
     const defaultBySegment = {
       'Commercial': '/assets/img/products/default-book.jpeg',
       'Packaging': '/assets/img/products/default-packaging.jpeg'
     };
-    const fallback = (segmentName && defaultBySegment[segmentName])
-      ? defaultBySegment[segmentName]
-      : '/assets/img/products/1.png';
+    const segment = (segmentName && String(segmentName).trim()) || '';
+    const key = Object.keys(defaultBySegment).find((k) => k.toLowerCase() === segment.toLowerCase());
+    const fallback = (key && defaultBySegment[key]) || '/assets/img/products/default-book.jpeg';
     if (!rawUrl) return fallback;
     try {
       const url = String(rawUrl).trim();
