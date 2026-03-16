@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const isRegister = formAuthentication.dataset.auth === 'register';
     const isLogin = formAuthentication.dataset.auth === 'login';
+    const isForgotPassword = formAuthentication.dataset.auth === 'forgot-password';
     const alertEl = formAuthentication.querySelector('#formAlert');
     const resultEl = formAuthentication.querySelector('#formResult');
     const submitBtn = formAuthentication.querySelector('button[type="submit"]');
@@ -76,7 +77,11 @@ document.addEventListener('DOMContentLoaded', function () {
         : 'https://cdc-customer-portal-backend.onrender.com/api');
 
     const API_BASE = defaultBase.replace(/\/$/, '');
-    const ENDPOINT = isRegister ? `${API_BASE}/auth/register-email` : `${API_BASE}/auth/login-email`;
+    const ENDPOINT = isRegister
+      ? `${API_BASE}/auth/register-email`
+      : isForgotPassword
+        ? `${API_BASE}/auth/forgot-password`
+        : `${API_BASE}/auth/login-email`;
 
     const registerFields = {
       email: {
@@ -158,7 +163,60 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     };
 
-    const validationFields = isRegister ? registerFields : loginFields;
+    const forgotPasswordFields = {
+      email: {
+        validators: {
+          notEmpty: {
+            message: 'Please enter your email'
+          },
+          emailAddress: {
+            message: 'Please enter a valid email address'
+          }
+        }
+      },
+      customer_key: {
+        validators: {
+          notEmpty: {
+            message: 'Please enter your customer key'
+          },
+          stringLength: {
+            min: 3,
+            message: 'Customer key looks too short'
+          }
+        }
+      },
+      new_password: {
+        validators: {
+          notEmpty: {
+            message: 'Please enter your new password'
+          },
+          stringLength: {
+            min: 6,
+            message: 'Password must be at least 6 characters'
+          }
+        }
+      },
+      confirm_password: {
+        validators: {
+          notEmpty: {
+            message: 'Please confirm your new password'
+          },
+          identical: {
+            compare: function () {
+              const passwordField = formAuthentication.querySelector('[name="new_password"]');
+              return passwordField ? passwordField.value : '';
+            },
+            message: 'Passwords do not match'
+          }
+        }
+      }
+    };
+
+    const validationFields = isRegister
+      ? registerFields
+      : isForgotPassword
+        ? forgotPasswordFields
+        : loginFields;
 
     const setAlert = (type, message) => {
       if (!alertEl) return;
@@ -316,6 +374,12 @@ document.addEventListener('DOMContentLoaded', function () {
       if (isRegister) {
         payload.customer_key = String(formData.get('customer_key') || '').trim();
       }
+      if (isForgotPassword) {
+        payload.email = String(formData.get('email') || '').trim().toLowerCase();
+        payload.customer_key = String(formData.get('customer_key') || '').trim();
+        payload.new_password = String(formData.get('new_password') || '');
+        delete payload.password;
+      }
 
       try {
         const response = await fetch(ENDPOINT, {
@@ -342,10 +406,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const successMessage = isRegister
           ? 'Registration successful! You are now signed in.'
-          : 'Login successful! Redirecting...';
+          : isForgotPassword
+            ? 'Password changed successfully. Redirecting to login...'
+            : 'Login successful! Redirecting...';
         setAlert('success', successMessage);
 
-        if (body?.token) {
+        if (isForgotPassword) {
+          const targetHref = resolveRedirectTarget(successRedirect);
+          setTimeout(() => {
+            window.location.href = targetHref;
+          }, 1500);
+        } else if (body?.token) {
           const ledgerNames = [
             ...(body.tenant?.ledgerNames_db1 || []),
             ...(body.tenant?.ledgerNames_db2 || [])
@@ -369,6 +440,7 @@ document.addEventListener('DOMContentLoaded', function () {
             window.location.href = targetHref;
           }, 1000);
         }
+        // forgot-password redirect is handled above
       } catch (err) {
         setAlert('danger', err.message || 'Unexpected error. Please try again.');
         storeSession(null);
