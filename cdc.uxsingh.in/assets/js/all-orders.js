@@ -159,15 +159,34 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function applyLedgerFilter(orders) {
+    // Ledger filter is ONLY for @cdcprinters.com users.
+    const email = (session?.email || '').trim().toLowerCase();
+    const isCdcUser = email.endsWith('@cdcprinters.com');
+    if (!isCdcUser) {
+      return orders || [];
+    }
+
     if (typeof window.getSelectedLedgerNames !== 'function') return orders || [];
     const selected = window.getSelectedLedgerNames();
-    if (!Array.isArray(selected) || selected.length === 0) return [];
+    if (!Array.isArray(selected) || selected.length === 0) return orders || [];
+
     const set = new Set(selected.map((s) => String(s).trim()).filter(Boolean));
-    if (set.size === 0) return [];
-    return (orders || []).filter((order) => {
+    if (set.size === 0) return orders || [];
+
+    const filtered = (orders || []).filter((order) => {
       const name = getOrderLedgerName(order);
       return name && set.has(name);
     });
+
+    console.log('[ORDERS] Ledger filter applied:', {
+      isCdcUser,
+      email,
+      selectedLedgers: Array.from(set),
+      beforeCount: (orders || []).length,
+      afterCount: filtered.length
+    });
+
+    return filtered;
   }
 
   async function loadOrders(tab) {
@@ -230,6 +249,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const body = await response.json();
     const items = body?.items || [];
+
+    // Debug log: what the Orders API returned to the frontend
+    console.log('[ORDERS API] Frontend received response:', {
+      url,
+      status: response.status,
+      durationMs: (endTime - startTime).toFixed(2),
+      rawBody: body,
+      itemCount: items.length
+    });
     
     return items;
   }

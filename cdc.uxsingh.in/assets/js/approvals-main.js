@@ -186,11 +186,15 @@ document.addEventListener('DOMContentLoaded', function (e) {
   }
 
   function applyLedgerFilter(rows) {
+    const email = (session?.email || '').trim().toLowerCase();
+    const isCdcUser = email.endsWith('@cdcprinters.com');
+    if (!isCdcUser) return rows || [];
+
     if (typeof window.getSelectedLedgerNames !== 'function') return rows || [];
     const selected = window.getSelectedLedgerNames();
-    if (!Array.isArray(selected) || selected.length === 0) return [];
+    if (!Array.isArray(selected) || selected.length === 0) return rows || [];
     const set = new Set(selected.map(function(s) { return String(s).trim(); }).filter(Boolean));
-    if (set.size === 0) return [];
+    if (set.size === 0) return rows || [];
     return (rows || []).filter(function(row) {
       const name = getRowLedgerName(row);
       return name && set.has(name);

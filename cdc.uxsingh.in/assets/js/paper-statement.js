@@ -104,11 +104,15 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function applyLedgerFilter(rows) {
+    var email = (session?.email || '').trim().toLowerCase();
+    var isCdcUser = email.endsWith('@cdcprinters.com');
+    if (!isCdcUser) return rows || [];
+
     if (typeof window.getSelectedLedgerNames !== 'function') return rows || [];
     var selected = window.getSelectedLedgerNames();
-    if (!Array.isArray(selected) || selected.length === 0) return [];
+    if (!Array.isArray(selected) || selected.length === 0) return rows || [];
     var set = new Set(selected.map(function (s) { return String(s).trim(); }).filter(Boolean));
-    if (set.size === 0) return [];
+    if (set.size === 0) return rows || [];
     return (rows || []).filter(function (row) {
       var name = getRowLedgerName(row);
       return name && set.has(name);
