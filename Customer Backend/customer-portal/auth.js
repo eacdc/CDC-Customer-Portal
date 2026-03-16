@@ -364,6 +364,54 @@ export default async function authPlugin(fastify, opts) {
     };
   });
 
+  // POST /api/auth/forgot-password — verify email + customer_key against tenants, then update users.password_hash
+  fastify.post("/forgot-password", async (req, reply) => {
+    try {
+      const { email, customer_key, new_password } = req.body || {};
+      const emailNorm = String(email || "").trim().toLowerCase();
+
+      if (!emailNorm || !emailNorm.includes("@"))
+        return reply.code(400).send({ error: "Valid email is required" });
+      if (!customer_key)
+        return reply.code(400).send({ error: "Customer key is required" });
+      if (!new_password || String(new_password).length < 6)
+        return reply
+          .code(400)
+          .send({ error: "Password must be at least 6 characters" });
+
+      const db = await getDb();
+      const tenant = await db.collection("tenants").findOne({ email: emailNorm });
+      if (!tenant)
+        return reply.code(400).send({ error: "Invalid email or customer key" });
+
+      const keyInput = String(customer_key).trim();
+      const keyNum = Number(customer_key);
+      const keyMatch =
+        tenant.customer_key === keyInput ||
+        tenant.customer_key === customer_key ||
+        (Number.isFinite(keyNum) && tenant.sales_ledger_id === keyNum);
+      if (!keyMatch)
+        return reply.code(400).send({ error: "Invalid email or customer key" });
+
+      const password_hash = await bcrypt.hash(new_password, 10);
+      const result = await db
+        .collection("users")
+        .updateOne(
+          { email: emailNorm },
+          { $set: { password_hash, updatedAt: new Date() } }
+        );
+      if (result.matchedCount === 0)
+        return reply.code(400).send({ error: "No user account found for this email" });
+
+      return reply.send({ ok: true, message: "Password changed successfully" });
+    } catch (e) {
+      req.log.error(e);
+      return reply
+        .code(500)
+        .send({ error: "Failed to change password", detail: e.message || String(e) });
+    }
+  });
+
   // POST /api/auth/logout  (requires auth guard in server.js)
   fastify.post("/logout", async (req, reply) => {
     const db = await getDb();
