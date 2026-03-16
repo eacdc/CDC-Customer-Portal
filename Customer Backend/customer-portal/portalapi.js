@@ -1071,7 +1071,15 @@ fastify.get("/dashboard", async (req, reply) => {
       timings: stepTimings
     });
 
-    return { items: page, nextCursor };
+    const response = { items: page, nextCursor };
+    req.log.info({
+      msg: "[ORDERS API] Response to frontend",
+      itemCount: response.items.length,
+      hasNextCursor: !!response.nextCursor,
+      response
+    });
+
+    return response;
   });
 
   // GET /api/paper-ledger?range=30d|90d|180d|365d&from=ISO&to=ISO
