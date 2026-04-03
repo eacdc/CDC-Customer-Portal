@@ -8,6 +8,7 @@ async function run() {
   const db = client.db(process.env.MONGO_DB);
 
   await db.collection("tenants").insertOne({
+    email: "seed@example.com",
     customer_key: "ABC123",
     ledgerId_db1: 6793,
     ledgerId_db2: 6793,

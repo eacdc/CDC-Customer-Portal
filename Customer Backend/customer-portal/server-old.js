@@ -4,7 +4,7 @@ import Fastify from "fastify";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import sql from "mssql";
-import { getDb, getTenantByCustomerKey, closeMongo } from "./lib/mongo.js";
+import { getDb, closeMongo } from "./lib/mongo.js";
 import { db1 } from "./lib/db1.js";
 import { db2 } from "./lib/db2.js";
 import { resolveRange } from "./lib/dateRange.js";

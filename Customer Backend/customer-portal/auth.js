@@ -301,7 +301,7 @@ export default async function authPlugin(fastify, opts) {
       );
     } else {
       // Fallback: if somehow tenant is missing but user exists, recreate a minimal tenant
-      // Use unique sentinel so unique index on customer_key is satisfied (MongoDB rejects multiple nulls)
+      // Sentinel keeps customer_key distinct per email under compound unique (email, customer_key)
       await db.collection("tenants").insertOne({
         email: emailNorm,
         customer_key: `__no_key:${emailNorm}`,
@@ -380,17 +380,22 @@ export default async function authPlugin(fastify, opts) {
           .send({ error: "Password must be at least 6 characters" });
 
       const db = await getDb();
-      const tenant = await db.collection("tenants").findOne({ email: emailNorm });
-      if (!tenant)
+      const tenants = await db
+        .collection("tenants")
+        .find({ email: emailNorm })
+        .toArray();
+      if (!tenants.length)
         return reply.code(400).send({ error: "Invalid email or customer key" });
 
       const keyInput = String(customer_key).trim();
       const keyNum = Number(customer_key);
-      const keyMatch =
-        tenant.customer_key === keyInput ||
-        tenant.customer_key === customer_key ||
-        (Number.isFinite(keyNum) && tenant.sales_ledger_id === keyNum);
-      if (!keyMatch)
+      const tenant = tenants.find(
+        (t) =>
+          t.customer_key === keyInput ||
+          t.customer_key === customer_key ||
+          (Number.isFinite(keyNum) && t.sales_ledger_id === keyNum)
+      );
+      if (!tenant)
         return reply.code(400).send({ error: "Invalid email or customer key" });
 
       const password_hash = await bcrypt.hash(new_password, 10);
