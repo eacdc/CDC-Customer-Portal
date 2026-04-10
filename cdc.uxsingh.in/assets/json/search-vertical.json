@@ -7,11 +7,6 @@
         "url": "index.html"
       },
       {
-        "name": "Products",
-        "icon": "custom-envelope-icon-products",
-        "url": "product.html"
-      },
-      {
         "name": "OTIF",
         "icon": "custom-folder-icon-otif",
         "url": "otif.html"
