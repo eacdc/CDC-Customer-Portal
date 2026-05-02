@@ -22,8 +22,15 @@ export default async function commEstPlugin(fastify, opts) {
       }
 
       // Validate required fields
-      const requiredFields = ['len', 'brd', 'Qty', 'binding_style', 'components', 'gsm', 'material', 'page_number'];
-      const missingFields = requiredFields.filter(field => req.body[field] === undefined || req.body[field] === null);
+      const requiredFields = ['client_name', 'sku_name', 'len', 'brd', 'Qty', 'binding_style', 'components', 'gsm', 'material', 'page_number'];
+      const missingFields = requiredFields.filter((field) => {
+        const v = req.body[field];
+        if (v === undefined || v === null) return true;
+        if (field === 'client_name' || field === 'sku_name') {
+          return String(v).trim() === '';
+        }
+        return false;
+      });
       
       if (missingFields.length > 0) {
         return reply.code(400).send({

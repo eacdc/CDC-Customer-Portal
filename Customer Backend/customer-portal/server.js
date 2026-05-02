@@ -9,6 +9,9 @@ import authPlugin from "./auth.js";
 import portalApiPlugin from "./portalapi.js";
 import pckEstPlugin from "./pck_est/routes.js";
 import commEstPlugin from "./comm_est/routes.js";
+import pricingTablesPlugin from "./pricing_tables/routes.js";
+import quoteSavesPlugin from "./quote_saves/routes.js";
+import salesExecutivesPlugin from "./sales_executives/routes.js";
 
 const app = Fastify({
   logger: true,
@@ -38,11 +41,18 @@ app.get("/api/health", async () => ({
 // --- Auth guard (applies to ALL non-auth API routes)
 app.addHook("preHandler", async (req, reply) => {
   if (!req.url.startsWith("/api/")) return;
-  if (req.url.startsWith("/api/health") || 
-      req.url.startsWith("/api/auth") ||
-      req.url.startsWith("/api/pck-est/health") ||
-      req.url.startsWith("/api/comm-est/health"))
-    return;
+  const publicApiPrefixes = [
+    "/api/health",
+    "/api/auth",
+    "/api/pck-est/health",
+    "/api/comm-est/health",
+    "/api/pck-est/calculate",
+    "/api/comm-est/calculate",
+    "/api/pricing-tables/",
+    "/api/quote-saves/",
+    "/api/sales-executives",
+  ];
+  if (publicApiPrefixes.some((prefix) => req.url.startsWith(prefix))) return;
 
   const auth = req.headers.authorization || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
@@ -100,6 +110,9 @@ await app.register(authPlugin, { prefix: "/api/auth" });
 await app.register(portalApiPlugin, { prefix: "/api" });
 await app.register(pckEstPlugin, { prefix: "/api" });
 await app.register(commEstPlugin, { prefix: "/api" });
+await app.register(pricingTablesPlugin, { prefix: "/api" });
+await app.register(salesExecutivesPlugin, { prefix: "/api" });
+await app.register(quoteSavesPlugin, { prefix: "/api" });
 
 // --- start + graceful shutdown
 const port = process.env.PORT || 8080;

@@ -7,17 +7,7 @@ const bufferW = 20;
  * Helper function for logging with timestamps
  */
 function logStep(step, startTime = null, parentStartTime = null) {
-  const now = Date.now();
-  const timestamp = new Date().toISOString();
-  if (startTime) {
-    const duration = now - startTime;
-    const totalTime = parentStartTime ? ` (Total: ${now - parentStartTime}ms)` : '';
-    console.log(`[${timestamp}] ⏱️  ${step} - Duration: ${duration}ms${totalTime}`);
-    return now;
-  } else {
-    console.log(`[${timestamp}] 📍 ${step}`);
-    return now;
-  }
+  return Date.now();
 }
 
 /**
@@ -35,9 +25,9 @@ async function calculatePricing(input, requestStartTime = null) {
     stepTime = logStep('>>> Master table fetched', stepTime, requestStartTime);
     
     stepTime = Date.now();
-    logStep('>>> Fetching tuck value table from Google Sheets');
+    logStep('>>> Deriving tuck/glue grid from master table');
     const tuckValueTable = await getTuckValueTable();
-    stepTime = logStep('>>> Tuck value table fetched', stepTime, requestStartTime);
+    stepTime = logStep('>>> Tuck grid ready', stepTime, requestStartTime);
 
     stepTime = Date.now();
     logStep('>>> Processing input parameters', stepTime, requestStartTime);
@@ -76,22 +66,42 @@ async function calculatePricing(input, requestStartTime = null) {
     const paperTypeBotOrOuter = String(input.matBot || '');
     const gsmBot = Number(input.gsmBot || 0);
     const frontColBot = Number(input.frontColBot || 0);
-    const frontSurBot = String(input.frontSur || '');
+    const frontSurBot = String(input.frontSur || '').toUpperCase();
+    const backColBot = Number(input.backColBot || 0);
+    const backSurBot = String(input.backSurBot || '').toUpperCase();
+    const corrLayBot = Number(input.corrLayBot || 0);
+    const kraftGsmBot = Number(input.kraftGsmBot || 0);
+    const windowBot = Number(input.windowBot || 0);
+    const foilBot = Number(input.fooinBot != null ? input.fooinBot : 0) || 0;
+    const isTopBottom = productType === "Top Bottom";
 
     stepTime = Date.now();
     logStep('>>> Looking up paper prices', stepTime, requestStartTime);
     const pricePerKGIn = XLOOKUP(paperTypeTopOrInner, masterTable, 1, 2, 78, 0);
-    const kraftRate = 30;
+    const { customer: kraftRateCustomer, actual: kraftRateActual } = kraftRatesFromMaster(masterTable);
+    console.log('kraftRateCustomer', kraftRateCustomer);
+    console.log('kraftRateActual', kraftRateActual);
     const pricePerKGOut = XLOOKUP(paperTypeBotOrOuter, masterTable, 1, 2, 78, 0);
-    const delCost = 2;
-    const overhead = 0.1;
+    const delRaw = input.delivery_charges;
+    const delParsed =
+      delRaw !== undefined && delRaw !== null && String(delRaw).trim() !== ''
+        ? Number(delRaw)
+        : 2;
+    const delCost = !isNaN(delParsed) && delParsed >= 0 ? delParsed : 2;
+    const overheadRaw = input.overhead;
+    const overheadParsed =
+      overheadRaw !== undefined && overheadRaw !== null && String(overheadRaw).trim() !== ''
+        ? Number(overheadRaw)
+        : 0.1;
+    const overhead = !isNaN(overheadParsed) && overheadParsed >= 0 ? overheadParsed : 0.1;
     stepTime = logStep('>>> Paper price lookup completed', stepTime, requestStartTime);
 
     const inputData = [
       len, brd, height, qty, paperTypeTopOrInner, gsmTopOrInner, corrLayerInn, productType,
       orderSz, boxPerOuter, lenOuter, brdOuter, heightOuter, frontColIn, backColIn,
       frontSurIn, backSurIn, kraftGsmIn, windowIn, foilIn, paperTypeBotOrOuter, gsmBot,
-      frontColBot, frontSurBot, pricePerKGIn, kraftRate, pricePerKGOut, delCost, overhead
+      frontColBot, frontSurBot, backColBot, backSurBot, corrLayBot, kraftGsmBot, windowBot, foilBot,
+      pricePerKGIn, kraftRateCustomer, kraftRateActual, pricePerKGOut, delCost, overhead
     ];
 
     stepTime = Date.now();
@@ -202,26 +212,97 @@ async function calculatePricing(input, requestStartTime = null) {
     const ctpPerUnitIn = ctpPerUnit(frontColIn, backColIn, qty, masterTable[0][25]);
     const printPerunitIn = printPerunit(frontSurIn, backSurIn, frontColIn, backColIn, qty, maxUps, masterTable[3][1], masterTable[0][43]);
     const surfacePerUnitIn = surfacePerUnit(bestBrd, bestLen, maxUps, frontSurIn, backSurIn, masterTable, 2);
-    const kraftPerunitIn = kraftPerunit(bestBrd, bestLen, maxUps, corrLayerInn, kraftGsmIn, kraftRate);
+    const kraftPerunitIn = kraftPerunit(bestBrd, bestLen, maxUps, corrLayerInn, kraftGsmIn, kraftRateCustomer);
     const diceCostIn = diceCost(foilIn, masterTable[2][17], masterTable[1][17], qty);
     const window_foil_Cost_In = window_foil_Cost(windowIn, foilIn, masterTable);
-    const punch_paste_In = punch_paste(maxUps, masterTable[5][1], kraftGsmIn, bestBrd, bestLen, masterTable[7][1], masterTable[6][1]);
+    const punch_paste_In = punch_paste(
+      maxUps,
+      masterTable[5][1],
+      kraftGsmIn,
+      bestBrd,
+      bestLen,
+      masterTable[7][1],
+      masterTable[6][1],
+      masterTable,
+      kraftRateCustomer
+    );
     const pack_del_In = pack_del(paperweightIn, kraftWeightIn, delCost, masterTable[8][1], qty);
     const Corr_conv_In = Corr_conv(kraftWeightIn, masterTable[12][1], qty);
 
     stepTime = Date.now();
     logStep('>>> Calculating variable costs for inner', stepTime, requestStartTime);
-    const varCostIn = Number(paperPerUnit(paperweightIn, XLOOKUP(paperTypeTopOrInner, masterTable, 1, 4, 78, 0), qty) || 0) +
-      Number(ctpPerUnit(frontColIn, backColIn, qty, masterTable[0][25]) || 0) +
-      Number(printPerunitActual(frontSurIn, backSurIn, frontColIn, backColIn, maxUps, masterTable[3][3]) || 0) +
-      Number(surfacePerUnit(bestBrd, bestLen, maxUps, frontSurIn, backSurIn, masterTable, 4) || 0) +
-      Number(kraftPerunit(bestBrd, bestLen, maxUps, corrLayerInn, kraftGsmIn, kraftRate) || 0) +
-      Number(diceCost(foilIn, masterTable[2][17], masterTable[1][17], qty) || 0) +
-      Number(window_foil_Cost(windowIn, foilIn, masterTable) || 0) +
-      Number(punch_paste(maxUps, masterTable[5][3], kraftGsmIn, bestBrd, bestLen, masterTable[7][3], masterTable[6][3]) || 0) +
-      Number(pack_del(paperweightIn, kraftWeightIn, delCost, masterTable[8][3], qty) || 0) +
-      Number(Corr_conv(kraftWeightIn, masterTable[12][3], qty) || 0);
+    const varIn_paper = Number(paperPerUnit(paperweightIn, XLOOKUP(paperTypeTopOrInner, masterTable, 1, 4, 78, 0), qty) || 0);
+    const varIn_ctp = Number(ctpPerUnit(frontColIn, backColIn, qty, masterTable[0][25]) || 0);
+    const varIn_print = Number(printPerunitActual(frontSurIn, backSurIn, frontColIn, backColIn, maxUps, masterTable[3][3]) || 0);
+    const varIn_surface = Number(surfacePerUnit(bestBrd, bestLen, maxUps, frontSurIn, backSurIn, masterTable, 4) || 0);
+    const varIn_kraft = Number(kraftPerunit(bestBrd, bestLen, maxUps, corrLayerInn, kraftGsmIn, kraftRateActual) || 0);
+    const varIn_dice = Number(diceCost(foilIn, masterTable[2][17], masterTable[1][17], qty) || 0);
+    const varIn_windowFoil = Number(window_foil_Cost(windowIn, foilIn, masterTable) || 0);
+    const varIn_punchPaste = Number(
+      punch_paste(
+        maxUps,
+        masterTable[5][3],
+        kraftGsmIn,
+        bestBrd,
+        bestLen,
+        masterTable[7][3],
+        masterTable[6][3],
+        masterTable,
+        kraftRateActual
+      ) || 0
+    );
+    const varIn_packDel = Number(pack_del(paperweightIn, kraftWeightIn, masterTable[13][3], masterTable[8][3], qty) || 0);
+    console.log('varIn_packDel', [paperweightIn, kraftWeightIn, masterTable[13][3], masterTable[8][3], qty]);
+    const varIn_corrConv = Number(Corr_conv(kraftWeightIn, masterTable[12][3], qty) || 0);
+    const varCostIn =
+      varIn_paper +
+      varIn_ctp +
+      varIn_print +
+      varIn_surface +
+      varIn_kraft +
+      varIn_dice +
+      varIn_windowFoil +
+      varIn_punchPaste +
+      varIn_packDel +
+      varIn_corrConv;
     stepTime = logStep('>>> Variable costs for inner calculated', stepTime, requestStartTime);
+
+    console.log('[pck-est] varCostIn components', {
+      'Paper / unit (var basis)': varIn_paper,
+      'CTP / unit': varIn_ctp,
+      'Print / unit (actual)': varIn_print,
+      'Surface / unit (var basis)': varIn_surface,
+      'Kraft / unit': varIn_kraft,
+      'Dice / unit': varIn_dice,
+      'Window & Foil / unit': varIn_windowFoil,
+      'Punch & Paste / unit': varIn_punchPaste,
+      'Pack & Del / unit': varIn_packDel,
+      'Corr Conv / unit': varIn_corrConv,
+      'Var Cost (sum)': varCostIn
+    });
+
+    console.log('[pck-est] inner cost line', {
+      'Sheet length': bestLen,
+      'Sheet breadth': bestBrd,
+      Ups: maxUps,
+      Wastage: wasteIn,
+      'Paper Wt': paperweightIn,
+      'Kraft Wt': kraftWeightIn,
+      'Paper Price/KG': pricePerKGIn,
+      'Paper / unit': paperPerUnitIn,
+      'CTP / unit': ctpPerUnitIn,
+      'Print / unit': printPerunitIn,
+      'Surface / unit': surfacePerUnitIn,
+      'Kraft/Unit': kraftPerunitIn,
+      'Dice Cost': diceCostIn,
+      'Window & Foil Cost/unit': window_foil_Cost_In,
+      'Punch & Paste Cost/unit': punch_paste_In,
+      'Pack & Del Cost/unit': pack_del_In,
+      'Corr Conv': Corr_conv_In,
+      'Var Cost': varCostIn
+    });
+
+    // console.log('masterTable', masterTable);
 
     stepTime = Date.now();
     logStep('>>> Calculating final pricing for inner', stepTime, requestStartTime);
@@ -237,31 +318,175 @@ async function calculatePricing(input, requestStartTime = null) {
     logStep('>>> Calculating outer costs', stepTime, requestStartTime);
     const wasteOut = wastage(qty / boxPerOuter, maxUpsOuter, masterTable);
     const paperweightOut = paperWt(qty / boxPerOuter, maxUpsOuter, bestLenOuter, bestBrdOuter, gsmBot, wasteOut);
-    const kraftWeightOut = kraftWt(bestBrdOuter, bestLenOuter, maxUpsOuter, 0, 0, qty / boxPerOuter);
+    const kraftWeightOut = kraftWt(
+      bestBrdOuter,
+      bestLenOuter,
+      maxUpsOuter,
+      isTopBottom ? corrLayBot : 0,
+      isTopBottom ? kraftGsmBot : 0,
+      qty / boxPerOuter
+    );
     const paperPerUnitOut = paperPerUnit(paperweightOut, pricePerKGOut, qty / boxPerOuter);
-    const ctpPerUnitOut = ctpPerUnit(frontColBot, "", qty / boxPerOuter, masterTable[0][25]);
-    const printPerunitOut = printPerunit(frontSurBot, "", frontColBot, 0, qty / boxPerOuter, maxUpsOuter, masterTable[3][1], masterTable[0][44]);
-    const surfacePerUnitOut = surfacePerUnit(bestBrdOuter, bestLenOuter, maxUpsOuter, frontSurBot, "", masterTable, 2);
-    const kraftPerunitOut = kraftPerunit(bestBrdOuter, bestLenOuter, maxUpsOuter, 0, 0, kraftRate);
-    const diceCostOut = diceCostIn;
-    const window_foil_Cost_Out = 0;
-    const punch_paste_Out = punch_paste(maxUpsOuter, masterTable[5][1], 0, bestBrdOuter, bestLenOuter, masterTable[7][1], masterTable[6][1]);
+    const ctpPerUnitOut = ctpPerUnit(
+      frontColBot,
+      isTopBottom ? backColBot : "",
+      qty / boxPerOuter,
+      masterTable[0][25]
+    );
+    const printPerunitOut = printPerunit(
+      frontSurBot,
+      isTopBottom ? backSurBot : "",
+      frontColBot,
+      isTopBottom ? backColBot : 0,
+      qty / boxPerOuter,
+      maxUpsOuter,
+      masterTable[3][1],
+      masterTable[0][44]
+    );
+    const surfacePerUnitOut = surfacePerUnit(
+      bestBrdOuter,
+      bestLenOuter,
+      maxUpsOuter,
+      frontSurBot,
+      isTopBottom ? backSurBot : "",
+      masterTable,
+      2
+    );
+    const outerCorrForKraft = isTopBottom ? corrLayBot : 0;
+    const outerKraftGsmForKraft = isTopBottom ? kraftGsmBot : 0;
+    const kraftPerunitOut = kraftPerunit(
+      bestBrdOuter,
+      bestLenOuter,
+      maxUpsOuter,
+      outerCorrForKraft,
+      outerKraftGsmForKraft,
+      kraftRateCustomer
+    );
+    const diceCostOut = isTopBottom
+      ? diceCost(foilBot, masterTable[2][17], masterTable[1][17], qty)
+      : diceCostIn;
+    const window_foil_Cost_Out = isTopBottom ? window_foil_Cost(windowBot, foilBot, masterTable) : 0;
+    const punch_paste_Out = punch_paste(
+      maxUpsOuter,
+      masterTable[5][1],
+      isTopBottom ? kraftGsmBot : 0,
+      bestBrdOuter,
+      bestLenOuter,
+      masterTable[7][1],
+      masterTable[6][1],
+      masterTable,
+      kraftRateCustomer
+    );
     const pack_del_Out = pack_del(paperweightOut, kraftWeightOut, delCost, masterTable[8][1], qty / boxPerOuter);
     const Corr_conv_Out = Corr_conv(kraftWeightOut, masterTable[12][1], qty / boxPerOuter);
 
     stepTime = Date.now();
     logStep('>>> Calculating variable costs for outer', stepTime, requestStartTime);
-    const varCostOut = Number(paperPerUnit(paperweightOut, XLOOKUP(paperTypeBotOrOuter, masterTable, 1, 4, 78, 0), qty) || 0) +
-      Number(ctpPerUnit(frontColBot, "", qty, masterTable[0][25]) || 0) +
-      Number(printPerunitActual(frontSurBot, "", frontColBot, 0, maxUpsOuter, masterTable[3][3]) || 0) +
-      Number(surfacePerUnit(bestBrdOuter, bestLenOuter, maxUpsOuter, frontSurBot, "", masterTable, 4) || 0) +
-      Number(kraftPerunit(bestBrdOuter, bestLenOuter, maxUpsOuter, 0, 0, kraftRate) || 0) +
-      Number(diceCost(0, masterTable[2][17], masterTable[1][17], qty) || 0) +
-      Number(window_foil_Cost(0, 0, masterTable) || 0) +
-      Number(punch_paste(maxUpsOuter, masterTable[5][3], kraftGsmIn, bestBrdOuter, bestLenOuter, masterTable[7][3], masterTable[6][3]) || 0) +
-      Number(pack_del(paperweightOut, kraftWeightOut, delCost, masterTable[8][3], qty) || 0) +
-      Number(Corr_conv(kraftWeightOut, masterTable[12][3], qty) || 0);
+    const varOut_paper = Number(paperPerUnit(paperweightOut, XLOOKUP(paperTypeBotOrOuter, masterTable, 1, 4, 78, 0), qty) || 0);
+    const varOut_ctp = Number(
+      ctpPerUnit(frontColBot, isTopBottom ? backColBot : "", qty, masterTable[0][25]) || 0
+    );
+    const varOut_print = Number(
+      printPerunitActual(
+        frontSurBot,
+        isTopBottom ? backSurBot : "",
+        frontColBot,
+        isTopBottom ? backColBot : 0,
+        maxUpsOuter,
+        masterTable[3][3]
+      ) || 0
+    );
+    const varOut_surface = Number(
+      surfacePerUnit(
+        bestBrdOuter,
+        bestLenOuter,
+        maxUpsOuter,
+        frontSurBot,
+        isTopBottom ? backSurBot : "",
+        masterTable,
+        4
+      ) || 0
+    );
+    const varOut_kraft = Number(
+      kraftPerunit(
+        bestBrdOuter,
+        bestLenOuter,
+        maxUpsOuter,
+        outerCorrForKraft,
+        outerKraftGsmForKraft,
+        kraftRateActual
+      ) || 0
+    );
+    const varOut_dice = Number(
+      (isTopBottom
+        ? diceCost(foilBot, masterTable[2][17], masterTable[1][17], qty)
+        : diceCost(0, masterTable[2][17], masterTable[1][17], qty)) || 0
+    );
+    const varOut_windowFoil = Number(
+      (isTopBottom ? window_foil_Cost(windowBot, foilBot, masterTable) : window_foil_Cost(0, 0, masterTable)) || 0
+    );
+    const varOut_punchPaste = Number(
+      punch_paste(
+        maxUpsOuter,
+        masterTable[5][3],
+        isTopBottom ? kraftGsmBot : kraftGsmIn,
+        bestBrdOuter,
+        bestLenOuter,
+        masterTable[7][3],
+        masterTable[6][3],
+        masterTable,
+        kraftRateActual
+      ) || 0
+    );
+    const varOut_packDel = Number(pack_del(paperweightOut, kraftWeightOut, masterTable[13][3], masterTable[8][3], qty) || 0);
+    const varOut_corrConv = Number(Corr_conv(kraftWeightOut, masterTable[12][3], qty) || 0);
+    const varCostOut =
+      varOut_paper +
+      varOut_ctp +
+      varOut_print +
+      varOut_surface +
+      varOut_kraft +
+      varOut_dice +
+      varOut_windowFoil +
+      varOut_punchPaste +
+      varOut_packDel +
+      varOut_corrConv;
     stepTime = logStep('>>> Variable costs for outer calculated', stepTime, requestStartTime);
+
+    console.log('[pck-est] varCostOut components', {
+      'Paper / unit (var basis)': varOut_paper,
+      'CTP / unit': varOut_ctp,
+      'Print / unit (actual)': varOut_print,
+      'Surface / unit (var basis)': varOut_surface,
+      'Kraft / unit': varOut_kraft,
+      'Dice / unit': varOut_dice,
+      'Window & Foil / unit': varOut_windowFoil,
+      'Punch & Paste / unit': varOut_punchPaste,
+      'Pack & Del / unit': varOut_packDel,
+      'Corr Conv / unit': varOut_corrConv,
+      'Var Cost (sum)': varCostOut
+    });
+
+    console.log('[pck-est] outer cost line (bottom)', {
+      'Sheet length': bestLenOuter,
+      'Sheet breadth': bestBrdOuter,
+      Ups: maxUpsOuter,
+      Wastage: wasteOut,
+      'Paper Wt': paperweightOut,
+      'Kraft Wt': kraftWeightOut,
+      'Paper Price/KG': pricePerKGOut,
+      'Paper / unit': paperPerUnitOut,
+      'CTP / unit': ctpPerUnitOut,
+      'Print / unit': printPerunitOut,
+      'Surface / unit': surfacePerUnitOut,
+      'Kraft/Unit': kraftPerunitOut,
+      'Dice Cost': diceCostOut,
+      'Window & Foil Cost/unit': window_foil_Cost_Out,
+      'Punch & Paste Cost/unit': punch_paste_Out,
+      'Pack & Del Cost/unit': pack_del_Out,
+      'Corr Conv': Corr_conv_Out,
+      'Var Cost': varCostOut
+    });
 
     stepTime = Date.now();
     logStep('>>> Calculating final pricing for outer', stepTime, requestStartTime);
@@ -272,6 +497,19 @@ async function calculatePricing(input, requestStartTime = null) {
     const gpPerImpOut = (price_per_unit_Out - varCostOutNum) * maxUpsOuter;
     stepTime = logStep('>>> Final pricing for outer completed', stepTime, requestStartTime);
     stepTime = logStep('>>> Outer costs calculation completed', stepTime, requestStartTime);
+
+    const varCostCombinedNum =
+      productType === "Top Bottom" ? varCostInNum + varCostOutNum : varCostInNum;
+    const priceCombinedNum =
+      productType === "Top Bottom"
+        ? Number(price_per_unit_In || 0) + Number(price_per_unit_Out || 0)
+        : Number(price_per_unit_In || 0);
+    const gpPercentIn = varCostInNum > 0 ? ((Number(price_per_unit_In) / varCostInNum) - 1) * 100 : null;
+    const gpPercentOut = varCostOutNum > 0 ? ((Number(price_per_unit_Out) / varCostOutNum) - 1) * 100 : null;
+    const gpPercentCombined =
+      varCostCombinedNum > 0 ? (priceCombinedNum / varCostCombinedNum - 1) * 100 : null;
+    const gpPerImpCombined =
+      productType === "Top Bottom" ? Number(gpPerImpIn || 0) + Number(gpPerImpOut || 0) : gpPerImpIn;
 
     stepTime = Date.now();
     logStep('>>> Preparing final output data', stepTime, requestStartTime);
@@ -344,11 +582,32 @@ async function calculatePricing(input, requestStartTime = null) {
         gpPerIn: gpPerIn,
         gpPerOut: gpPerOut,
         gpPerImpIn: gpPerImpIn,
-        gpPerImpOut: gpPerImpOut
+        gpPerImpOut: gpPerImpOut,
+        price_per_unit_combined:
+          productType === "Top Bottom"
+            ? Number(price_per_unit_In || 0) + Number(price_per_unit_Out || 0)
+            : price_per_unit_In,
+        var_cost_combined:
+          productType === "Top Bottom"
+            ? Number(varCostIn || 0) + Number(varCostOut || 0)
+            : varCostIn,
+        gp_percent_in: gpPercentIn,
+        gp_percent_out: productType === "Top Bottom" ? gpPercentOut : null,
+        gp_percent_combined: gpPercentCombined,
+        gp_per_imp_combined: gpPerImpCombined
       },
       metadata: {
         foilIn: foilIn,
-        windowIn: windowIn
+        windowIn: windowIn,
+        kraft_rate_customer: kraftRateCustomer,
+        kraft_rate_actual: kraftRateActual
+      },
+      quote_context: {
+        client_name: String(input.client_name || '').trim(),
+        sku_name: String(input.sku_name || '').trim(),
+        delivery_charges: delCost,
+        overhead: overhead,
+        ptype: productType
       }
     };
     stepTime = logStep('>>> Response object built', stepTime, requestStartTime);
@@ -562,44 +821,26 @@ function flatten(arr) {
 
 
 function wastage(qty, ups, lookupArray) {
-  console.log('[wastage] Input values:', { qty, ups, qtyType: typeof qty, upsType: typeof ups, lookupArrayLength: lookupArray?.length });
   const upsNum = Number(ups) || 1;
   if (upsNum === 0) return 1;
   const searchValue = qty / upsNum;
-  console.log('[wastage] Calculated searchValue:', searchValue, 'qty:', qty, 'upsNum:', upsNum);
-  
-  // Log the wastage matrix data from columns 22 and 23
-  if (lookupArray && lookupArray.length > 0) {
-    console.log('[wastage] Wastage matrix data (columns 22-23):');
-    for (let i = 0; i < Math.min(lookupArray.length, 20); i++) {
-      if (lookupArray[i] && lookupArray[i][21] !== undefined && lookupArray[i][22] !== undefined) {
-        console.log(`  Row ${i}: [${lookupArray[i][21]}, ${lookupArray[i][22]}]`);
-      }
-    }
-  }
-  
   const waste = XLOOKUP(searchValue, lookupArray, 22, 23, 1, 1);
   const wasteNum = Number(waste);
   const result = isNaN(wasteNum) ? 1 : wasteNum;
-  console.log('[wastage] Final result:', result);
   return result;
 }
 
 function paperWt(qty, ups, bestLen, bestBrd, gsm, waste) {
-  console.log('[paperWt] Input values:', { qty, ups, bestLen, bestBrd, gsm, waste });
   const upsNum = Number(ups) || 1;
   const wasteNum = Number(waste) || 1;
   const qtyNum = Number(qty);
   const bestLenNum = Number(bestLen);
   const bestBrdNum = Number(bestBrd);
   const gsmNum = Number(gsm);
-  console.log('[paperWt] Converted values:', { qtyNum, upsNum, bestLenNum, bestBrdNum, gsmNum, wasteNum });
   const sheets = Math.ceil(qtyNum / upsNum);
   const areaPerSheet = (bestBrdNum * bestLenNum * gsmNum) / (1000 * 1000 * 1000);
   const paperweight = sheets * areaPerSheet * wasteNum;
-  console.log('[paperWt] Calculation steps:', { sheets, areaPerSheet, wasteNum, paperweight });
   const result = isNaN(paperweight) ? 0 : paperweight;
-  console.log('[paperWt] Final result:', result);
   return result;
 }
 
@@ -611,19 +852,14 @@ function kraftWt(bestBrd, bestLen, ups, corrLayer, kraftGsm, qty) {
 }
 
 function paperPerUnit(paperweight, paperPrice, qty) {
-  console.log('[paperPerUnit] Input values:', { paperweight, paperPrice, qty, paperweightType: typeof paperweight, paperPriceType: typeof paperPrice, qtyType: typeof qty });
   const qtyNum = Number(qty) || 1;
   if (qtyNum === 0) {
-    console.log('[paperPerUnit] qty is 0, returning 0');
     return 0;
   }
   const paperweightNum = Number(paperweight);
   const paperPriceNum = Number(paperPrice);
-  console.log('[paperPerUnit] Converted values:', { paperweightNum, paperPriceNum, qtyNum });
   const ppu = (paperweightNum * paperPriceNum) / qtyNum;
-  console.log('[paperPerUnit] Calculation:', `${paperweightNum} * ${paperPriceNum} / ${qtyNum} = ${ppu}`);
   const result = isNaN(ppu) ? 0 : ppu;
-  console.log('[paperPerUnit] Final result:', result);
   return result;
 }
 
@@ -736,11 +972,49 @@ function diceCost(foil, dc1, dc2, qty) {
 }
 
 function window_foil_Cost(window, foil, lookupArray) {
-  const w_f_c = (Number(window) * 0.02) + (Number(foil) * 0.02);
-  return isNaN(w_f_c) ? 0 : w_f_c;
+  // Excel parity:
+  // =IF(B15="","", XLOOKUP(H8,Master!$AE$2:$AE$7,Master!$AF$2:$AF$7,"")+XLOOKUP(J8,Master!$AB$2:$AB$7,Master!$AC$2:$AC$7,""))
+  if (window === "" || window === null || window === undefined) {
+    return 0;
+  }
+
+  const windowLookup = XLOOKUP(window, lookupArray, 31, 32, "", 0);
+  const foilLookup = XLOOKUP(foil, lookupArray, 28, 29, "", 0);
+  const windowCost = Number(windowLookup) || 0;
+  const foilCost = Number(foilLookup) || 0;
+  const total = windowCost + foilCost;
+  return isNaN(total) ? 0 : total;
 }
 
-function punch_paste(ups, punch, kraftGsm, bestBrd, bestLen, paste1, paste2) {
+
+/**
+ * Master row index 11, e.g. ['Kratf','32','/Kg','30']:
+ * - index 1 = rate to customer (quoted / price build)
+ * - index 3 = actual rate (variable cost)
+ * If one side is missing, the other is used so a single filled cell still works.
+ */
+function kraftRatesFromMaster(masterTable) {
+  const row = Array.isArray(masterTable) && Array.isArray(masterTable[11]) ? masterTable[11] : [];
+  const parse = (v) => {
+    if (v === undefined || v === null || String(v).trim() === "") return 0;
+    const n = Number(v);
+    return isNaN(n) ? 0 : n;
+  };
+  let customer = parse(row[1]);
+  let actual = parse(row[3]);
+  if (customer <= 0 && actual > 0) customer = actual;
+  if (actual <= 0 && customer > 0) actual = customer;
+  return { customer, actual };
+}
+
+function kraftWastageFromMaster(masterTable) {
+  const row = Array.isArray(masterTable) && Array.isArray(masterTable[2]) ? masterTable[2] : [];
+  const d = row[3];
+  if (d !== undefined && d !== null && String(d).trim() !== "") return Number(d) || 0;
+  return Number(row[1]) || 0;
+}
+
+function punch_paste(ups, punch, kraftGsm, bestBrd, bestLen, paste1, paste2, masterTable, kraftRateForPaste) {
   const upsNum = Number(ups) || 1;
   if (upsNum === 0) return 0;
   const punchNum = Number(punch) || 0;
@@ -749,28 +1023,47 @@ function punch_paste(ups, punch, kraftGsm, bestBrd, bestLen, paste1, paste2) {
   const bestBrdNum = Number(bestBrd) || 0;
   const paste1Num = Number(paste1) || 0;
   const paste2Num = Number(paste2) || 0;
-  const pp = (1 / upsNum) * (punchNum / 1000) + ((kraftGsmNum / 1000 * 2.33 * bestLenNum / 1000 * bestBrdNum) > 0 ? paste1Num : paste2Num);
+  const kraftRate =
+    kraftRateForPaste !== undefined && kraftRateForPaste !== null && !isNaN(Number(kraftRateForPaste))
+      ? Number(kraftRateForPaste)
+      : kraftRatesFromMaster(masterTable).customer;
+  const kraftWastage = kraftWastageFromMaster(masterTable);
+  const kraftPasteTerm =
+    (kraftGsmNum / 1000) *
+    2.33 *
+    (bestLenNum / 1000) *
+    (bestBrdNum / 1000) *
+    kraftRate *
+    kraftWastage /
+    upsNum;
+  const usePaste1 = kraftPasteTerm > 0;
+  const pp = (1 / upsNum) * (punchNum / 1000) + (usePaste1 ? paste1Num : paste2Num);
   return isNaN(pp) ? 0 : pp;
 }
 
 function pack_del(paperweight, kraftWeight, deliverycost, packing, qty) {
-  console.log('[pack_del] Input values:', { paperweight, kraftWeight, deliverycost, packing, qty });
   const qtyNum = Number(qty) || 1;
   if (qtyNum === 0) {
-    console.log('[pack_del] qty is 0, returning 0');
     return 0;
   }
   const paperweightNum = Number(paperweight);
   const kraftWeightNum = Number(kraftWeight);
   const deliverycostNum = Number(deliverycost);
   const packingNum = Number(packing);
-  console.log('[pack_del] Converted values:', { paperweightNum, kraftWeightNum, deliverycostNum, packingNum, qtyNum });
   const totalWeight = paperweightNum + kraftWeightNum;
   const totalCost = deliverycostNum + packingNum;
   const pd = (totalWeight * totalCost) / qtyNum;
-  console.log('[pack_del] Calculation steps:', { totalWeight, totalCost, pd });
   const result = isNaN(pd) ? 0 : pd;
-  console.log('[pack_del] Final result:', result);
+  console.log('pack_del########################################################');
+  console.log('paperweight', paperweight);
+  console.log('kraftWeight', kraftWeight);
+  console.log('deliverycost', deliverycost);
+  console.log('packing', packing);
+  console.log('qty', qty);
+  console.log('totalWeight', totalWeight);
+  console.log('totalCost', totalCost);
+  console.log('pd', pd);
+  console.log('result', result);
   return result;
 }
 
@@ -825,13 +1118,6 @@ function XLOOKUP(searchValue, searchArray, searchCol, returnCol, ifNotFound = nu
   let bestMatchIndex = -1;
   let bestMatchValue;
 
-  // Log for wastage lookup debugging
-  const isWastageLookup = searchCol === 22 && returnCol === 23 && matchType === 1;
-  if (isWastageLookup) {
-    console.log('[XLOOKUP] Wastage lookup - searchValue:', searchValue, 'searchValueNum:', searchValueNum);
-    console.log('[XLOOKUP] Looking in column', searchColIndex, 'returning from column', returnColIndex);
-  }
-
   for (let i = 0; i < normalizedArray.length; i++) {
     let currentValue = normalizedArray[i][searchColIndex];
     const currentValueNum = Number(currentValue);
@@ -855,9 +1141,6 @@ function XLOOKUP(searchValue, searchArray, searchCol, returnCol, ifNotFound = nu
         if (currentValueNum >= searchValueNum && (bestMatchIndex === -1 || currentValueNum < bestMatchValue)) {
           bestMatchIndex = i;
           bestMatchValue = currentValueNum;
-          if (isWastageLookup) {
-            console.log(`[XLOOKUP] Found match at index ${i}: ${currentValueNum} >= ${searchValueNum}, wastage value: ${normalizedArray[i][returnColIndex]}`);
-          }
         }
       } else {
         // Fallback to string comparison
@@ -883,16 +1166,9 @@ function XLOOKUP(searchValue, searchArray, searchCol, returnCol, ifNotFound = nu
   }
 
   if (bestMatchIndex !== -1) {
-    const result = normalizedArray[bestMatchIndex][returnColIndex];
-    if (isWastageLookup) {
-      console.log('[XLOOKUP] Final wastage result:', result, 'from row', bestMatchIndex, 'bestMatchValue:', bestMatchValue);
-    }
-    return result;
+    return normalizedArray[bestMatchIndex][returnColIndex];
   }
 
-  if (isWastageLookup) {
-    console.log('[XLOOKUP] No match found, returning ifNotFound:', ifNotFound);
-  }
   return ifNotFound;
 }
 

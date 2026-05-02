@@ -54,33 +54,44 @@ async function calCulate(quoteinfo, requestStartTime = null) {
     const inputStartRow = 5;
     
     // Convert string inputs to arrays
-    const compCol = convertStringToArray(quoteinfo.components);
+    const compCol = convertStringToArray(quoteinfo.components ?? '');
     const gsmCol = convertStringToArray(quoteinfo.gsm);
     const textPagesCol = convertStringToArray(quoteinfo.page_number);
     const paperTypeCol = convertStringToArray(quoteinfo.material);
     const front_print_col = convertStringToArray(quoteinfo.front_print);
     const back_print_col = convertStringToArray(quoteinfo.back_print);
-    const front_surface_col = convertStringToArray(quoteinfo.front_surface);
-    const back_surface_col = convertStringToArray(quoteinfo.back_surface);
+    const front_surface_col = convertStringToArray(quoteinfo.front_surface ?? '');
+    const back_surface_col = convertStringToArray(quoteinfo.back_surface ?? '');
+    const web_or_sheet_col = dollarFieldToCols(quoteinfo, 'web_or_sheet');
+    const force_paper_col = dollarFieldToCols(quoteinfo, 'force_paper');
+    const manual_price_per_kg_col = dollarFieldToCols(quoteinfo, 'manual_price_per_kg');
+    const right_add_col = dollarFieldToCols(quoteinfo, 'right_add');
+    const left_add_col = dollarFieldToCols(quoteinfo, 'left_add');
+    const complexity_col = dollarFieldToCols(quoteinfo, 'complexity');
     
     let spineStr = '';
     const maxUpsArray = [];
     
     // Declare variables outside the loop so they're accessible after the loop
     const bindingStyle = quoteinfo.binding_style;
-    const noOfTitles = quoteinfo.no_of_titles !== "" ? Number(quoteinfo.no_of_titles) : 1;
+    const rawTitles = quoteinfo.no_of_titles;
+    const parsedTitles =
+      rawTitles !== undefined && rawTitles !== null && String(rawTitles).trim() !== ''
+        ? Number(rawTitles)
+        : 1;
+    const noOfTitles = !isNaN(parsedTitles) && parsedTitles > 0 ? parsedTitles : 1;
     const Qty = Number(quoteinfo.Qty) * noOfTitles;
     
-    if (compCol[0] === "" || !compCol[0]) {
+    if (!dollarCell(compCol, 0)) {
       throw new Error("Please insert mandatory information!");
     } else {
       for (let i = 0; i < (lastRow - inputStartRow + 1); i++) {
-        const comp = compCol[i] ? compCol[i][0] : null;
-        const complexity = "Simple";
-        
-        if (comp != null) {
-          console.log(comp);
-          const Bklen = getStdLenBrd(Number(quoteinfo.len), bindingStyle);
+        const comp = dollarCell(compCol, i);
+        if (!comp) {
+          continue;
+        }
+
+        const Bklen = getStdLenBrd(Number(quoteinfo.len), bindingStyle);
           const BkBrd = getStdLenBrd(Number(quoteinfo.brd), bindingStyle);
           
           const noOfPages = Number(textPagesCol[i] ? textPagesCol[i][0] : 0);
@@ -88,16 +99,41 @@ async function calCulate(quoteinfo, requestStartTime = null) {
           const paperType = paperTypeCol[i] ? paperTypeCol[i][0] : "";
           const front_print = Number(front_print_col[i] ? front_print_col[i][0] : 0);
           const back_print = back_print_col[i] === "" || !back_print_col[i] ? 0 : Number(back_print_col[i][0]);
-          const front_surface = front_surface_col[i] ? front_surface_col[i][0] : "";
-          const back_surface = back_surface_col[i] ? back_surface_col[i][0] : "";
-          
-          const webOrSheet = paperType === "Bible Paper" ? "Web" : paperType !== "" ? "Sheet" : "Sheet";
-          
-          const forcePaper = "Default";
+          const front_surface = dollarCell(front_surface_col, i);
+          const back_surface = dollarCell(back_surface_col, i);
+
+          const wsRaw = dollarCell(web_or_sheet_col, i).toLowerCase();
+          let webOrSheet;
+          if (wsRaw === 'web') {
+            webOrSheet = 'Web';
+          } else if (wsRaw === 'sheet') {
+            webOrSheet = 'Sheet';
+          } else {
+            webOrSheet = paperType === 'Bible Paper' ? 'Web' : paperType !== '' ? 'Sheet' : 'Sheet';
+          }
+
+          const fpRaw = dollarCell(force_paper_col, i);
+          const fpLower = fpRaw.toLowerCase();
+          let forcePaper;
+          if (fpRaw === 'Special' || fpLower === 'sp' || fpLower === 'special') {
+            forcePaper = 'Special';
+          } else if (fpLower === 'standard') {
+            forcePaper = 'Standard';
+          } else {
+            forcePaper = 'Default';
+          }
+
+          let complexity = dollarCell(complexity_col, i);
+          if (complexity === '') {
+            complexity = 'Simple';
+          }
+
+          const leftAdd = Number(dollarCell(left_add_col, i)) || 0;
+          const rightAdd = Number(dollarCell(right_add_col, i)) || 0;
+          const leftAddPlusRightADD = leftAdd + rightAdd;
+
           const indexNo = inputTable[i] ? inputTable[i][0] : i + 1;
-          
-          console.log([comp, noOfPages, noOfTitles, Qty, gsm, paperType, front_print, back_print, front_surface, Bklen, BkBrd, quoteinfo.len, quoteinfo.brd]);
-          
+
           let SheetLen, SheetWid, maxUps = 0, sheetWaistepercent, paperSzType;
           
           //--------------------Text Type Component---------------------------------//
@@ -127,8 +163,6 @@ async function calCulate(quoteinfo, requestStartTime = null) {
                 machineWidth = comp === "Sticker Paper" ? 510 : 578;
                 machineLen = comp === "Sticker Paper" ? 760 : 890;
               }
-              
-              console.log([machineLen, machineWidth]);
               
               const xv = Math.floor((machineWidth - 10) / (Bklen + lenbuffer));
               const yv = Math.floor((machineLen - 10) / (2 * (BkBrd + widbuffer)));
@@ -207,7 +241,6 @@ async function calCulate(quoteinfo, requestStartTime = null) {
             
           } else if (comp === "Gate Fold Cover") {
             const spine3 = calSpine(bindingStyle, compCol, gsmCol, textPagesCol, paperTypeCol, gsm);
-            const leftAddPlusRightADD = 0;
             const orderSize = (Bklen / 1000) * ((BkBrd + spine3 / 2) / 1000) * (gsm / 1000) * Qty * 2;
             
             const calArray = cal_PLC_Cover(paperType, orderSize, forcePaper, Qty, bindingStyle, compCol, gsmCol, textPagesCol, paperTypeCol, gsm, Bklen, BkBrd + (leftAddPlusRightADD / 2), webOrSheet, opsTable, complexity);
@@ -305,9 +338,14 @@ async function calCulate(quoteinfo, requestStartTime = null) {
           const paperPriceRaw = XLOOKUP(paperType, opsTable1, 2, 3, "");
           // Convert empty string to 0 for numeric calculations
 
-          // [sheetLen, sheetWid, gsm, noOfPages, maxUps, Qty, noOfTitles]
-          console.log(SheetLen, SheetWid, gsm, noOfPages, maxUps, Qty, noOfTitles,"######################################");
-          const paperPrice = paperPriceRaw === "" || paperPriceRaw === null || paperPriceRaw === undefined ? 0 : Number(paperPriceRaw) || 0;
+          let paperPrice = paperPriceRaw === "" || paperPriceRaw === null || paperPriceRaw === undefined ? 0 : Number(paperPriceRaw) || 0;
+          const manualPriceSeg = dollarCell(manual_price_per_kg_col, i);
+          if (manualPriceSeg !== '') {
+            const mp = Number(manualPriceSeg);
+            if (!isNaN(mp) && mp > 0) {
+              paperPrice = mp;
+            }
+          }
           
           // Get opsTable1 values with defaults
           const opsTable1_4_13 = Number(opsTable1[4]?.[13]) || 0;
@@ -334,8 +372,6 @@ async function calCulate(quoteinfo, requestStartTime = null) {
           // Ensure all values are numbers, not null/NaN
           const paperWtNum = Number(paperWt) || 0;
           const paperPriceNum = Number(paperPrice) || 0;
-
-          console.log(paperWt,"######################################",paperWtNum);
           
           displayTable[i][8] = isNaN(paperWtNum) ? 0 : paperWtNum;
           displayTable[i][9] = isNaN(paperPriceNum) ? 0 : paperPriceNum;
@@ -362,11 +398,107 @@ async function calCulate(quoteinfo, requestStartTime = null) {
           // Calculate surface finish cost with validation
           const frontSurfaceCost = Number(XLOOKUP(front_surface, opsTable1, 7, 8, 0)) || 0;
           const backSurfaceCost = Number(XLOOKUP(back_surface, opsTable1, 7, 8, 0)) || 0;
-          const surfaceFinishCost = Number(SheetLen) / 25.4 * Number(SheetWid) / 25.4 / 100 * Number(noOfPages) / Number(maxUps) * Number(Qty) / Number(noOfTitles) / 2 * frontSurfaceCost + backSurfaceCost;
+          console.log('[COMMERCIAL_SURFACE_COST]', {
+            front_surface,
+            back_surface,
+            front_surface_cost: frontSurfaceCost,
+            back_surface_cost: backSurfaceCost
+          });
+          const surfaceFinishCost =
+            (Number(SheetLen) / 25.4) *
+            (Number(SheetWid) / 25.4) /
+            100 *
+            (Number(noOfPages) / Number(maxUps)) *
+            (Number(Qty) / Number(noOfTitles)) /
+            2 *
+            (frontSurfaceCost + backSurfaceCost);
           displayTable[i][13] = isNaN(surfaceFinishCost) ? 0 : surfaceFinishCost;
+
+          // Actual (master) rates from opsTable2 — same column layout as pricing UI (Material / Surface "actual").
+          const paperTypeKey = String(paperType || '').trim();
+          const paperPriceActRaw = XLOOKUP(paperTypeKey, opsTable2, 2, 3, '');
+          const paperPriceAct =
+            paperPriceActRaw === '' || paperPriceActRaw === null || paperPriceActRaw === undefined
+              ? 0
+              : Number(paperPriceActRaw) || 0;
+          const paperCostAct = isNaN(paperWtNum * paperPriceAct) ? 0 : paperWtNum * paperPriceAct;
+
+          const opsTable2_3_13 = Number(opsTable2[3]?.[13]) || 0;
+          const opsTable2_4_13 = Number(opsTable2[4]?.[13]) || 0;
+          const opsTable2_5_13 = Number(opsTable2[5]?.[13]) || 0;
+          const defaultPrintCostAct = Math.max(opsTable2_3_13, opsTable2_4_13, opsTable2_5_13);
+          const opsTable2Web13 = commCol13WhereCol12Label(opsTable2, 'Web');
+          const printcostAct =
+            webOrSheet === 'Web'
+              ? ((noOfPages / maxUps) * Math.max(Qty / noOfTitles - 3000, 0) / 2) /
+                  1000 *
+                  (front_print * opsTable2Web13 + back_print * opsTable2Web13)
+              : ((noOfPages / maxUps) * Math.max(Qty / noOfTitles - 3000, 0) / 2) /
+                  1000 *
+                  (Number(XLOOKUP(front_print, opsTable2, 13, 14, defaultPrintCostAct)) * front_print +
+                    Number(XLOOKUP(back_print, opsTable2, 13, 14, defaultPrintCostAct)) * back_print);
+
+          const plateRateAct = commCol13WhereCol12Label(opsTable2, 'Plate');
+          const ctpCostAct = totalForms * (frontPrintNum + backPrintNum) * plateRateAct;
+
+          const frontSurfaceKey = String(front_surface || '').trim();
+          const backSurfaceKey = String(back_surface || '').trim();
+          const frontSurfaceAct = Number(XLOOKUP(frontSurfaceKey, opsTable2, 7, 8, 0)) || 0;
+          const backSurfaceAct = Number(XLOOKUP(backSurfaceKey, opsTable2, 7, 8, 0)) || 0;
+          const surfaceFinishCostAct =
+            (Number(SheetLen) / 25.4) *
+            (Number(SheetWid) / 25.4) /
+            100 *
+            (Number(noOfPages) / Number(maxUps)) *
+            (Number(Qty) / Number(noOfTitles)) /
+            2 *
+            (frontSurfaceAct + backSurfaceAct);
+
+          displayTable[i][14] = isNaN(paperCostAct) ? 0 : paperCostAct;
+          displayTable[i][15] = isNaN(ctpCostAct) ? 0 : ctpCostAct;
+          displayTable[i][16] = isNaN(printcostAct) ? 0 : printcostAct;
+          displayTable[i][17] = isNaN(surfaceFinishCostAct) ? 0 : surfaceFinishCostAct;
+
+          const componentVarCost = (displayTable[i][10] || 0) + (displayTable[i][11] || 0) + (displayTable[i][12] || 0) + (displayTable[i][13] || 0);
+          const componentVarCostActual =
+            (displayTable[i][14] || 0) + (displayTable[i][15] || 0) + (displayTable[i][16] || 0) + (displayTable[i][17] || 0);
+          console.log('[var cost components]', {
+            paper_cost: displayTable[i][10] || 0,
+            ctp_cost: displayTable[i][11] || 0,
+            print_cost: displayTable[i][12] || 0,
+            surface_cost: displayTable[i][13] || 0,
+            var_cost: componentVarCost,
+            paper_cost_actual: displayTable[i][14] || 0,
+            ctp_cost_actual: displayTable[i][15] || 0,
+            print_cost_actual: displayTable[i][16] || 0,
+            surface_cost_actual: displayTable[i][17] || 0,
+            var_cost_actual: componentVarCostActual
+          });
+          console.log('[COMMERCIAL_COMPONENT_COST]', {
+            component_index: indexNo,
+            component_name: comp,
+            mat_len: Number(SheetLen) || 0,
+            mat_wid: Number(SheetWid) || 0,
+            ups: Number(maxUps) || 0,
+            sheet_waste: Number(sheetWaistepercent) || 0,
+            paper_size_type: paperSzType || '',
+            paper_type: paperType || '',
+            paper_wt: displayTable[i][8] || 0,
+            paper_price: displayTable[i][9] || 0,
+            paper_cost: displayTable[i][10] || 0,
+            ctp_cost: displayTable[i][11] || 0,
+            print_cost: displayTable[i][12] || 0,
+            surface_cost: displayTable[i][13] || 0,
+            var_cost: componentVarCost,
+            paper_price_actual: paperPriceAct,
+            paper_cost_actual: displayTable[i][14] || 0,
+            ctp_cost_actual: displayTable[i][15] || 0,
+            print_cost_actual: displayTable[i][16] || 0,
+            surface_cost_actual: displayTable[i][17] || 0,
+            var_cost_actual: componentVarCostActual
+          });
           
-          maxUpsArray.push(maxUps || 0);
-        }
+        maxUpsArray.push(maxUps || 0);
       }
     }
     
@@ -377,28 +509,148 @@ async function calCulate(quoteinfo, requestStartTime = null) {
     const totalPaperCost = sumColumn(displayTable, 10);
     const totalCTPPrint = sumColumn(displayTable, 11) + sumColumn(displayTable, 12);
     const totalSurfceFinish = sumColumn(displayTable, 13);
-    
+
     const bindcost = calcbindcostNew(bindingStyle, Qty / noOfTitles, costarr, maxUpsArray, compCol, textPagesCol);
-    
-    console.log(displayTable);
+    const componentsActualSubtotal = sumRowsActualComponentsOnly(displayTable);
     
     const overheadPercent3 = 0.15;
     const overheads = overheadPercent3 * (totalPaperCost + totalCTPPrint + totalSurfceFinish + bindcost[0]);
-    const packing = bookWt * Qty / noOfTitles * XLOOKUP("Carton", opsTable1, 19, 20, 0);
-    const shipping_fob = 3 * bookWt * Qty / noOfTitles;
-    
-    const total = totalCTPPrint + totalSurfceFinish + totalPaperCost + bindcost[0] + overheads + packing + shipping_fob;
-    
+    const overheadsActual = overheadPercent3 * (componentsActualSubtotal + bindcost[1]);
+    const packingLookupRaw = String(quoteinfo.packing_type || quoteinfo.packing_lookup || 'Carton').trim();
+    const packingLookup =
+      packingLookupRaw.toLowerCase() === 'pallet' ? 'Pallet' : 'Carton';
+    let packing = bookWt * Qty / noOfTitles * XLOOKUP(packingLookup, opsTable1, 19, 20, 0);
+    const packingOverrideRaw = quoteinfo.packing_override;
+    if (packingOverrideRaw !== undefined && packingOverrideRaw !== null && packingOverrideRaw !== '') {
+      const po = Number(packingOverrideRaw);
+      if (!isNaN(po) && po >= 0) {
+        packing = po;
+      }
+    }
+
+    let shipping_fob = 3 * bookWt * Qty / noOfTitles;
+    const cifFobPerKg = Number(quoteinfo.cif_fob_per_kg);
+    if (!isNaN(cifFobPerKg) && cifFobPerKg >= 0) {
+      shipping_fob = cifFobPerKg * bookWt * Qty / noOfTitles;
+    }
+
+    const addlBindMatCost = Number(quoteinfo.addl_binding_mat_cost) || 0;
+    const addlBindLabourCost = Number(quoteinfo.addl_binding_labour_cost) || 0;
+    const diceBlockCost = Number(quoteinfo.dice_block_cost) || 0;
+    const addlOrderCosts = addlBindMatCost + addlBindLabourCost + diceBlockCost;
+    const varCost = totalPaperCost + totalCTPPrint + totalSurfceFinish + bindcost[0] + overheads;
+    const varCostActual = componentsActualSubtotal + bindcost[1];
+    const totalVarCustomer = varCost + packing + shipping_fob;
+    const totalVar = varCostActual + packing + shipping_fob;
+
+    const total = totalVarCustomer + addlOrderCosts;
+
     const price_per_unit = total / (Qty / noOfTitles);
-    console.log([bookWt, totalCTPPrint, totalPaperCost, totalSurfceFinish, packing, shipping_fob, total, price_per_unit]);
-    console.log(price_per_unit);
-    
-    logStep(`>>> calCulate: Completed in ${Date.now() - calcStartTime}ms`, calcStartTime, requestStartTime);
-    
-    return {
-      price_per_unit: price_per_unit,
-      displayTable: displayTable
+
+    const currency = String(quoteinfo.currency || 'INR').trim() || 'INR';
+    const fxInrPerFc = Number(quoteinfo.exchange_rate_inr_per_fc);
+    const quotedPriceInInr = price_per_unit;
+    const quotedPriceInCurrency =
+      currency === 'INR'
+        ? price_per_unit
+        : !isNaN(fxInrPerFc) && fxInrPerFc > 0
+          ? Math.round((price_per_unit / fxInrPerFc) * 100) / 100
+          : null;
+    const gpPercent =
+      totalVarCustomer > 0 ? (1 - totalVar / totalVarCustomer) * 100 : null;
+    console.log('[COMMERCIAL_COST_SUMMARY]', {
+      book_wt: bookWt,
+      total_paper_cost: totalPaperCost,
+      total_print_ctp_cost: totalCTPPrint,
+      total_surface_finish_cost: totalSurfceFinish,
+      total_binding_cost: bindcost[0],
+      overhead_percent: overheadPercent3,
+      overheads,
+      var_cost: varCost,
+      components_actual_subtotal: componentsActualSubtotal,
+      total_binding_cost_actual: bindcost[1],
+      overheads_actual: overheadsActual,
+      var_cost_actual: varCostActual,
+      packing,
+      shipping_fob,
+      total_var: totalVar,
+      total_var_customer: totalVarCustomer,
+      total,
+      quoted_price_in_inr: quotedPriceInInr,
+      quoted_price_in_currency: quotedPriceInCurrency,
+      gp_percent: gpPercent
+    });
+    const commercial_extras = {
+      addl_binding_mat_description: String(quoteinfo.addl_binding_mat_description || '').trim(),
+      addl_binding_mat_cost: addlBindMatCost,
+      addl_binding_labour_description: String(quoteinfo.addl_binding_labour_description || '').trim(),
+      addl_binding_labour_cost: addlBindLabourCost,
+      dice_block_cost: diceBlockCost,
+      cif_fob_per_kg: !isNaN(cifFobPerKg) && cifFobPerKg >= 0 ? cifFobPerKg : null,
+      packing_applied: packing,
+      packing_lookup: packingLookup,
+      packing_default_used: packingOverrideRaw === undefined || packingOverrideRaw === null || packingOverrideRaw === '',
+      shipping_fob_applied: shipping_fob,
+      currency,
+      quoted_price_in_inr: quotedPriceInInr,
+      quoted_price_in_currency: quotedPriceInCurrency,
+      gp_percent: gpPercent,
+      variable_cost_actual: {
+        components_actual_subtotal: componentsActualSubtotal,
+        total_binding: bindcost[1],
+        overheads: overheadsActual,
+        components_plus_binding: varCostActual,
+        packing,
+        shipping_fob,
+        total_var: totalVar,
+        per_unit_components_binding: varCostActual / (Qty / noOfTitles),
+        per_unit_with_logistics: totalVar / (Qty / noOfTitles)
+      }
     };
+
+    logStep(`>>> calCulate: Completed in ${Date.now() - calcStartTime}ms`, calcStartTime, requestStartTime);
+
+    const commercial_cost_summary = {
+      book_wt: bookWt,
+      total_paper_cost: totalPaperCost,
+      total_print_ctp_cost: totalCTPPrint,
+      total_surface_finish_cost: totalSurfceFinish,
+      total_binding_cost: bindcost[0],
+      overhead_percent: overheadPercent3,
+      overheads,
+      total_binding_cost_actual: bindcost[1],
+      overheads_actual: overheadsActual,
+      var_cost_actual: varCostActual,
+      packing,
+      shipping_fob,
+      total_var: totalVar,
+      total_var_customer: totalVarCustomer,
+      total,
+      quoted_price_in_inr: quotedPriceInInr,
+      quoted_price_in_currency: quotedPriceInCurrency,
+      gp_percent: gpPercent
+    };
+
+    const result = {
+      price_per_unit,
+      displayTable,
+      commercial_extras,
+      commercial_cost_summary,
+      quote_context: {
+        client_name: String(quoteinfo.client_name || '').trim(),
+        sku_name: String(quoteinfo.sku_name || '').trim(),
+        no_of_titles: noOfTitles
+      }
+    };
+
+    result.currency = currency;
+
+    if (currency !== 'INR' && !isNaN(fxInrPerFc) && fxInrPerFc > 0) {
+      result.price_per_unit_foreign = quotedPriceInCurrency;
+      result.exchange_rate_inr_per_fc = fxInrPerFc;
+    }
+
+    return result;
   } catch (error) {
     console.error(`[${new Date().toISOString()}] ❌ Error in calCulate:`, error);
     logStep(`>>> calCulate: Failed after ${Date.now() - calcStartTime}ms`, calcStartTime, requestStartTime);
@@ -413,17 +665,40 @@ function extractElements(array2D, startCol, endCol) {
   });
 }
 
+/** Loose match for text / numeric sheet cells (e.g. 1 vs "1"). Empty search never matches (avoids first blank row). */
+function commercialLookupKeyEqual(searchValue, currentValue) {
+  const s = searchValue == null ? '' : String(searchValue).trim();
+  if (s === '') return false;
+  if (searchValue === currentValue) return true;
+  const c = String(currentValue == null ? '' : currentValue).trim();
+  if (s === c) return true;
+  const ns = Number(s);
+  const nc = Number(currentValue);
+  if (c !== '' && !isNaN(ns) && !isNaN(nc) && ns === nc) return true;
+  return false;
+}
+
 function XLOOKUP(searchValue, searchArray, searchCol, returnCol, ifNotFound = null, matchType = 0) {
   searchCol = searchCol - 1;
   returnCol = returnCol - 1;
   
   let foundValue = ifNotFound;
+
+  if (!Array.isArray(searchArray) || searchArray.length === 0) {
+    return ifNotFound;
+  }
   
   if (!Array.isArray(searchArray[0])) {
     searchArray = searchArray.map(value => [value]);
   }
+
+  let maxCols = 0;
+  for (let r = 0; r < searchArray.length; r++) {
+    const row = searchArray[r];
+    if (Array.isArray(row) && row.length > maxCols) maxCols = row.length;
+  }
   
-  if (searchArray.length === 0 || searchCol < 0 || returnCol < 0 || searchCol >= searchArray[0].length || returnCol >= searchArray[0].length) {
+  if (searchArray.length === 0 || searchCol < 0 || returnCol < 0 || maxCols === 0 || searchCol >= maxCols || returnCol >= maxCols) {
     return ifNotFound;
   }
   
@@ -431,10 +706,14 @@ function XLOOKUP(searchValue, searchArray, searchCol, returnCol, ifNotFound = nu
   let bestMatchValue;
   
   for (let i = 0; i < searchArray.length; i++) {
-    let currentValue = searchArray[i][searchCol];
+    const row = searchArray[i];
+    if (!Array.isArray(row) || row.length <= searchCol || row.length <= returnCol) {
+      continue;
+    }
+    let currentValue = row[searchCol];
     if (matchType === 0) {
-      if (currentValue === searchValue) {
-        return searchArray[i][returnCol];
+      if (commercialLookupKeyEqual(searchValue, currentValue)) {
+        return row[returnCol];
       }
     } else if (matchType === 1) {
       if (currentValue >= searchValue && (bestMatchIndex === -1 || currentValue < bestMatchValue)) {
@@ -450,7 +729,10 @@ function XLOOKUP(searchValue, searchArray, searchCol, returnCol, ifNotFound = nu
   }
   
   if (bestMatchIndex !== -1) {
-    foundValue = searchArray[bestMatchIndex][returnCol];
+    const hit = searchArray[bestMatchIndex];
+    if (Array.isArray(hit) && hit.length > returnCol) {
+      foundValue = hit[returnCol];
+    }
   }
   
   // Convert empty strings to null for consistency, or to 0 if ifNotFound is numeric
@@ -631,11 +913,15 @@ function calcbindcostNew(binding_style, Qty, costarr, maxUpsArray, compCol, text
   let bindcost = 0;
   let bindcostact = 0;
   
-  const process = binding_style;
+  const process = String(binding_style || '').trim();
   
   if (process !== "") {
     const bindcostbreakup = getbindcost(costarr, process);
     const bindcostbreakupact = getbindcostact(costarr, process);
+    const bindPerSig = Number(bindcostbreakup[0]) || 0;
+    const bindFixed = Number(bindcostbreakup[1]) || 0;
+    const bindActPerSig = Number(bindcostbreakupact[0]) || 0;
+    const bindActFixed = Number(bindcostbreakupact[1]) || 0;
     let sig = 0;
     let spread = 0;
     
@@ -647,11 +933,11 @@ function calcbindcostNew(binding_style, Qty, costarr, maxUpsArray, compCol, text
     }
     
     if (process === "Plain Board Book" || process === "HC + Board Book" || process === "HC+Foam+Board Book") {
-      bindcost = (spread * bindcostbreakup[0] + bindcostbreakup[1]) * Qty;
-      bindcostact = (spread * bindcostbreakupact[0] + bindcostbreakupact[1]) * Qty;
+      bindcost = (spread * bindPerSig + bindFixed) * Qty;
+      bindcostact = (spread * bindActPerSig + bindActFixed) * Qty;
     } else {
-      bindcost = Math.round((sig * bindcostbreakup[0] + bindcostbreakup[1]) * Qty);
-      bindcostact = Math.round((sig * bindcostbreakupact[0] + bindcostbreakupact[1]) * Qty);
+      bindcost = Math.round((sig * bindPerSig + bindFixed) * Qty);
+      bindcostact = Math.round((sig * bindActPerSig + bindActFixed) * Qty);
     }
   }
   
@@ -704,32 +990,52 @@ function getbindcost(costarr, process) {
   const bindcost = [];
   bindcost[0] = 0;
   bindcost[1] = 0;
+  if (!process) {
+    return bindcost;
+  }
   
   for (let i = 0; i < costarr.length; i++) {
-    if (costarr[i] && costarr[i][3] === process) {
+    if (Array.isArray(costarr[i]) && costarr[i].length && String(costarr[i][3] || '').trim() === process) {
       bindcost[0] = costarr[i][4];
       bindcost[1] = costarr[i][5];
       return bindcost;
     }
-    if (costarr[i] && costarr[i][3] === "") {
+    if (Array.isArray(costarr[i]) && costarr[i].length && String(costarr[i][3] || '').trim() === "") {
       return bindcost;
     }
   }
   return bindcost;
 }
 
+/** First material row index in costarr after the duplicate "Parameter / Rate" header (actual binding block). */
+function actualBindingCostarrStart(costarr) {
+  if (!Array.isArray(costarr)) return 0;
+  for (let i = 0; i < costarr.length; i++) {
+    const row = costarr[i];
+    if (!Array.isArray(row) || row.length < 3) continue;
+    if (String(row[1] || '').trim() === 'Parameter' && String(row[2] || '').trim() === 'Rate') {
+      return i + 1;
+    }
+  }
+  return 17;
+}
+
 function getbindcostact(costarr, process) {
   const bindcost = [];
   bindcost[0] = 0;
   bindcost[1] = 0;
-  
-  for (let i = 17; i < costarr.length; i++) {
-    if (costarr[i] && costarr[i][3] === process) {
-      bindcost[0] = costarr[i][4];
-      bindcost[1] = costarr[i][5];
-      return bindcost;
-    }
-    if (costarr[i] && costarr[i][3] === "") {
+  if (!process) {
+    return bindcost;
+  }
+  const start = actualBindingCostarrStart(costarr);
+  for (let i = start; i < costarr.length; i++) {
+    const row = costarr[i];
+    if (!Array.isArray(row) || !row.length) continue;
+    const col3 = String(row[3] || '').trim();
+    if (col3 === 'Actual Binding') continue;
+    if (col3 === process) {
+      bindcost[0] = row[4];
+      bindcost[1] = row[5];
       return bindcost;
     }
   }
@@ -740,18 +1046,33 @@ function getbindcostact(costarr, process) {
  * Helper function to convert string to 2D array
  */
 function convertStringToArray(inputString) {
-  // Split the input string by '$' delimiter
-  const elements = inputString.split('$');
-
-  // Map each element into its own array
-  const result = elements.map(element => [element]);
-
-  // Fill the result array with empty arrays if fewer than 6 elements are present
-  while (result.length < 6) {
-    result.push([]);
+  if (inputString === undefined || inputString === null) {
+    return [[''], [''], [''], [''], [''], ['']];
   }
-
+  const s = String(inputString).trim();
+  if (s === '') {
+    return [[''], [''], [''], [''], [''], ['']];
+  }
+  const elements = s.split('$');
+  const result = elements.map((element) => [String(element).trim()]);
+  while (result.length < 6) {
+    result.push(['']);
+  }
   return result;
+}
+
+/** Same shape as convertStringToArray; empty when field omitted from request. */
+function dollarFieldToCols(quoteinfo, key) {
+  const v = quoteinfo[key];
+  if (v === undefined || v === null || String(v).trim() === '') {
+    return [[], [], [], [], [], []];
+  }
+  return convertStringToArray(String(v));
+}
+
+function dollarCell(col, i) {
+  if (!col[i] || col[i][0] === undefined || col[i][0] === null) return '';
+  return String(col[i][0]).trim();
 }
 
 /**
@@ -804,6 +1125,21 @@ function stdUps1(Ups, complexity) {
   return maxUps;
 }
 
+/** 0-based col 12 (1-based col 13) equals label; return numeric col 13 (0-based). Used for Web / Plate print rates in ops tables. */
+function commCol13WhereCol12Label(opsTable, label) {
+  if (!Array.isArray(opsTable)) return 0;
+  const want = String(label).trim();
+  for (let i = 0; i < opsTable.length; i++) {
+    const row = opsTable[i];
+    if (!row || row.length < 14) continue;
+    if (String(row[12]).trim() === want) {
+      const n = Number(row[13]);
+      return isNaN(n) ? 0 : n;
+    }
+  }
+  return 0;
+}
+
 /**
  * Sum values in a specific column of a 2D array
  */
@@ -818,6 +1154,18 @@ function sumColumn(array2D, columnNumber) {
     }
   }
 
+  return sum;
+}
+
+/** Sum of each row's actual component costs only (displayTable cols 14–17); excludes binding. */
+function sumRowsActualComponentsOnly(displayTable) {
+  if (!Array.isArray(displayTable)) return 0;
+  let sum = 0;
+  for (let i = 0; i < displayTable.length; i++) {
+    const row = displayTable[i];
+    if (!Array.isArray(row)) continue;
+    sum += (Number(row[14]) || 0) + (Number(row[15]) || 0) + (Number(row[16]) || 0) + (Number(row[17]) || 0);
+  }
   return sum;
 }
 
