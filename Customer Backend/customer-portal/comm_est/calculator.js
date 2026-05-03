@@ -20,6 +20,105 @@ function logStep(step, startTime = null, parentStartTime = null) {
   }
 }
 
+/** Min qty threshold → target gross-profit margin on quoted total (decimal, e.g. 0.5 = 50%). */
+const COMMERCIAL_QTY_GP_TIERS = [
+  [1000, 0.55],
+  [3000, 0.5],
+  [5000, 0.4],
+  [10000, 0.35],
+  [100000000, 0.3]
+];
+
+const COMMERCIAL_OVERHEAD_FALLBACK = 0.15;
+const COMMERCIAL_OVERHEAD_AUTO_CAP = 10;
+
+/**
+ * First tier whose threshold qty >= order qty gets that row's target GP (e.g. qty 2500 → 3000 tier → 50%).
+ */
+function commercialTargetGpDecimalFromQty(qty) {
+  const q = Number(qty);
+  if (!isFinite(q) || q <= 0) return COMMERCIAL_QTY_GP_TIERS[0][1];
+  for (let i = 0; i < COMMERCIAL_QTY_GP_TIERS.length; i++) {
+    const [threshold, gp] = COMMERCIAL_QTY_GP_TIERS[i];
+    if (threshold >= q) return gp;
+  }
+  return COMMERCIAL_QTY_GP_TIERS[COMMERCIAL_QTY_GP_TIERS.length - 1][1];
+}
+
+/** Optional body.overhead_percent: fraction (0.15) or percent-style number (>1 divided by 100). */
+function parseCommercialOverheadPercentInput(raw) {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const n = Number(raw);
+  if (isNaN(n) || n < 0) return null;
+  if (n > 1) return n / 100;
+  return n;
+}
+
+/**
+ * GP% = (1 - (varCostActual + packing) / total) × 100 with total = baseCust×(1+r)+packing+shipping+addl.
+ * Solve for r given target GP when mode is auto; manual uses fixed r from overhead_percent.
+ */
+function resolveCommercialOverheadPercent(ctx) {
+  const {
+    quoteinfo,
+    qty,
+    baseCust,
+    componentsActualSubtotal,
+    bindcost,
+    packing,
+    shipping_fob,
+    addlOrderCosts
+  } = ctx;
+
+  const manual = parseCommercialOverheadPercentInput(quoteinfo.overhead_percent);
+  const bindingActual = bindcost[1];
+  const varCostActual = componentsActualSubtotal + bindingActual;
+
+  if (manual != null) {
+    return {
+      rate: manual,
+      mode: 'manual',
+      targetGpDecimal: null
+    };
+  }
+
+  const targetGpDecimal = commercialTargetGpDecimalFromQty(qty);
+  const T = targetGpDecimal;
+  const denom = 1 - T;
+
+  if (!(T > 0 && T < 1 && denom > 0)) {
+    return {
+      rate: COMMERCIAL_OVERHEAD_FALLBACK,
+      mode: 'auto',
+      targetGpDecimal,
+      auto_note: 'fallback_invalid_target_gp'
+    };
+  }
+
+  const A = varCostActual + packing;
+  const requiredTotal = A / denom;
+  const marginPart = requiredTotal - packing - shipping_fob - addlOrderCosts;
+
+  if (baseCust <= 0 || !isFinite(marginPart)) {
+    return {
+      rate: COMMERCIAL_OVERHEAD_FALLBACK,
+      mode: 'auto',
+      targetGpDecimal,
+      auto_note: baseCust <= 0 ? 'fallback_zero_base' : 'fallback_margin'
+    };
+  }
+
+  let r = marginPart / baseCust - 1;
+  if (r < 0) r = 0;
+  if (r > COMMERCIAL_OVERHEAD_AUTO_CAP) r = COMMERCIAL_OVERHEAD_AUTO_CAP;
+
+  return {
+    rate: r,
+    mode: 'auto',
+    targetGpDecimal
+  };
+}
+
 /**
  * Main calculation function
  */
@@ -512,10 +611,9 @@ async function calCulate(quoteinfo, requestStartTime = null) {
 
     const bindcost = calcbindcostNew(bindingStyle, Qty / noOfTitles, costarr, maxUpsArray, compCol, textPagesCol);
     const componentsActualSubtotal = sumRowsActualComponentsOnly(displayTable);
-    
-    const overheadPercent3 = 0.15;
-    const overheads = overheadPercent3 * (totalPaperCost + totalCTPPrint + totalSurfceFinish + bindcost[0]);
-    const overheadsActual = overheadPercent3 * (componentsActualSubtotal + bindcost[1]);
+
+    const baseCust = totalPaperCost + totalCTPPrint + totalSurfceFinish + bindcost[0];
+
     const packingLookupRaw = String(quoteinfo.packing_type || quoteinfo.packing_lookup || 'Carton').trim();
     const packingLookup =
       packingLookupRaw.toLowerCase() === 'pallet' ? 'Pallet' : 'Carton';
@@ -538,7 +636,21 @@ async function calCulate(quoteinfo, requestStartTime = null) {
     const addlBindLabourCost = Number(quoteinfo.addl_binding_labour_cost) || 0;
     const diceBlockCost = Number(quoteinfo.dice_block_cost) || 0;
     const addlOrderCosts = addlBindMatCost + addlBindLabourCost + diceBlockCost;
-    const varCost = totalPaperCost + totalCTPPrint + totalSurfceFinish + bindcost[0] + overheads;
+
+    const overheadResolved = resolveCommercialOverheadPercent({
+      quoteinfo,
+      qty: Qty,
+      baseCust,
+      componentsActualSubtotal,
+      bindcost,
+      packing,
+      shipping_fob,
+      addlOrderCosts
+    });
+    const overheadPercent3 = overheadResolved.rate;
+    const overheads = overheadPercent3 * baseCust;
+    const overheadsActual = overheadPercent3 * (componentsActualSubtotal + bindcost[1]);
+    const varCost = baseCust + overheads;
     const varCostActual = componentsActualSubtotal + bindcost[1];
     const totalVarCustomer = varCost + packing + shipping_fob;
     const totalVar = varCostActual + packing + shipping_fob;
@@ -556,8 +668,12 @@ async function calCulate(quoteinfo, requestStartTime = null) {
         : !isNaN(fxInrPerFc) && fxInrPerFc > 0
           ? Math.round((price_per_unit / fxInrPerFc) * 100) / 100
           : null;
+    /** Total VAR for GP (matches UI): actual variable cost + packing; excludes shipping. */
+    const totalVarForGp = varCostActual + packing;
     const gpPercent =
-      totalVarCustomer > 0 ? (1 - totalVar / totalVarCustomer) * 100 : null;
+      total > 0 && isFinite(total) && isFinite(totalVarForGp)
+        ? (1 - totalVarForGp / total) * 100
+        : null;
     console.log('[COMMERCIAL_COST_SUMMARY]', {
       book_wt: bookWt,
       total_paper_cost: totalPaperCost,
@@ -617,7 +733,14 @@ async function calCulate(quoteinfo, requestStartTime = null) {
       total_surface_finish_cost: totalSurfceFinish,
       total_binding_cost: bindcost[0],
       overhead_percent: overheadPercent3,
+      overhead_mode: overheadResolved.mode,
+      target_gp_percent:
+        overheadResolved.targetGpDecimal != null
+          ? Math.round(overheadResolved.targetGpDecimal * 10000) / 100
+          : null,
       overheads,
+      var_cost: varCost,
+      components_actual_subtotal: componentsActualSubtotal,
       total_binding_cost_actual: bindcost[1],
       overheads_actual: overheadsActual,
       var_cost_actual: varCostActual,
@@ -639,7 +762,13 @@ async function calCulate(quoteinfo, requestStartTime = null) {
       quote_context: {
         client_name: String(quoteinfo.client_name || '').trim(),
         sku_name: String(quoteinfo.sku_name || '').trim(),
-        no_of_titles: noOfTitles
+        no_of_titles: noOfTitles,
+        overhead: overheadPercent3,
+        overhead_mode: overheadResolved.mode,
+        target_gp_percent:
+          overheadResolved.targetGpDecimal != null
+            ? Math.round(overheadResolved.targetGpDecimal * 10000) / 100
+            : null
       }
     };
 

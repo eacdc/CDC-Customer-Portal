@@ -602,6 +602,10 @@ async function calculatePricing(input, requestStartTime = null) {
         kraft_rate_customer: kraftRateCustomer,
         kraft_rate_actual: kraftRateActual
       },
+      paper_price_per_kg: {
+        inner: pricePerKGIn,
+        outer: pricePerKGOut
+      },
       quote_context: {
         client_name: String(input.client_name || '').trim(),
         sku_name: String(input.sku_name || '').trim(),

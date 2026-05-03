@@ -8,7 +8,7 @@ export async function db2() {
       password: process.env.DB2_PASSWORD,
       server: process.env.DB2_SERVER,
       port: Number(process.env.DB2_PORT),
-      database: process.env.DB2_DATABASE,
+      database: process.env.DB2_DATABASE || "indusenterprise2",
       options: {
         encrypt: true,
         trustServerCertificate: true,

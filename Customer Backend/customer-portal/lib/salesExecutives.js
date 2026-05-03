@@ -24,7 +24,7 @@ export function normalizeLedgerUsername(value) {
 }
 
 /**
- * Cost-calculator site key: Ahmedabad → DB1, Kolkata → DB2.
+ * Cost-calculator site key: Kolkata → db1 (`DB1_*` / `DB1_DATABASE`), Ahmedabad → db2 (`DB2_*` / `DB2_DATABASE`).
  * @param {unknown} value
  * @returns {'ahm'|'kol'|null}
  */
@@ -36,8 +36,9 @@ export function normalizeDatabaseKey(value) {
   return null;
 }
 
+/** Kolkata (kol) → db1 (`DB1_DATABASE`). Ahmedabad (ahm) → db2 (`DB2_DATABASE`). */
 async function getPoolForSite(site) {
-  return site === "kol" ? db2() : db1();
+  return site === "kol" ? db1() : db2();
 }
 
 function rowLedgerName(row) {
