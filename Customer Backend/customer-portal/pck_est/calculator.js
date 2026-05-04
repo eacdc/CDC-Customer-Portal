@@ -158,6 +158,46 @@ async function calculatePricing(input, requestStartTime = null) {
       maxUps = result[2];
     }
 
+    let genericSheetLenOverride = null;
+    let genericSheetWidOverride = null;
+    let genericSheetUpsOverride = null;
+    const gLenRaw = input.generic_sheet_len;
+    const gWidRaw = input.generic_sheet_width;
+    const gUpsRaw = input.generic_sheet_ups;
+    const gLenStr = gLenRaw !== undefined && gLenRaw !== null ? String(gLenRaw).trim() : "";
+    const gWidStr = gWidRaw !== undefined && gWidRaw !== null ? String(gWidRaw).trim() : "";
+    const gUpsStr = gUpsRaw !== undefined && gUpsRaw !== null ? String(gUpsRaw).trim() : "";
+    const hasGLen = gLenStr !== "";
+    const hasGWid = gWidStr !== "";
+    const hasGUps = gUpsStr !== "";
+    if (hasGLen !== hasGWid) {
+      throw new Error("Generic sheet length and width must both be provided together, or leave both blank.");
+    }
+    const hasDims = hasGLen && hasGWid;
+    const anyGeneric = hasDims || hasGUps;
+    if (anyGeneric) {
+      if (!hasDims || !hasGUps) {
+        throw new Error(
+          "Generic sheet length, width, and ups must all be provided together, or leave all three blank."
+        );
+      }
+      const gLen = Number(gLenStr);
+      const gWid = Number(gWidStr);
+      const gUps = Number(gUpsStr);
+      if (isNaN(gLen) || isNaN(gWid) || gLen <= 0 || gWid <= 0) {
+        throw new Error("Generic sheet length and width must be positive numbers (mm).");
+      }
+      if (isNaN(gUps) || !isFinite(gUps) || gUps <= 0) {
+        throw new Error("Generic ups must be a positive number.");
+      }
+      bestLen = gLen;
+      bestBrd = gWid;
+      maxUps = gUps;
+      genericSheetLenOverride = gLen;
+      genericSheetWidOverride = gWid;
+      genericSheetUpsOverride = gUps;
+    }
+
     const mcWidthOuter = 1020;
     const mcheightOuter = 730;
     let maxUpsOuter, bestLenOuter, bestBrdOuter;
@@ -607,11 +647,14 @@ async function calculatePricing(input, requestStartTime = null) {
         outer: pricePerKGOut
       },
       quote_context: {
-        client_name: String(input.client_name || '').trim(),
-        sku_name: String(input.sku_name || '').trim(),
+        client_name: String(input.client_name || "").trim(),
+        sku_name: String(input.sku_name || "").trim(),
         delivery_charges: delCost,
         overhead: overhead,
-        ptype: productType
+        ptype: productType,
+        generic_sheet_len: genericSheetLenOverride,
+        generic_sheet_width: genericSheetWidOverride,
+        generic_sheet_ups: genericSheetUpsOverride
       }
     };
     stepTime = logStep('>>> Response object built', stepTime, requestStartTime);
