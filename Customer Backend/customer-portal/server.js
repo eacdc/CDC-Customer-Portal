@@ -12,6 +12,7 @@ import commEstPlugin from "./comm_est/routes.js";
 import pricingTablesPlugin from "./pricing_tables/routes.js";
 import quoteSavesPlugin from "./quote_saves/routes.js";
 import salesExecutivesPlugin from "./sales_executives/routes.js";
+import calculatorClientsPlugin from "./calculator_clients/routes.js";
 
 const app = Fastify({
   logger: true,
@@ -51,6 +52,7 @@ app.addHook("preHandler", async (req, reply) => {
     "/api/pricing-tables/",
     "/api/quote-saves/",
     "/api/sales-executives",
+    "/api/calculator-clients",
   ];
   if (publicApiPrefixes.some((prefix) => req.url.startsWith(prefix))) return;
 
@@ -112,6 +114,7 @@ await app.register(pckEstPlugin, { prefix: "/api" });
 await app.register(commEstPlugin, { prefix: "/api" });
 await app.register(pricingTablesPlugin, { prefix: "/api" });
 await app.register(salesExecutivesPlugin, { prefix: "/api" });
+await app.register(calculatorClientsPlugin, { prefix: "/api" });
 await app.register(quoteSavesPlugin, { prefix: "/api" });
 
 // --- start + graceful shutdown
