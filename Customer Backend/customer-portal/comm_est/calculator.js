@@ -439,11 +439,15 @@ async function calCulate(quoteinfo, requestStartTime = null) {
 
           let paperPrice = paperPriceRaw === "" || paperPriceRaw === null || paperPriceRaw === undefined ? 0 : Number(paperPriceRaw) || 0;
           const manualPriceSeg = dollarCell(manual_price_per_kg_col, i);
+          let paperPriceOverride = null;
           if (manualPriceSeg !== '') {
             const mp = Number(manualPriceSeg);
             if (!isNaN(mp) && mp > 0) {
-              paperPrice = mp;
+              paperPriceOverride = mp;
             }
+          }
+          if (paperPriceOverride != null) {
+            paperPrice = paperPriceOverride;
           }
           
           // Get opsTable1 values with defaults
@@ -516,7 +520,7 @@ async function calCulate(quoteinfo, requestStartTime = null) {
           // Actual (master) rates from opsTable2 — same column layout as pricing UI (Material / Surface "actual").
           const paperTypeKey = String(paperType || '').trim();
           const paperPriceActRaw = XLOOKUP(paperTypeKey, opsTable2, 2, 3, '');
-          const paperPriceAct =
+          let paperPriceAct =
             paperPriceActRaw === '' || paperPriceActRaw === null || paperPriceActRaw === undefined
               ? 0
               : Number(paperPriceActRaw) || 0;

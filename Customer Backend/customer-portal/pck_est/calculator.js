@@ -44,8 +44,18 @@ async function calculatePricing(input, requestStartTime = null) {
     stepTime = Date.now();
     logStep('>>> Calculating tuck and glue values', stepTime, requestStartTime);
     const tuckGlue = getTuckValue(corrLayerInn, brd, height, tuckValueTable);
-    const glue = tuckGlue[1];
-    const tuck = tuckGlue[0];
+    const glue = Number(tuckGlue[1]);
+    const tuck = Number(tuckGlue[0]);
+    if (!isFinite(glue) || !isFinite(tuck)) {
+      throw new Error("Invalid tuck/glue values from master table.");
+    }
+    const layoutSpan2L2BTuck = 2 * Number(len) + 2 * Number(brd) + Number(tuck);
+    console.log('[pck-est] layout span 2L+2B+tuck', {
+      len: Number(len),
+      brd: Number(brd),
+      tuck: Number(tuck),
+      span_2L_2B_tuck: layoutSpan2L2BTuck
+    });
     stepTime = logStep('>>> Tuck/glue calculation completed', stepTime, requestStartTime);
     
     stepTime = Date.now();
@@ -77,17 +87,38 @@ async function calculatePricing(input, requestStartTime = null) {
 
     stepTime = Date.now();
     logStep('>>> Looking up paper prices', stepTime, requestStartTime);
-    const pricePerKGIn = XLOOKUP(paperTypeTopOrInner, masterTable, 1, 2, 78, 0);
-    const { customer: kraftRateCustomer, actual: kraftRateActual } = kraftRatesFromMaster(masterTable);
+    let pricePerKGIn = XLOOKUP(paperTypeTopOrInner, masterTable, 1, 2, 78, 0);
+    let pricePerKGInActual = XLOOKUP(paperTypeTopOrInner, masterTable, 1, 4, 78, 0);
+    let { customer: kraftRateCustomer, actual: kraftRateActual } = kraftRatesFromMaster(masterTable);
     console.log('kraftRateCustomer', kraftRateCustomer);
     console.log('kraftRateActual', kraftRateActual);
-    const pricePerKGOut = XLOOKUP(paperTypeBotOrOuter, masterTable, 1, 2, 78, 0);
+    let pricePerKGOut = XLOOKUP(paperTypeBotOrOuter, masterTable, 1, 2, 78, 0);
+    let pricePerKGOutActual = XLOOKUP(paperTypeBotOrOuter, masterTable, 1, 4, 78, 0);
+    const parsePositiveOverride = (raw) => {
+      if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+      const n = Number(raw);
+      return !isNaN(n) && isFinite(n) && n > 0 ? n : null;
+    };
+    const manualPriceIn = parsePositiveOverride(input.manual_price_per_kg_in);
+    const manualPriceOut = parsePositiveOverride(input.manual_price_per_kg_out);
+    const manualKraftRate = parsePositiveOverride(input.manual_kraft_rate_per_kg);
+    if (manualPriceIn != null) {
+      pricePerKGIn = manualPriceIn;
+    }
+    if (manualPriceOut != null) {
+      pricePerKGOut = manualPriceOut;
+    }
+    if (manualKraftRate != null) {
+      kraftRateCustomer = manualKraftRate;
+      kraftRateActual = manualKraftRate;
+    }
+    const deliveryRateFromDb = deliveryRateFromMaster(masterTable);
     const delRaw = input.delivery_charges;
     const delParsed =
       delRaw !== undefined && delRaw !== null && String(delRaw).trim() !== ''
         ? Number(delRaw)
-        : 2;
-    const delCost = !isNaN(delParsed) && delParsed >= 0 ? delParsed : 2;
+        : deliveryRateFromDb;
+    const delCost = !isNaN(delParsed) && delParsed >= 0 ? delParsed : deliveryRateFromDb;
     const overheadRaw = input.overhead;
     const overheadParsed =
       overheadRaw !== undefined && overheadRaw !== null && String(overheadRaw).trim() !== ''
@@ -198,6 +229,12 @@ async function calculatePricing(input, requestStartTime = null) {
       genericSheetUpsOverride = gUps;
     }
 
+    if (!isFinite(Number(maxUps)) || Number(maxUps) <= 0 || Number(bestLen) <= 0 || Number(bestBrd) <= 0) {
+      throw new Error(
+        "No valid inner sheet layout (Ups <= 0). Check dimensions, product type, or tuck table values."
+      );
+    }
+
     const mcWidthOuter = 1020;
     const mcheightOuter = 730;
     let maxUpsOuter, bestLenOuter, bestBrdOuter;
@@ -271,7 +308,16 @@ async function calculatePricing(input, requestStartTime = null) {
 
     stepTime = Date.now();
     logStep('>>> Calculating variable costs for inner', stepTime, requestStartTime);
-    const varIn_paper = Number(paperPerUnit(paperweightIn, XLOOKUP(paperTypeTopOrInner, masterTable, 1, 4, 78, 0), qty) || 0);
+    const varIn_paper = Number(paperPerUnit(paperweightIn, pricePerKGInActual, qty) || 0);
+    console.log('[pck-est] Paper / unit (var basis) - inner', {
+      formula: '(paperweight * price_per_kg_actual) / qty',
+      inputs: {
+        paperweight: Number(paperweightIn) || 0,
+        price_per_kg_actual: Number(pricePerKGInActual) || 0,
+        qty: Number(qty) || 0
+      },
+      output: varIn_paper
+    });
     const varIn_ctp = Number(ctpPerUnit(frontColIn, backColIn, qty, masterTable[0][25]) || 0);
     const varIn_print = Number(printPerunitActual(frontSurIn, backSurIn, frontColIn, backColIn, maxUps, masterTable[3][3]) || 0);
     const varIn_surface = Number(surfacePerUnit(bestBrd, bestLen, maxUps, frontSurIn, backSurIn, masterTable, 4) || 0);
@@ -422,7 +468,16 @@ async function calculatePricing(input, requestStartTime = null) {
 
     stepTime = Date.now();
     logStep('>>> Calculating variable costs for outer', stepTime, requestStartTime);
-    const varOut_paper = Number(paperPerUnit(paperweightOut, XLOOKUP(paperTypeBotOrOuter, masterTable, 1, 4, 78, 0), qty) || 0);
+    const varOut_paper = Number(paperPerUnit(paperweightOut, pricePerKGOutActual, qty) || 0);
+    console.log('[pck-est] Paper / unit (var basis) - outer', {
+      formula: '(paperweight * price_per_kg_actual) / qty_basis',
+      inputs: {
+        paperweight: Number(paperweightOut) || 0,
+        price_per_kg_actual: Number(pricePerKGOutActual) || 0,
+        qty_basis: Number(qty / boxPerOuter) || 0
+      },
+      output: varOut_paper
+    });
     const varOut_ctp = Number(
       ctpPerUnit(frontColBot, isTopBottom ? backColBot : "", qty, masterTable[0][25]) || 0
     );
@@ -654,7 +709,10 @@ async function calculatePricing(input, requestStartTime = null) {
         ptype: productType,
         generic_sheet_len: genericSheetLenOverride,
         generic_sheet_width: genericSheetWidOverride,
-        generic_sheet_ups: genericSheetUpsOverride
+        generic_sheet_ups: genericSheetUpsOverride,
+        manual_price_per_kg_in: manualPriceIn,
+        manual_price_per_kg_out: manualPriceOut,
+        manual_kraft_rate_per_kg: manualKraftRate
       }
     };
     stepTime = logStep('>>> Response object built', stepTime, requestStartTime);
@@ -789,6 +847,31 @@ function getSheetSzUn(mcWidth, mcheight, len, brd, height, glue, tuck) {
   bestSzArray[1] = vUps >= hUps ? (Math.round((((height + 1.5 * brd) * yv) + 17) / 5)) * 5 :
     (Math.round((((len * 2 + brd * 2 + tuck) * yh) + 17) / 5)) * 5;
   bestSzArray[2] = maxUps;
+
+  console.log('[pck-est][Universal] layout debug', {
+    inputs: {
+      mcWidth: Number(mcWidth),
+      mcheight: Number(mcheight),
+      len: Number(len),
+      brd: Number(brd),
+      height: Number(height),
+      tuck: Number(tuck)
+    },
+    orientation: {
+      xv,
+      yv,
+      vUps,
+      xh,
+      yh,
+      hUps,
+      maxUps
+    },
+    selected_sheet: {
+      sheet_len: bestSzArray[0],
+      sheet_brd: bestSzArray[1],
+      ups: bestSzArray[2]
+    }
+  });
 
   return bestSzArray;
 }
@@ -1059,6 +1142,14 @@ function kraftWastageFromMaster(masterTable) {
   const d = row[3];
   if (d !== undefined && d !== null && String(d).trim() !== "") return Number(d) || 0;
   return Number(row[1]) || 0;
+}
+
+function deliveryRateFromMaster(masterTable) {
+  const row = Array.isArray(masterTable) && Array.isArray(masterTable[13]) ? masterTable[13] : [];
+  const customerRaw = row[1];
+  if (customerRaw === undefined || customerRaw === null || String(customerRaw).trim() === "") return 2;
+  const n = Number(customerRaw);
+  return !isNaN(n) && isFinite(n) && n >= 0 ? n : 2;
 }
 
 function punch_paste(ups, punch, kraftGsm, bestBrd, bestLen, paste1, paste2, masterTable, kraftRateForPaste) {
