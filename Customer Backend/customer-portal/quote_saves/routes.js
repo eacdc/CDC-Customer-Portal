@@ -5,6 +5,7 @@ import {
   assertSalesExecutiveUsername,
   normalizeDatabaseKey
 } from "../lib/salesExecutives.js";
+import { allocateEstimationNumber } from "../lib/estimationNumber.js";
 
 function normalizeUsername(value) {
   return String(value || "")
@@ -85,6 +86,8 @@ export default async function quoteSavesPlugin(fastify) {
     const segment = segmentRaw === "packaging" ? "packaging" : "commercial";
 
     const now = new Date();
+    const db = await getDb();
+    const estimation = await allocateEstimationNumber(db, dbKey, now);
     const doc = {
       database: dbKey,
       username: usernameRaw,
@@ -100,14 +103,17 @@ export default async function quoteSavesPlugin(fastify) {
       price_per_unit_foreign:
         body.price_per_unit_foreign != null ? Number(body.price_per_unit_foreign) : null,
       exchange_rate_inr_per_fc:
-        body.exchange_rate_inr_per_fc != null ? Number(body.exchange_rate_inr_per_fc) : null
+        body.exchange_rate_inr_per_fc != null ? Number(body.exchange_rate_inr_per_fc) : null,
+      estimation_number: estimation.estimation_number,
+      estimation_seq: estimation.estimation_seq,
+      estimation_fiscal_year: estimation.estimation_fiscal_year
     };
 
-    const db = await getDb();
     const r = await db.collection("commercial_quote_saves").insertOne(doc);
     return reply.send({
       success: true,
-      id: String(r.insertedId)
+      id: String(r.insertedId),
+      estimation_number: estimation.estimation_number
     });
   });
 
@@ -134,6 +140,8 @@ export default async function quoteSavesPlugin(fastify) {
           : null;
 
     const now = new Date();
+    const db = await getDb();
+    const estimation = await allocateEstimationNumber(db, dbKey, now);
     const doc = {
       database: dbKey,
       username: usernameRaw,
@@ -149,14 +157,17 @@ export default async function quoteSavesPlugin(fastify) {
       price_per_unit_foreign:
         body.price_per_unit_foreign != null ? Number(body.price_per_unit_foreign) : null,
       exchange_rate_inr_per_fc:
-        body.exchange_rate_inr_per_fc != null ? Number(body.exchange_rate_inr_per_fc) : null
+        body.exchange_rate_inr_per_fc != null ? Number(body.exchange_rate_inr_per_fc) : null,
+      estimation_number: estimation.estimation_number,
+      estimation_seq: estimation.estimation_seq,
+      estimation_fiscal_year: estimation.estimation_fiscal_year
     };
 
-    const db = await getDb();
     const r = await db.collection("packaging_quote_saves").insertOne(doc);
     return reply.send({
       success: true,
-      id: String(r.insertedId)
+      id: String(r.insertedId),
+      estimation_number: estimation.estimation_number
     });
   });
 
@@ -346,9 +357,16 @@ export default async function quoteSavesPlugin(fastify) {
         createdAt: 1,
         updatedAt: 1,
         price_per_unit: 1,
+        price_per_unit_foreign: 1,
+        exchange_rate_inr_per_fc: 1,
+        currency: 1,
+        components: 1,
         segment: 1,
         inputs: 1,
-        product: 1
+        product: 1,
+        estimation_number: 1,
+        estimation_seq: 1,
+        estimation_fiscal_year: 1
       });
 
     const rows = await cursor.toArray();
@@ -358,6 +376,10 @@ export default async function quoteSavesPlugin(fastify) {
       createdAt: doc.createdAt || null,
       updatedAt: doc.updatedAt || null,
       price_per_unit: doc.price_per_unit != null ? doc.price_per_unit : null,
+      price_per_unit_foreign:
+        doc.price_per_unit_foreign != null ? doc.price_per_unit_foreign : null,
+      currency: doc.currency != null ? doc.currency : null,
+      components: Array.isArray(doc.components) ? doc.components : [],
       client_name: doc.inputs && doc.inputs.client_name != null ? doc.inputs.client_name : "",
       sku_name: doc.inputs && doc.inputs.sku_name != null ? doc.inputs.sku_name : "",
       qty:
@@ -369,6 +391,8 @@ export default async function quoteSavesPlugin(fastify) {
       len: doc.inputs && doc.inputs.len != null ? doc.inputs.len : null,
       brd: doc.inputs && doc.inputs.brd != null ? doc.inputs.brd : null,
       height: doc.inputs && doc.inputs.height != null ? doc.inputs.height : null,
+      estimation_number:
+        doc.estimation_number != null ? String(doc.estimation_number) : "",
       inputs: doc.inputs || {},
       product: doc.product || {}
     }));

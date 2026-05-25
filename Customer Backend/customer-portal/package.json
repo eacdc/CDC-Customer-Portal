@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
     "seed:chat-agents": "node seed-chat-agents.js",
-    "seed:pricing-tables": "node seed-pricing-tables.js"
+    "seed:pricing-tables": "node seed-pricing-tables.js",
+    "backfill:estimation-numbers": "node backfill-estimation-numbers.js"
   },
   "keywords": [],
   "author": "",
