@@ -404,4 +404,45 @@ export default async function quoteSavesPlugin(fastify) {
       results
     });
   });
+
+  fastify.post("/quote-saves/delete", async (req, reply) => {
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const usernameRaw = await assertSalesExecutiveUsername(body, reply, req);
+    if (!usernameRaw) return;
+    const dbKey = normalizeDatabaseKey(body.database);
+
+    const segment = String(body.segment || "")
+      .trim()
+      .toLowerCase();
+    if (segment !== "packaging" && segment !== "commercial") {
+      return reply.code(400).send({
+        success: false,
+        error: "segment must be packaging or commercial"
+      });
+    }
+
+    const oid = parseObjectId(body.id);
+    if (!oid) {
+      return reply.code(400).send({ success: false, error: "Invalid quote id" });
+    }
+
+    const collectionName =
+      segment === "packaging" ? "packaging_quote_saves" : "commercial_quote_saves";
+
+    const db = await getDb();
+    const col = db.collection(collectionName);
+    const existing = await col.findOne(
+      Object.assign({ _id: oid }, filterUserAndDatabase(usernameRaw, dbKey))
+    );
+    if (!existing) {
+      return reply.code(404).send({ success: false, error: "Quote not found" });
+    }
+
+    await col.deleteOne({ _id: oid });
+    return reply.send({
+      success: true,
+      id: String(oid),
+      estimation_number: existing.estimation_number != null ? String(existing.estimation_number) : ""
+    });
+  });
 }
