@@ -1401,12 +1401,32 @@ fastify.get("/dashboard", async (req, reply) => {
   });
 
   // GET /api/orders/:jobId/shipment-details?containerNo=XXX&source=db1|db2
-  // Returns rows from ShipmentETA where containernumber = containerNo (ContainerNo from portal_orders_list2).
+  // Returns rows from ShipmentETA where containernumber matches.
+  //
+  // ContainerNo from portal_orders_list2 can be a single container OR a
+  // pipe-separated list ("MAEU1234567 | CMAU9999999 | HLXU5555555") when
+  // a job ships in multiple containers. We split on '|', fetch each
+  // distinct container, and return all rows in the input order so the
+  // modal lists them the same way as on the order card.
   fastify.get("/orders/:jobId/shipment-details", async (req, reply) => {
     const { jobId } = req.params;
     const { containerNo, source } = req.query || {};
 
-    if (!containerNo || String(containerNo).trim() === "") {
+    const containers = String(containerNo || "")
+      .split("|")
+      .map((c) => c.trim())
+      .filter(Boolean);
+    // Dedupe while preserving the order they came in on the order card.
+    const seenContainers = new Set();
+    const uniqueContainers = [];
+    containers.forEach((c) => {
+      if (!seenContainers.has(c)) {
+        seenContainers.add(c);
+        uniqueContainers.push(c);
+      }
+    });
+
+    if (uniqueContainers.length === 0) {
       return reply.code(400).send({ error: "containerNo is required" });
     }
 
@@ -1418,18 +1438,40 @@ fastify.get("/dashboard", async (req, reply) => {
       return reply.code(400).send({ error: "Tenant binding missing" });
 
     const pool = source === "db2" ? db2() : db1();
-    const ids = source === "db2" ? (tenant.ledgerIds_db2 || []) : (tenant.ledgerIds_db1 || []);
 
     try {
       const r = (await pool).request();
-      r.input("ContainerNo", sql.NVarChar(100), String(containerNo).trim());
-      const rs = await r.query(
-        "SELECT * FROM dbo.ShipmentETA WHERE containernumber = @ContainerNo"
+      const placeholders = uniqueContainers
+        .map((_, i) => `@c${i}`)
+        .join(",");
+      uniqueContainers.forEach((c, i) =>
+        r.input(`c${i}`, sql.NVarChar(100), c)
       );
-      const rows = rs.recordset || [];
-      return rows;
+      const rs = await r.query(
+        `SELECT * FROM dbo.ShipmentETA WHERE containernumber IN (${placeholders})`
+      );
+      const rawRows = rs.recordset || [];
+
+      // Group by container number and emit rows in input order.
+      const byContainer = new Map();
+      rawRows.forEach((row) => {
+        const cn = String(
+          row.containernumber || row.ContainerNumber || ""
+        ).trim();
+        if (!cn) return;
+        if (!byContainer.has(cn)) byContainer.set(cn, []);
+        byContainer.get(cn).push(row);
+      });
+      const ordered = [];
+      uniqueContainers.forEach((cn) => {
+        if (byContainer.has(cn)) ordered.push(...byContainer.get(cn));
+      });
+      return ordered;
     } catch (err) {
-      req.log?.error?.({ err, jobId, containerNo }, "ShipmentETA query failed");
+      req.log?.error?.(
+        { err, jobId, containerNo, containers: uniqueContainers },
+        "ShipmentETA query failed"
+      );
       return reply.code(500).send({
         error: "Unable to load shipment details.",
         message: err?.message || String(err),
@@ -1583,8 +1625,11 @@ fastify.get("/dashboard", async (req, reply) => {
         row.Shipment_ContainerNumber ||
         row.ContainerNumber ||
         row.DestinationPort ||
-        row.DestinationArrivalPlannedDate ||
-        row.DestinationArrivalOriginalPlannedDate
+        row.GateInDate ||
+        row.DepartureDate ||
+        row.OriginalETA ||
+        row.RevisedETA ||
+        row.TrackingLink
       );
       const shipment = hasShipment
         ? {
@@ -1593,10 +1638,11 @@ fastify.get("/dashboard", async (req, reply) => {
             ContainerNumber:
               row.ContainerNumber || row.Shipment_ContainerNumber || null,
             DestinationPort: row.DestinationPort,
-            DestinationArrivalOriginalPlannedDate:
-              row.DestinationArrivalOriginalPlannedDate,
-            DestinationArrivalPlannedDate: row.DestinationArrivalPlannedDate,
-            Link: row.Link,
+            GateInDate: row.GateInDate,
+            DepartureDate: row.DepartureDate,
+            OriginalETA: row.OriginalETA,
+            RevisedETA: row.RevisedETA,
+            TrackingLink: row.TrackingLink,
             CreatedAt: row.CreatedAt,
             Status: row.Status,
             rn: row.rn,
