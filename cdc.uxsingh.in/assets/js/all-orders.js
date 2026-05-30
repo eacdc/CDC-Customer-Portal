@@ -1668,17 +1668,22 @@ document.addEventListener('DOMContentLoaded', () => {
       BindingCompletionPct: pickNumber(prod.BindingCompletionPct),
       BindingEndDate: formatDateForExcel(prod.BindingEndDate),
       LastGpnDate: formatDateForExcel(prod.LastGpnDate),
+      // Shipment columns. We keep only customer-facing fields, all named
+      // exactly as dbo.GetJobFullDetails_Client returns them today. The
+      // proc has been updated to emit OriginalETA / RevisedETA /
+      // TrackingLink directly (instead of the older
+      // DestinationArrivalOriginalPlannedDate / ...PlannedDate / Link),
+      // so we read those keys 1:1 from the SP row. Everything else the
+      // proc returns (Id, internal Status code, rn, duplicate
+      // ContainerNumber, CreatedAt, Shipment_ContainerNumber) is
+      // intentionally dropped.
       ContainerNo: pickString(prod.ContainerNo),
-      Shipment_ContainerNumber: pickString(shipment.Shipment_ContainerNumber),
-      Id: pickNumber(shipment.Id),
-      ContainerNumber: pickString(shipment.ContainerNumber),
       DestinationPort: pickString(shipment.DestinationPort),
-      DestinationArrivalOriginalPlannedDate: formatDateForExcel(shipment.DestinationArrivalOriginalPlannedDate),
-      DestinationArrivalPlannedDate: formatDateForExcel(shipment.DestinationArrivalPlannedDate),
-      Link: pickString(shipment.Link),
-      CreatedAt: formatDateForExcel(shipment.CreatedAt),
-      Status: pickString(shipment.Status),
-      rn: pickNumber(shipment.rn)
+      GateInDate: formatDateForExcel(shipment.GateInDate),
+      DepartureDate: formatDateForExcel(shipment.DepartureDate),
+      OriginalETA: formatDateForExcel(shipment.OriginalETA),
+      RevisedETA: formatDateForExcel(shipment.RevisedETA),
+      TrackingLink: pickString(shipment.TrackingLink)
     };
 
     return row;
@@ -1724,8 +1729,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function formatDateForExcel(value) {
     if (value === null || value === undefined || value === '') return '';
-    const d = value instanceof Date ? value : new Date(value);
-    if (isNaN(d.getTime())) return String(value);
+    if (value instanceof Date) return formatSingleDate(value);
+    const str = String(value).trim();
+    if (!str) return '';
+    // dbo.GetJobFullDetails_Client returns pipe-joined dates when a job
+    // has multiple containers (e.g. "2026-06-01 00:00:00.000 |
+    // 2026-06-15 00:00:00.000"). Split, format each piece, rejoin with
+    // " | " to match the separator used elsewhere in the row.
+    if (str.includes('|')) {
+      return str
+        .split('|')
+        .map((s) => formatDateForExcel(s.trim()))
+        .filter((s) => s !== '')
+        .join(' | ');
+    }
+    const d = new Date(str);
+    if (isNaN(d.getTime())) return str;
+    return formatSingleDate(d);
+  }
+
+  function formatSingleDate(d) {
+    if (!(d instanceof Date) || isNaN(d.getTime())) return '';
     const day = String(d.getDate()).padStart(2, '0');
     const month = d.toLocaleString('en-US', { month: 'short' });
     const year = d.getFullYear();
