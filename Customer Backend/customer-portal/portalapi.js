@@ -40,6 +40,58 @@ function toIdListTVP(ids) {
   return t;
 }
 
+// Builds a dbo.JobNoList table-valued parameter (single column: JobBookingNo).
+// Used by dbo.GetJobFullDetails_Client to fetch production + shipment info
+// for many jobs in one round-trip.
+function toJobNoListTVP(jobBookingNos) {
+  const t = new sql.Table("dbo.JobNoList");
+  // 50 chars matches the schema we've seen on dbo.JobBookingJobCard.JobBookingNo.
+  t.columns.add("JobBookingNo", sql.NVarChar(50), { nullable: false });
+  (jobBookingNos || []).forEach((jn) => {
+    if (jn === null || jn === undefined) return;
+    const s = String(jn).trim();
+    if (s) t.rows.add(s);
+  });
+  return t;
+}
+
+// CompanyID values passed to dbo.GetJobFullDetails_Client for each source DB.
+// db1 = indusenterprise (KOL); db2 = indusenterprise2 (AHM).
+// Both default to 2 (the value confirmed against the proc). Override at
+// deploy time via env vars EXPORT_COMPANY_ID_DB1 / EXPORT_COMPANY_ID_DB2 if
+// either DB needs a different ID.
+const COMPANY_ID_BY_SOURCE = {
+  db1: Number(process.env.EXPORT_COMPANY_ID_DB1 || 2),
+  db2: Number(process.env.EXPORT_COMPANY_ID_DB2 || 2),
+};
+
+// CDC job numbers travel through the system in a few different formattings:
+//   - dbo.JobBookingJobCard.JobBookingNo  ->  "J01885/26-27"  (slash + dash)
+//   - portal_orders_list2 alias JobCardNo ->  "J01885_26_27"  (underscores; URL-friendly)
+// The new export proc dbo.GetJobFullDetails_Client matches against the
+// underlying SQL column, i.e. the slash-dash form. canonicalJobNo() collapses
+// either variant into a single comparable key so we can match proc results
+// back to whatever string the frontend originally sent us.
+const canonicalJobNo = (s) =>
+  String(s || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\/\-_\\]+/g, "_");
+
+// Convert a job number into the format dbo.GetJobFullDetails_Client expects
+// to receive in its dbo.JobNoList TVP: "J<num>/<yy>-<yy>".  Inputs that
+// don't have exactly three separator-delimited parts are returned trimmed
+// but otherwise unchanged.
+const toSpJobNoForm = (s) => {
+  const trimmed = String(s || "").trim();
+  if (!trimmed) return "";
+  const parts = trimmed.split(/[\/\-_\\]+/);
+  if (parts.length === 3) {
+    return `${parts[0]}/${parts[1]}-${parts[2]}`;
+  }
+  return trimmed;
+};
+
 const AI_NOT_CONFIGURED_MSG =
   "AI is not configured. Add OPENAI_API_KEY to enable replies.";
 
@@ -1383,6 +1435,371 @@ fastify.get("/dashboard", async (req, reply) => {
         message: err?.message || String(err),
       });
     }
+  });
+
+  // =====================================================================
+  // POST /api/orders/export-summary
+  //
+  // Builds the per-order data needed by the frontend's Excel export.
+  //
+  // Implementation (current):
+  //   Calls the internal SQL stored procedure dbo.GetJobFullDetails_Client
+  //   on the source database (db1 = indusenterprise / KOL,
+  //   db2 = indusenterprise2 / AHM) using a dbo.JobNoList TVP. The proc
+  //   returns one flat row per job that already merges production-summary
+  //   columns and shipment columns (Shipment_*). No external HTTP call is
+  //   used. Two databases are processed in parallel; per-DB calls are
+  //   batched in chunks of BATCH_SIZE jobs.
+  //
+  // Request body:
+  //   {
+  //     "jobs": [
+  //       { "jobBookingNo": "J01359/26-27", "source": "db1", "containerNo": "ABCU1234567" },
+  //       { "jobBookingNo": "J01250/26-27", "source": "db2" },
+  //       ...
+  //     ]
+  //   }
+  //
+  // Response:
+  //   {
+  //     "total": <n>,
+  //     "items": [
+  //       {
+  //         "jobBookingNo": "...",
+  //         "source": "db1",
+  //         "database": "KOL",
+  //         "containerNo": "...",
+  //         "production": { ...flat columns from the proc... } | null,
+  //         "productionError": "..." | null,
+  //         "shipment": { ContainerNumber, DestinationPort, ... } | null
+  //       },
+  //       ...
+  //     ]
+  //   }
+  // =====================================================================
+  fastify.post("/orders/export-summary", async (req, reply) => {
+    const startedAt = performance.now();
+
+    const MAX_JOBS = 500;
+    // Each call to dbo.GetJobFullDetails_Client passes a TVP of up to this
+    // many jobs. Two source DBs run in parallel; chunks within one DB run
+    // sequentially.
+    const BATCH_SIZE = 200;
+
+    const body = req.body || {};
+    const rawJobs = Array.isArray(body.jobs) ? body.jobs : [];
+
+    if (rawJobs.length === 0) {
+      return reply.code(400).send({ error: "jobs array is required" });
+    }
+    if (rawJobs.length > MAX_JOBS) {
+      return reply
+        .code(400)
+        .send({ error: `Too many jobs in one request (max ${MAX_JOBS}).` });
+    }
+
+    const mongo = await getDb();
+    const tenant = await mongo
+      .collection("tenants")
+      .findOne({ email: req.user.email });
+    if (!tenant) {
+      return reply.code(400).send({ error: "Tenant binding missing" });
+    }
+
+    // Normalize + validate jobs. Be lenient with field names since the
+    // frontend may pass through fields exactly as returned by portal_orders_list2.
+    const jobs = rawJobs
+      .map((j) => {
+        const jobBookingNo = String(
+          j.jobBookingNo ?? j.JobBookingNo ?? j.JobCardNo ?? ""
+        ).trim();
+        const source = String(j.source ?? j._source ?? j.sourceTag ?? "")
+          .trim()
+          .toLowerCase();
+        const containerNo = String(j.containerNo ?? j.ContainerNo ?? "").trim();
+        return { jobBookingNo, source, containerNo };
+      })
+      .filter(
+        (j) => j.jobBookingNo && (j.source === "db1" || j.source === "db2")
+      );
+
+    if (jobs.length === 0) {
+      return reply.code(400).send({
+        error:
+          "No valid jobs in payload. Each item needs jobBookingNo and source (db1|db2).",
+      });
+    }
+
+    // Build per-database job-number lists in input order, deduped.
+    const jobNumbersByDb = { db1: [], db2: [] };
+    const seenByDb = { db1: new Set(), db2: new Set() };
+    jobs.forEach((j) => {
+      if (!seenByDb[j.source].has(j.jobBookingNo)) {
+        seenByDb[j.source].add(j.jobBookingNo);
+        jobNumbersByDb[j.source].push(j.jobBookingNo);
+      }
+    });
+
+    // Maps a flat row from dbo.GetJobFullDetails_Client into our
+    // { production, shipment } shape. The proc returns columns in
+    // PascalCase; we keep that casing on the wire so the frontend can
+    // map to nice Excel labels without us having to hand-rename 25 fields.
+    const splitProductionAndShipment = (row) => {
+      const production = {
+        JobBookingNo: row.JobBookingNo,
+        JobName: row.JobName,
+        TotalOrderQty: row.TotalOrderQty,
+        TextPages: row.TextPages,
+        TextColor: row.TextColor,
+        CloseSize: row.CloseSize,
+        BindingStyle: row.BindingStyle,
+        FileReceivedDate: row.FileReceivedDate,
+        SoftCopyApprovalSentDate: row.SoftCopyApprovalSentDate,
+        FinalApprovalDate: row.FinalApprovalDate,
+        FinallyApproved: row.FinallyApproved,
+        TextPaperQuality: row.TextPaperQuality,
+        CoverPaperQuality: row.CoverPaperQuality,
+        TextPrintPlanQty: row.TextPrintPlanQty,
+        TextPrintDoneQty: row.TextPrintDoneQty,
+        TextPrintCompletionPct: row.TextPrintCompletionPct,
+        TextPrintingEndDate: row.TextPrintingEndDate,
+        CoverPrintPlanQty: row.CoverPrintPlanQty,
+        CoverPrintDoneQty: row.CoverPrintDoneQty,
+        CoverPrintCompletionPct: row.CoverPrintCompletionPct,
+        CoverPrintingEndDate: row.CoverPrintingEndDate,
+        BindingPlanQty: row.BindingPlanQty,
+        BindingDoneQty: row.BindingDoneQty,
+        BindingCompletionPct: row.BindingCompletionPct,
+        BindingEndDate: row.BindingEndDate,
+        LastGpnDate: row.LastGpnDate,
+        ContainerNo: row.ContainerNo,
+      };
+
+      // The proc emits a Shipment_ContainerNumber alias when a matching
+      // ShipmentETA row exists, and the unaliased shipment columns alongside
+      // (Id, ContainerNumber, DestinationPort, ...). When there's no
+      // shipment, all of these come back NULL so we return null.
+      const hasShipment = !!(
+        row.Shipment_ContainerNumber ||
+        row.ContainerNumber ||
+        row.DestinationPort ||
+        row.DestinationArrivalPlannedDate ||
+        row.DestinationArrivalOriginalPlannedDate
+      );
+      const shipment = hasShipment
+        ? {
+            Shipment_ContainerNumber: row.Shipment_ContainerNumber,
+            Id: row.Id,
+            ContainerNumber:
+              row.ContainerNumber || row.Shipment_ContainerNumber || null,
+            DestinationPort: row.DestinationPort,
+            DestinationArrivalOriginalPlannedDate:
+              row.DestinationArrivalOriginalPlannedDate,
+            DestinationArrivalPlannedDate: row.DestinationArrivalPlannedDate,
+            Link: row.Link,
+            CreatedAt: row.CreatedAt,
+            Status: row.Status,
+            rn: row.rn,
+          }
+        : null;
+
+      return { production, shipment };
+    };
+
+    // Run dbo.GetJobFullDetails_Client for one source DB, in BATCH_SIZE
+    // chunks. Returns:
+    //   { perJob: Map<originalJobNo, { production, shipment }>,
+    //     perJobError: Map<originalJobNo, errorString> }
+    // We intentionally key the maps by the *exact* string the frontend sent
+    // us (e.g. "J01015_26_27"), even though we hand the proc the slash-dash
+    // form ("J01015/26-27"). Job numbers are matched back via canonicalJobNo
+    // so any separator mix-and-match between portal_orders_list2 and the
+    // export proc is transparent to callers.
+    const processDatabase = async (sourceTag, jobBookingNos) => {
+      const perJob = new Map();
+      const perJobError = new Map();
+      if (jobBookingNos.length === 0) {
+        return { perJob, perJobError };
+      }
+
+      const companyId = COMPANY_ID_BY_SOURCE[sourceTag];
+      if (!Number.isFinite(companyId)) {
+        const errMsg = `CompanyID not configured for ${sourceTag}`;
+        jobBookingNos.forEach((jn) => perJobError.set(jn, errMsg));
+        req.log?.error?.({
+          msg: "[EXPORT-SUMMARY] CompanyID missing",
+          sourceTag,
+        });
+        return { perJob, perJobError };
+      }
+
+      let pool;
+      try {
+        pool = sourceTag === "db2" ? await db2() : await db1();
+      } catch (err) {
+        const errMsg = `pool_error: ${err?.message || String(err)}`;
+        jobBookingNos.forEach((jn) => perJobError.set(jn, errMsg));
+        req.log?.error?.(
+          { err, sourceTag },
+          "[EXPORT-SUMMARY] Failed to acquire SQL pool"
+        );
+        return { perJob, perJobError };
+      }
+
+      // canonical(jobNo) -> original frontend-supplied jobNo string.
+      const canonicalToOriginal = new Map();
+      jobBookingNos.forEach((jn) => {
+        const canon = canonicalJobNo(jn);
+        if (canon && !canonicalToOriginal.has(canon)) {
+          canonicalToOriginal.set(canon, jn);
+        }
+      });
+
+      req.log?.info?.({
+        msg: "[EXPORT-SUMMARY] processDatabase begin",
+        sourceTag,
+        companyId,
+        jobCount: jobBookingNos.length,
+        sampleJobs: jobBookingNos.slice(0, 5),
+      });
+
+      for (let i = 0; i < jobBookingNos.length; i += BATCH_SIZE) {
+        const chunk = jobBookingNos.slice(i, i + BATCH_SIZE);
+        // We don't know which separator format the underlying data table
+        // uses — some installations store JobBookingNo as "J00442_25_26"
+        // (underscores, matching the URL-friendly JobCardNo alias), others
+        // as "J00442/25-26" (slash + dash). To stay format-agnostic we
+        // pass BOTH variants of every input to the proc. Duplicates in the
+        // TVP cost nothing; the proc only returns rows that actually
+        // exist, and we dedupe results by canonicalJobNo on the way out.
+        const variants = new Set();
+        chunk.forEach((jn) => {
+          const original = String(jn || "").trim();
+          if (original) variants.add(original);
+          const sp = toSpJobNoForm(jn);
+          if (sp) variants.add(sp);
+        });
+        const spChunk = Array.from(variants);
+        try {
+          const r = pool.request();
+          r.input("CompanyID", sql.Int, companyId);
+          r.input("InputJobs", toJobNoListTVP(spChunk));
+          const rs = await r.execute("dbo.GetJobFullDetails_Client");
+          const rows = rs.recordset || [];
+
+          req.log?.info?.({
+            msg: "[EXPORT-SUMMARY] chunk executed",
+            sourceTag,
+            companyId,
+            chunkStart: i,
+            chunkSize: chunk.length,
+            tvpVariantsSent: spChunk.length,
+            rowsReturned: rows.length,
+            sampleSpInput: spChunk.slice(0, 6),
+            sampleProcJobNo: rows[0]?.JobBookingNo || null,
+          });
+
+          // The proc may return multiple rows per job when a job has more
+          // than one matching ShipmentETA entry (the proc tags each with
+          // a row_number `rn`). We keep only the first row per job — the
+          // proc orders shipments newest-first within a job, so this is
+          // the latest shipment.
+          rows.forEach((row) => {
+            const rawJn = String(row?.JobBookingNo || "").trim();
+            if (!rawJn) return;
+            const canon = canonicalJobNo(rawJn);
+            const originalKey = canonicalToOriginal.get(canon);
+            if (!originalKey || perJob.has(originalKey)) return;
+            perJob.set(originalKey, splitProductionAndShipment(row));
+          });
+
+          chunk.forEach((jn) => {
+            if (!perJob.has(jn)) {
+              perJobError.set(jn, "not_found_in_proc_result");
+            }
+          });
+        } catch (err) {
+          const errMsg = err?.message || String(err);
+          chunk.forEach((jn) => perJobError.set(jn, errMsg));
+          req.log?.error?.(
+            {
+              err,
+              sourceTag,
+              companyId,
+              chunkStart: i,
+              chunkSize: chunk.length,
+              sampleSpInput: spChunk.slice(0, 3),
+            },
+            "[EXPORT-SUMMARY] dbo.GetJobFullDetails_Client failed for chunk"
+          );
+        }
+      }
+
+      return { perJob, perJobError };
+    };
+
+    // Run both databases in parallel.
+    const [db1Res, db2Res] = await Promise.all([
+      processDatabase("db1", jobNumbersByDb.db1),
+      processDatabase("db2", jobNumbersByDb.db2),
+    ]);
+
+    // Assemble final results back in original input order.
+    const results = jobs.map((job) => {
+      const dbRes = job.source === "db1" ? db1Res : db2Res;
+      const split = dbRes.perJob.get(job.jobBookingNo) || null;
+      const production = split ? split.production : null;
+      // Prefer the shipment row joined inside the proc; fall back to null.
+      const shipment = split ? split.shipment : null;
+      const productionError = production
+        ? null
+        : dbRes.perJobError.get(job.jobBookingNo) || "no_data";
+
+      return {
+        jobBookingNo: job.jobBookingNo,
+        source: job.source,
+        database: job.source === "db1" ? "KOL" : "AHM",
+        containerNo: job.containerNo || production?.ContainerNo || null,
+        production,
+        productionError,
+        shipment,
+      };
+    });
+
+    const elapsedMs = (performance.now() - startedAt).toFixed(2);
+    const productionFailures = results.filter((r) => r.productionError).length;
+    const shipmentMatches = results.filter((r) => r.shipment).length;
+
+    req.log?.info?.({
+      msg: "[EXPORT-SUMMARY] Completed",
+      totalRequested: rawJobs.length,
+      totalProcessed: jobs.length,
+      productionFailures,
+      shipmentMatches,
+      elapsedMs,
+      db1: {
+        companyId: COMPANY_ID_BY_SOURCE.db1,
+        jobs: jobNumbersByDb.db1.length,
+        successes: db1Res.perJob.size,
+        errors: db1Res.perJobError.size,
+        batches: Math.ceil(jobNumbersByDb.db1.length / BATCH_SIZE),
+      },
+      db2: {
+        companyId: COMPANY_ID_BY_SOURCE.db2,
+        jobs: jobNumbersByDb.db2.length,
+        successes: db2Res.perJob.size,
+        errors: db2Res.perJobError.size,
+        batches: Math.ceil(jobNumbersByDb.db2.length / BATCH_SIZE),
+      },
+    });
+
+    return {
+      total: results.length,
+      productionFailures,
+      shipmentMatches,
+      elapsedMs: Number(elapsedMs),
+      items: results,
+    };
   });
 
   // GET /api/approvals?tab=all|pending_approval|pending_files&range=30d|90d|180d|365d&q=&limit=25&cursor=base64(date|id)&source=db1|db2
