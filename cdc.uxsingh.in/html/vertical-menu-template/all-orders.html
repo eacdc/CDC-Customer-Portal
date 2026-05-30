@@ -733,7 +733,10 @@
                                                 </div>
                                                 <div class="card-title mb-0 d-flex align-items-center custom-snb">
                                                     <div class="search-here me-4 cus-search-here"></div>
-                                                    <div class="main-btn-gp">
+                                                    <div class="main-btn-gp has-export-btn d-flex align-items-center gap-2">
+                                                        <button type="button" class="btn btn-label-success export-excel-btn" data-tab="all">
+                                                            <i class="icon-base ti tabler-file-spreadsheet me-1"></i><span class="export-btn-label">Export to Excel</span>
+                                                        </button>
                                                         <div class="btn-group date-range-group" data-tab="all">
                                                             <button type="button" class="btn btn-label-primary date-range-btn">Last 90 Days</button>
                                                             <button type="button"
@@ -770,7 +773,10 @@
                                                 </div>
                                                 <div class="card-title mb-0 d-flex align-items-center custom-snb">
                                                     <div class="search-here-pending me-4 cus-search-here"></div>
-                                                    <div class="main-btn-gp">
+                                                    <div class="main-btn-gp has-export-btn d-flex align-items-center gap-2">
+                                                        <button type="button" class="btn btn-label-success export-excel-btn" data-tab="pending">
+                                                            <i class="icon-base ti tabler-file-spreadsheet me-1"></i><span class="export-btn-label">Export to Excel</span>
+                                                        </button>
                                                         <div class="btn-group date-range-group" data-tab="pending">
                                                             <button type="button" class="btn btn-label-primary date-range-btn">Last 90 Days</button>
                                                             <button type="button"
@@ -807,7 +813,10 @@
                                                 </div>
                                                 <div class="card-title mb-0 d-flex align-items-center custom-snb">
                                                     <div class="search-here-completed me-4 cus-search-here"></div>
-                                                    <div class="main-btn-gp">
+                                                    <div class="main-btn-gp has-export-btn d-flex align-items-center gap-2">
+                                                        <button type="button" class="btn btn-label-success export-excel-btn" data-tab="completed">
+                                                            <i class="icon-base ti tabler-file-spreadsheet me-1"></i><span class="export-btn-label">Export to Excel</span>
+                                                        </button>
                                                         <div class="btn-group date-range-group" data-tab="completed">
                                                             <button type="button" class="btn btn-label-primary date-range-btn">Last 90 Days</button>
                                                             <button type="button"
@@ -1012,6 +1021,7 @@
 
     <!-- Page JS -->
     <script src="../../assets/js/ledger-filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../assets/js/all-orders.js"></script>
 
     <!-- Loading Overlay -->

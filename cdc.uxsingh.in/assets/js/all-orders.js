@@ -106,6 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Bind modal handlers
   bindModalHandlers();
 
+  // Bind Export-to-Excel handler
+  bindExportHandlers();
+
   function getStoredSession() {
     try {
       const raw = localStorage.getItem(ORDERS_SESSION_KEY);
@@ -1287,9 +1290,16 @@ document.addEventListener('DOMContentLoaded', () => {
       tbody.innerHTML = `<tr><td class="text-center">${displayNo}</td></tr>`;
     } else {
       const first = rows[0];
-      const keys = Object.keys(first).filter(k => first[k] !== undefined && first[k] !== null && typeof first[k] !== 'object');
+      // Internal columns we don't want surfaced to customers. `Id` is the
+      // ShipmentETA primary key, `Status` is an internal integer flag whose
+      // codes aren't documented for end users — both add noise without
+      // telling them anything useful.
+      const HIDDEN_SHIPMENT_KEYS = new Set(['id', 'status']);
+      const keys = Object.keys(first)
+        .filter(k => !HIDDEN_SHIPMENT_KEYS.has(String(k).toLowerCase()))
+        .filter(k => first[k] !== undefined && first[k] !== null && typeof first[k] !== 'object');
       if (keys.length === 0) {
-        keys.push(...Object.keys(first));
+        keys.push(...Object.keys(first).filter(k => !HIDDEN_SHIPMENT_KEYS.has(String(k).toLowerCase())));
       }
       const toLabel = (k) => {
         if (k && String(k).toLowerCase() === 'link') return 'Track';
@@ -1333,6 +1343,413 @@ document.addEventListener('DOMContentLoaded', () => {
     return div.innerHTML;
   }
 
+  // ===================== Excel Export =====================
+
+  const EXPORT_CHUNK_SIZE = 500; // Must match backend MAX_JOBS
+
+  function bindExportHandlers() {
+    document.addEventListener('click', async function (e) {
+      const btn = e.target.closest('.export-excel-btn');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const tab = btn.getAttribute('data-tab');
+      if (!tab || !tabState[tab]) {
+        alert('Unknown tab. Cannot export.');
+        return;
+      }
+
+      if (typeof XLSX === 'undefined' || !XLSX || !XLSX.utils) {
+        alert('Excel library failed to load. Please refresh the page and try again.');
+        return;
+      }
+
+      await exportTabToExcel(tab, btn);
+    });
+  }
+
+  async function exportTabToExcel(tab, btn) {
+    const state = tabState[tab];
+    const orders = Array.isArray(state?.filteredOrders) && state.filteredOrders.length
+      ? state.filteredOrders
+      : (state?.orders || []);
+
+    if (!orders.length) {
+      alert('No orders to export for the selected date range.');
+      return;
+    }
+
+    // Only Commercial-bucket orders (segment in Commercial/Books/Book) are
+    // covered by the production-summary API. Packaging and Other (e.g.
+    // "Leaflet | Cards") jobs are intentionally excluded from this export so
+    // they never hit the backend and never appear in the workbook.
+    let packagingExcludedCount = 0;
+    let otherExcludedCount = 0;
+    const exportableOrders = [];
+    const segmentDiagnostics = new Map(); // segmentValue -> { bucket, count, sampleJobs[] }
+    orders.forEach((o) => {
+      const rawSegment = o?.SegmentName ?? o?.segmentname ?? null;
+      const bucket = orderSegmentBucket(o);
+      const diagKey = rawSegment === null || rawSegment === undefined ? '<null>' : String(rawSegment);
+      if (!segmentDiagnostics.has(diagKey)) {
+        segmentDiagnostics.set(diagKey, { bucket, count: 0, sampleJobs: [] });
+      }
+      const diag = segmentDiagnostics.get(diagKey);
+      diag.count++;
+      if (diag.sampleJobs.length < 3) diag.sampleJobs.push(o?.JobCardNo || o?.JobBookingNo || '?');
+
+      if (bucket === 'commercial') {
+        exportableOrders.push(o);
+      } else if (bucket === 'packaging') {
+        packagingExcludedCount++;
+      } else {
+        otherExcludedCount++;
+      }
+    });
+
+    // Diagnostic log: tells us at a glance what raw SegmentName values came
+    // back from the API and how each one was bucketed. If a job appears in
+    // the wrong bucket, look at the "Raw SegmentName" cell — that is the
+    // value coming straight out of dbo.portal_orders_list2.
+    console.table(
+      Array.from(segmentDiagnostics.entries()).map(([segment, info]) => ({
+        'Raw SegmentName': segment,
+        'Bucket': info.bucket,
+        'Count': info.count,
+        'Sample Jobs': info.sampleJobs.join(', ')
+      }))
+    );
+
+    if (!exportableOrders.length) {
+      alert('No exportable orders in this view — only commercial (book) orders are included in the Excel export.');
+      return;
+    }
+
+    // Build payload jobs (drop any rows that can't be uniquely identified)
+    const payloadJobs = exportableOrders
+      .map((o) => ({
+        order: o,
+        jobBookingNo: String(o.JobCardNo ?? o.JobBookingNo ?? '').trim(),
+        source: String(o._source ?? o.source ?? o.sourceTag ?? '').trim().toLowerCase(),
+        containerNo: String(o.ContainerNo ?? o.containerno ?? '').trim()
+      }))
+      .filter((j) => j.jobBookingNo && (j.source === 'db1' || j.source === 'db2'));
+
+    if (!payloadJobs.length) {
+      alert('No exportable orders found (missing job number or source).');
+      return;
+    }
+
+    // Diagnostic: show how many jobs we're sending per source database, and
+    // a few sample job numbers from each. Useful when one DB's data is
+    // missing from the export — if e.g. all KOL jobs end up grouped under
+    // an empty source, we'll see "(empty)" entries here.
+    const sourceCounts = payloadJobs.reduce((acc, j) => {
+      const key = j.source || '(empty)';
+      if (!acc[key]) acc[key] = { count: 0, samples: [] };
+      acc[key].count++;
+      if (acc[key].samples.length < 3) acc[key].samples.push(j.jobBookingNo);
+      return acc;
+    }, {});
+    console.table(
+      Object.entries(sourceCounts).map(([source, info]) => ({
+        Source: source,
+        Count: info.count,
+        'Sample Job Nos': info.samples.join(', ')
+      }))
+    );
+
+    const originalBtnHtml = btn ? btn.innerHTML : '';
+    const setBtnState = (html, disabled) => {
+      if (!btn) return;
+      btn.innerHTML = html;
+      btn.disabled = !!disabled;
+    };
+
+    setBtnState(
+      `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Preparing export...`,
+      true
+    );
+
+    try {
+      const chunks = chunkArray(payloadJobs, EXPORT_CHUNK_SIZE);
+      const allItems = [];
+      let totalProductionFailures = 0;
+      let totalShipmentMatches = 0;
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        if (chunks.length > 1) {
+          setBtnState(
+            `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Fetching ${i * EXPORT_CHUNK_SIZE + 1}-${i * EXPORT_CHUNK_SIZE + chunk.length} of ${payloadJobs.length}...`,
+            true
+          );
+        }
+
+        const body = {
+          jobs: chunk.map((j) => ({
+            jobBookingNo: j.jobBookingNo,
+            source: j.source,
+            containerNo: j.containerNo
+          }))
+        };
+
+        const data = await postExportSummary(body);
+        const items = Array.isArray(data?.items) ? data.items : [];
+        totalProductionFailures += Number(data?.productionFailures || 0);
+        totalShipmentMatches += Number(data?.shipmentMatches || 0);
+
+        chunk.forEach((j, idx) => {
+          allItems.push({ order: j.order, item: items[idx] || null });
+        });
+      }
+
+      setBtnState(
+        `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Building Excel...`,
+        true
+      );
+
+      const filename = buildExportFilename(tab, state);
+      buildAndDownloadWorkbook(allItems, filename);
+
+      // Surface the exact jobs that came back without proc data, grouped
+      // by source DB. Paste these into SSMS to debug why the proc isn't
+      // returning rows for them (CompanyID mismatch, deleted job, format
+      // edge case, etc.).
+      const failedJobs = allItems
+        .filter(({ item }) => item?.productionError)
+        .map(({ order, item }) => ({
+          jobBookingNo: item?.jobBookingNo
+            || order?.JobBookingNo
+            || order?.JobCardNo
+            || '',
+          source: item?.source || order?._source || '',
+          error: item?.productionError || ''
+        }));
+      if (failedJobs.length) {
+        const failedBySource = failedJobs.reduce((acc, f) => {
+          (acc[f.source || '(unknown)'] ||= []).push(f.jobBookingNo);
+          return acc;
+        }, {});
+        console.warn(
+          `[EXPORT] ${failedJobs.length} job(s) had no proc data (see table below).`,
+          failedBySource
+        );
+        console.table(failedJobs);
+      }
+
+      console.log('[EXPORT] Completed', {
+        tab,
+        totalOrders: orders.length,
+        packagingExcluded: packagingExcludedCount,
+        otherExcluded: otherExcludedCount,
+        exportedRows: allItems.length,
+        productionFailures: totalProductionFailures,
+        shipmentMatches: totalShipmentMatches
+      });
+
+      const notices = [];
+      if (packagingExcludedCount > 0) {
+        notices.push(`${packagingExcludedCount} packaging order${packagingExcludedCount === 1 ? '' : 's'} excluded from the export.`);
+      }
+      if (otherExcludedCount > 0) {
+        notices.push(`${otherExcludedCount} non-commercial order${otherExcludedCount === 1 ? '' : 's'} (e.g. leaflets, cards) excluded from the export.`);
+      }
+      if (totalProductionFailures > 0) {
+        notices.push(`${totalProductionFailures} of ${allItems.length} job${allItems.length === 1 ? '' : 's'} had no data from the stored procedure; those rows show only the JobBookingNo and the rest of the columns are blank. See browser console for the full list.`);
+      }
+      if (notices.length) {
+        setTimeout(() => alert(`Export complete.\n\n• ${notices.join('\n• ')}`), 200);
+      }
+    } catch (err) {
+      console.error('[EXPORT] Failed', err);
+      alert(err?.userMessage || err?.message || 'Failed to export orders to Excel.');
+    } finally {
+      setBtnState(originalBtnHtml, false);
+    }
+  }
+
+  async function postExportSummary(body) {
+    const apiBase = getApiBase();
+    const response = await fetch(`${apiBase}/orders/export-summary`, {
+      method: 'POST',
+      headers: {
+        ...buildAuthHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (response.status === 401) {
+      throw userFacingError('Your session has expired. Please sign out and sign in again.');
+    }
+    if (!response.ok) {
+      const errBody = await safeJson(response);
+      throw userFacingError(errBody?.error || `Export request failed (HTTP ${response.status}).`);
+    }
+    return await response.json();
+  }
+
+  function chunkArray(arr, size) {
+    const out = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
+  function buildExportFilename(tab, state) {
+    const tabLabel = tab.charAt(0).toUpperCase() + tab.slice(1);
+    let rangeLabel;
+    if (state?.customDates?.from && state?.customDates?.to) {
+      rangeLabel = `${state.customDates.from}_to_${state.customDates.to}`;
+    } else {
+      rangeLabel = (getRangeLabel(state?.dateRange || DEFAULT_RANGE) || 'Last 90 Days').replace(/\s+/g, '_');
+    }
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `orders_${tabLabel}_${rangeLabel}_${yyyy}-${mm}-${dd}.xlsx`;
+  }
+
+  function buildAndDownloadWorkbook(records, filename) {
+    const rows = records.map(({ order, item }) => flattenForExport(order, item));
+
+    // Collect the union of all keys so every row aligns in the sheet, even if
+    // some orders have shipment columns that others don't.
+    const headerSet = new Set();
+    rows.forEach((r) => Object.keys(r).forEach((k) => headerSet.add(k)));
+    const headers = Array.from(headerSet);
+
+    const sheet = XLSX.utils.json_to_sheet(rows, { header: headers });
+
+    // Reasonable column widths based on header label length.
+    sheet['!cols'] = headers.map((h) => ({
+      wch: Math.min(Math.max(12, h.length + 2), 40)
+    }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheet, 'Orders');
+    XLSX.writeFile(wb, filename);
+  }
+
+  function flattenForExport(order, item) {
+    const prod = item?.production || {};
+    const shipment = item?.shipment || {};
+
+    // Columns are emitted in the exact order dbo.GetJobFullDetails_Client
+    // returns them, with the exact SP column names as headers. No columns
+    // from portal_orders_list2 (Title, PoNumber, LedgerName, etc.) are
+    // included — only what the proc itself returns. If you add/remove a
+    // column in the SP, mirror the change here.
+    const row = {
+      // When the proc returned no data for this job (productionError), prod
+      // is empty. Falling back to the order's own job-no fields here means
+      // the row still identifies itself instead of being a totally blank
+      // line — the Production Fetch Error column on the far right will
+      // explain why all the other proc columns are empty.
+      JobBookingNo: pickString(prod.JobBookingNo, order?.JobBookingNo, order?.JobCardNo),
+      JobName: pickString(prod.JobName),
+      TotalOrderQty: pickNumber(prod.TotalOrderQty),
+      TextPages: pickNumber(prod.TextPages),
+      TextColor: pickLeadingInt(prod.TextColor),
+      CloseSize: pickString(prod.CloseSize),
+      BindingStyle: pickString(prod.BindingStyle),
+      FileReceivedDate: formatDateForExcel(prod.FileReceivedDate),
+      SoftCopyApprovalSentDate: formatDateForExcel(prod.SoftCopyApprovalSentDate),
+      FinalApprovalDate: formatDateForExcel(prod.FinalApprovalDate),
+      FinallyApproved: pickString(prod.FinallyApproved),
+      TextPaperQuality: pickString(prod.TextPaperQuality),
+      CoverPaperQuality: pickString(prod.CoverPaperQuality),
+      TextPrintPlanQty: pickNumber(prod.TextPrintPlanQty),
+      TextPrintDoneQty: pickNumber(prod.TextPrintDoneQty),
+      TextPrintCompletionPct: pickNumber(prod.TextPrintCompletionPct),
+      TextPrintingEndDate: formatDateForExcel(prod.TextPrintingEndDate),
+      CoverPrintPlanQty: pickNumber(prod.CoverPrintPlanQty),
+      CoverPrintDoneQty: pickNumber(prod.CoverPrintDoneQty),
+      CoverPrintCompletionPct: pickNumber(prod.CoverPrintCompletionPct),
+      CoverPrintingEndDate: formatDateForExcel(prod.CoverPrintingEndDate),
+      BindingPlanQty: pickNumber(prod.BindingPlanQty),
+      BindingDoneQty: pickNumber(prod.BindingDoneQty),
+      BindingCompletionPct: pickNumber(prod.BindingCompletionPct),
+      BindingEndDate: formatDateForExcel(prod.BindingEndDate),
+      LastGpnDate: formatDateForExcel(prod.LastGpnDate),
+      ContainerNo: pickString(prod.ContainerNo),
+      Shipment_ContainerNumber: pickString(shipment.Shipment_ContainerNumber),
+      Id: pickNumber(shipment.Id),
+      ContainerNumber: pickString(shipment.ContainerNumber),
+      DestinationPort: pickString(shipment.DestinationPort),
+      DestinationArrivalOriginalPlannedDate: formatDateForExcel(shipment.DestinationArrivalOriginalPlannedDate),
+      DestinationArrivalPlannedDate: formatDateForExcel(shipment.DestinationArrivalPlannedDate),
+      Link: pickString(shipment.Link),
+      CreatedAt: formatDateForExcel(shipment.CreatedAt),
+      Status: pickString(shipment.Status),
+      rn: pickNumber(shipment.rn)
+    };
+
+    return row;
+  }
+
+  function orderSegmentBucket(order) {
+    if (!order || typeof order !== 'object') return 'other';
+    return getSegmentBucket(order.SegmentName ?? order.segmentname ?? '');
+  }
+
+  function pickString(...values) {
+    for (const v of values) {
+      if (v === null || v === undefined) continue;
+      const s = String(v).trim();
+      if (s) return s;
+    }
+    return '';
+  }
+
+  function pickNumber(value) {
+    if (value === null || value === undefined || value === '') return '';
+    const n = Number(value);
+    return Number.isFinite(n) ? n : String(value);
+  }
+
+  // Strip away non-digit suffixes/prefixes and return the leading integer.
+  // Used for columns whose SQL value is a label-with-number ("4 F-", "1 F-",
+  // etc.) but should appear in Excel as a plain number (4, 1).
+  function pickLeadingInt(value) {
+    if (value === null || value === undefined || value === '') return '';
+    const m = String(value).match(/\d+/);
+    if (!m) return '';
+    const n = Number(m[0]);
+    return Number.isFinite(n) ? n : '';
+  }
+
+  function mapSourceToDb(source) {
+    const s = String(source || '').trim().toLowerCase();
+    if (s === 'db1') return 'KOL';
+    if (s === 'db2') return 'AHM';
+    return '';
+  }
+
+  function formatDateForExcel(value) {
+    if (value === null || value === undefined || value === '') return '';
+    const d = value instanceof Date ? value : new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleString('en-US', { month: 'short' });
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+
+  function prettifyKey(key) {
+    if (!key) return '';
+    return String(key)
+      .replace(/[_-]+/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  // ===================== End Excel Export =====================
+
   function buildAuthHeaders() {
     const headers = {
       Accept: 'application/json'
@@ -1346,15 +1763,28 @@ document.addEventListener('DOMContentLoaded', () => {
     return headers;
   }
 
+  // Map the raw SegmentName from portal_orders_list2 into one of three buckets
+  // used by image lookup and the Excel-export filter.
+  //   - 'commercial' : Commercial / Books / Book  (the only bucket included in exports)
+  //   - 'packaging'  : Packaging
+  //   - 'other'      : anything else, missing, or unknown (e.g. "Leaflet | Cards")
+  const COMMERCIAL_SEGMENTS = new Set(['commercial', 'books', 'book']);
+  const PACKAGING_SEGMENTS = new Set(['packaging']);
+  function getSegmentBucket(segmentName) {
+    const seg = String(segmentName ?? '').trim().toLowerCase();
+    if (!seg) return 'other';
+    if (COMMERCIAL_SEGMENTS.has(seg)) return 'commercial';
+    if (PACKAGING_SEGMENTS.has(seg)) return 'packaging';
+    return 'other';
+  }
+
   function resolveImageUrl(rawUrl, segmentName) {
-    // Only use strictly defined defaults: Packaging and Books (Commercial). No other images.
-    const defaultBySegment = {
-      'Commercial': '/assets/img/products/default-book.jpeg',
-      'Packaging': '/assets/img/products/default-packaging.jpeg'
+    const defaultByBucket = {
+      commercial: '/assets/img/products/default-book.jpeg',
+      packaging: '/assets/img/products/default-packaging.jpeg',
+      other: '/assets/img/products/default-other.svg'
     };
-    const segment = (segmentName && String(segmentName).trim()) || '';
-    const key = Object.keys(defaultBySegment).find((k) => k.toLowerCase() === segment.toLowerCase());
-    const fallback = (key && defaultBySegment[key]) || '/assets/img/products/default-book.jpeg';
+    const fallback = defaultByBucket[getSegmentBucket(segmentName)] || defaultByBucket.other;
     if (!rawUrl) return fallback;
     try {
       const url = String(rawUrl).trim();

@@ -1585,6 +1585,53 @@ h6,
         transform: translateY(4px) !important;
     }
 
+    /* All-orders page: Export + Date-range on a single row, 50/50 width */
+    .custom-res-card-header .custom-snb .main-btn-gp.has-export-btn {
+        flex-direction: row !important;
+        flex-wrap: nowrap;
+        align-items: stretch !important;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .custom-res-card-header .custom-snb .main-btn-gp.has-export-btn .export-excel-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .custom-res-card-header .custom-snb .main-btn-gp.has-export-btn .export-excel-btn .export-btn-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .custom-res-card-header .custom-snb .main-btn-gp.has-export-btn .date-range-group {
+        flex: 1 1 0;
+        min-width: 0;
+        width: auto;
+        max-width: none;
+    }
+
+    .custom-res-card-header .custom-snb .main-btn-gp.has-export-btn .date-range-group .date-range-btn {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 13px;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+
     .custom-tl .nav-tabs {
         overflow-x: scroll;
     }

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="leafletBase" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fdfbf7"/>
+      <stop offset="100%" style="stop-color:#ebe4d8"/>
+    </linearGradient>
+    <linearGradient id="leafletAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#c9b896"/>
+      <stop offset="100%" style="stop-color:#a08f6e"/>
+    </linearGradient>
+  </defs>
+  <!-- back card -->
+  <rect x="28" y="18" width="50" height="64" rx="3" fill="url(#leafletAccent)" opacity="0.55"/>
+  <!-- middle card -->
+  <rect x="24" y="22" width="50" height="64" rx="3" fill="url(#leafletBase)" stroke="#b8a88a" stroke-width="1"/>
+  <!-- front card -->
+  <rect x="20" y="26" width="50" height="64" rx="3" fill="url(#leafletBase)" stroke="#8b7d5a" stroke-width="1"/>
+  <!-- content lines on front card -->
+  <rect x="26" y="34" width="38" height="4" rx="1" fill="#c9b896"/>
+  <rect x="26" y="44" width="30" height="3" rx="1" fill="#d4c8a8" opacity="0.85"/>
+  <rect x="26" y="51" width="34" height="3" rx="1" fill="#d4c8a8" opacity="0.85"/>
+  <rect x="26" y="58" width="26" height="3" rx="1" fill="#d4c8a8" opacity="0.85"/>
+  <rect x="26" y="68" width="20" height="3" rx="1" fill="#c9b896" opacity="0.7"/>
+  <rect x="26" y="75" width="32" height="3" rx="1" fill="#c9b896" opacity="0.7"/>
+</svg>
