@@ -1404,17 +1404,25 @@ fastify.get("/dashboard", async (req, reply) => {
   // Returns rows from ShipmentETA where containernumber matches.
   //
   // ContainerNo from portal_orders_list2 can be a single container OR a
-  // pipe-separated list ("MAEU1234567 | CMAU9999999 | HLXU5555555") when
-  // a job ships in multiple containers. We split on '|', fetch each
-  // distinct container, and return all rows in the input order so the
-  // modal lists them the same way as on the order card.
+  // pipe-separated list, and each entry may carry a trailing quantity
+  // annotation: e.g. "HASU4793320 (135000) | TGBU5365049 (130260)".
+  // We split on '|', strip the "(qty)" suffix from each piece (so it
+  // matches what dbo.ShipmentETA stores — the bare container code), and
+  // return rows in the input order so the modal lists them the same way
+  // they appear on the order card.
   fastify.get("/orders/:jobId/shipment-details", async (req, reply) => {
     const { jobId } = req.params;
     const { containerNo, source } = req.query || {};
 
+    const stripQty = (s) =>
+      String(s || "")
+        .trim()
+        .replace(/\s*\([^)]*\)\s*$/, "")
+        .trim();
+
     const containers = String(containerNo || "")
       .split("|")
-      .map((c) => c.trim())
+      .map(stripQty)
       .filter(Boolean);
     // Dedupe while preserving the order they came in on the order card.
     const seenContainers = new Set();
@@ -1452,7 +1460,7 @@ fastify.get("/dashboard", async (req, reply) => {
       );
       const rawRows = rs.recordset || [];
 
-      // Group by container number and emit rows in input order.
+      // Group real rows by their container number for fast lookup.
       const byContainer = new Map();
       rawRows.forEach((row) => {
         const cn = String(
@@ -1462,9 +1470,41 @@ fastify.get("/dashboard", async (req, reply) => {
         if (!byContainer.has(cn)) byContainer.set(cn, []);
         byContainer.get(cn).push(row);
       });
+
+      // Template object so placeholder rows for containers without a
+      // ShipmentETA entry have the same column shape as real ones. Without
+      // this, the modal (which derives its header row from the first row
+      // it gets) could end up missing columns or, conversely, hiding the
+      // real shipment info when the placeholder happens to be first.
+      const blankTemplate = rawRows[0]
+        ? Object.fromEntries(
+            Object.keys(rawRows[0]).map((k) => [k, null])
+          )
+        : { containernumber: null };
+
+      // The mssql driver returns column names in whatever case the schema
+      // defines them as (e.g. "ContainerNumber"). When we add the
+      // container number to a placeholder we must reuse the exact same
+      // key as the real rows, otherwise the modal sees two different
+      // keys ("ContainerNumber" + "containernumber") and renders the
+      // column twice.
+      const containerKey = rawRows[0]
+        ? Object.keys(rawRows[0]).find(
+            (k) => k.toLowerCase() === "containernumber"
+          ) || "containernumber"
+        : "containernumber";
+
+      // Emit one row per requested container, in input order. Containers
+      // not yet present in ShipmentETA show up as a row with just the
+      // container number populated so the customer still sees that the
+      // job has additional containers awaiting shipment data.
       const ordered = [];
       uniqueContainers.forEach((cn) => {
-        if (byContainer.has(cn)) ordered.push(...byContainer.get(cn));
+        if (byContainer.has(cn)) {
+          ordered.push(...byContainer.get(cn));
+        } else {
+          ordered.push({ ...blankTemplate, [containerKey]: cn });
+        }
       });
       return ordered;
     } catch (err) {
@@ -1613,7 +1653,9 @@ fastify.get("/dashboard", async (req, reply) => {
         BindingDoneQty: row.BindingDoneQty,
         BindingCompletionPct: row.BindingCompletionPct,
         BindingEndDate: row.BindingEndDate,
+        GpnQty: row.GpnQty,
         LastGpnDate: row.LastGpnDate,
+        DispatchedQty: row.DispatchedQty,
         ContainerNo: row.ContainerNo,
       };
 
