@@ -1289,18 +1289,33 @@ document.addEventListener('DOMContentLoaded', () => {
       const displayNo = containerNo ? escapeHtml(String(containerNo).trim()) : '—';
       tbody.innerHTML = `<tr><td class="text-center">${displayNo}</td></tr>`;
     } else {
-      const first = rows[0];
       // Internal columns we don't want surfaced to customers. `Id` is the
       // ShipmentETA primary key, `Status` is an internal integer flag whose
       // codes aren't documented for end users — both add noise without
       // telling them anything useful.
       const HIDDEN_SHIPMENT_KEYS = new Set(['id', 'status']);
-      const keys = Object.keys(first)
-        .filter(k => !HIDDEN_SHIPMENT_KEYS.has(String(k).toLowerCase()))
-        .filter(k => first[k] !== undefined && first[k] !== null && typeof first[k] !== 'object');
-      if (keys.length === 0) {
-        keys.push(...Object.keys(first).filter(k => !HIDDEN_SHIPMENT_KEYS.has(String(k).toLowerCase())));
-      }
+      // Collect the union of non-null keys across all rows. Using the
+      // first row alone breaks when that row is a placeholder for a
+      // container without ShipmentETA data yet (it would hide every
+      // other column because the placeholder only has containernumber).
+      const orderedKeys = [];
+      const seenKeys = new Set();
+      rows.forEach((row) => {
+        Object.keys(row).forEach((k) => {
+          if (HIDDEN_SHIPMENT_KEYS.has(String(k).toLowerCase())) return;
+          if (seenKeys.has(k)) return;
+          const v = row[k];
+          if (v === undefined || v === null) return;
+          if (typeof v === 'object' && !(v instanceof Date)) return;
+          seenKeys.add(k);
+          orderedKeys.push(k);
+        });
+      });
+      // If every row was a placeholder (no real shipment data at all),
+      // still show the container number column so the modal isn't empty.
+      const keys = orderedKeys.length > 0
+        ? orderedKeys
+        : Object.keys(rows[0]).filter(k => !HIDDEN_SHIPMENT_KEYS.has(String(k).toLowerCase()));
       const toLabel = (k) => {
         if (k && String(k).toLowerCase() === 'link') return 'Track';
         return k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
@@ -1667,7 +1682,9 @@ document.addEventListener('DOMContentLoaded', () => {
       CoverPrintingEndDate: formatDateForExcel(prod.CoverPrintingEndDate),
       BindingCompletionPct: pickNumber(prod.BindingCompletionPct),
       BindingEndDate: formatDateForExcel(prod.BindingEndDate),
+      GpnQty: pickNumber(prod.GpnQty),
       LastGpnDate: formatDateForExcel(prod.LastGpnDate),
+      DispatchedQty: pickNumber(prod.DispatchedQty),
       // Shipment columns. We keep only customer-facing fields, all named
       // exactly as dbo.GetJobFullDetails_Client returns them today. The
       // proc has been updated to emit OriginalETA / RevisedETA /
