@@ -1,0 +1,452 @@
+<!doctype html>
+
+<html lang="en" class="layout-navbar-fixed layout-menu-fixed layout-compact" dir="ltr" data-skin="default"
+  data-assets-path="../../assets/" data-template="vertical-menu-template" data-bs-theme="light">
+
+<head>
+  <base href="/html/vertical-menu-template/" />
+  <meta charset="utf-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+
+  <title>AI Agent Settings | CDC</title>
+
+  <meta name="description" content="" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&ampdisplay=swap"
+    rel="stylesheet" />
+
+  <link rel="stylesheet" href="../../assets/vendor/fonts/iconify-icons.css" />
+
+  <!-- Core CSS -->
+  <link rel="stylesheet" href="../../assets/vendor/libs/node-waves/node-waves.css" />
+  <link rel="stylesheet" href="../../assets/vendor/libs/pickr/pickr-themes.css" />
+  <link rel="stylesheet" href="../../assets/vendor/css/core.css" />
+  <link rel="stylesheet" href="../../assets/css/demo.css" />
+  <link rel="stylesheet" href="../../assets/css/custom.css" />
+
+  <!-- Vendors CSS -->
+  <link rel="stylesheet" href="../../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+
+  <!-- Helpers -->
+  <script src="../../assets/vendor/js/helpers.js"></script>
+  <script src="../../assets/js/config.js"></script>
+
+  <style>
+    .agent-list .agent-item {
+      cursor: pointer;
+      transition: background-color 0.15s ease-in-out;
+    }
+    .agent-list .agent-item.active {
+      background-color: rgba(var(--bs-primary-rgb), 0.12);
+      border-left: 3px solid var(--bs-primary);
+    }
+    .agent-list .agent-item:hover:not(.active) {
+      background-color: var(--bs-tertiary-bg);
+    }
+    .agent-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .agent-status-dot.active { background-color: #28c76f; }
+    .agent-status-dot.inactive { background-color: #c0c2c5; }
+    #systemPromptInput {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.85rem;
+      line-height: 1.45;
+      min-height: 360px;
+    }
+    .logs-table {
+      font-size: 0.85rem;
+    }
+    .logs-table td.preview {
+      max-width: 360px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .badge-agent-key {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.72rem;
+    }
+    .toast-stack {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1080;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Layout wrapper -->
+  <div class="layout-wrapper layout-content-navbar">
+    <div class="layout-container">
+
+      <!-- Menu -->
+      <aside id="layout-menu" class="layout-menu menu-vertical menu">
+        <div class="app-brand demo">
+          <a href="index.html" class="app-brand-link">
+            <span class="app-brand-logo demo">
+              <span class="text-primary">
+                <strong>CDC</strong>
+              </span>
+            </span>
+          </a>
+
+          <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-3">
+            <i class="icon-base ti menu-toggle-icon d-none d-xl-block"></i>
+            <i class="icon-base ti tabler-x d-block d-xl-none"></i>
+          </a>
+        </div>
+
+        <div class="menu-inner-shadow"></div>
+
+        <ul class="menu-inner py-1">
+          <li class="menu-item">
+            <a href="index.html" class="menu-link">
+              <i class="menu-icon icon-base ti custom-dashboards"></i>
+              <div data-i18n="Dashboard">Dashboard</div>
+            </a>
+          </li>
+
+          <li class="menu-header small">
+            <span class="menu-header-text" data-i18n="Apps & Pages">Apps &amp; Pages</span>
+          </li>
+          <li class="menu-item">
+            <a href="all-orders.html" class="menu-link">
+              <i class="menu-icon icon-base ti custom-orders"></i>
+              <div data-i18n="Orders">Orders</div>
+            </a>
+          </li>
+          <li class="menu-item">
+            <a href="approvals.html" class="menu-link">
+              <i class="menu-icon icon-base ti custom-order-icon-approval"></i>
+              <div data-i18n="Approvals">Approvals</div>
+            </a>
+          </li>
+          <li class="menu-item">
+            <a href="dispatches.html" class="menu-link">
+              <i class="menu-icon icon-base ti custom-bars-icon-dispatches"></i>
+              <div data-i18n="Dispatches">Dispatches</div>
+            </a>
+          </li>
+          <li class="menu-item">
+            <a href="paper-statement.html" class="menu-link">
+              <i class="menu-icon icon-base ti custom-edit-icon-paper-statement"></i>
+              <div data-i18n="Paper Statement">Paper Statement</div>
+            </a>
+          </li>
+          <li class="menu-item">
+            <a href="otif.html" class="menu-link">
+              <i class="menu-icon icon-base ti custom-folder-icon-otif"></i>
+              <div data-i18n="OTIF">OTIF</div>
+            </a>
+          </li>
+          <li class="menu-item active" data-admin-only="true" style="display: none;">
+            <a href="ai-agent-settings.html" class="menu-link">
+              <i class="menu-icon icon-base ti tabler-robot"></i>
+              <div data-i18n="AI Agent Settings">AI Agent Settings</div>
+            </a>
+          </li>
+        </ul>
+
+        <div class="menu-mobile-footer d-xl-none">
+          <div class="menu-divider"></div>
+          <ul class="menu-inner">
+            <li class="menu-item">
+              <a href="pages-account-settings-account.html" class="menu-link">
+                <i class="menu-icon icon-base ti tabler-user"></i>
+                <div data-i18n="View Profile">View Profile</div>
+              </a>
+            </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link" data-auth-action="logout" data-redirect="auth-login-cover.html">
+                <i class="menu-icon icon-base ti tabler-logout"></i>
+                <div data-i18n="Logout">Logout</div>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </aside>
+
+      <div class="menu-mobile-toggler d-xl-none rounded-1">
+        <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large text-bg-secondary p-2 rounded-1">
+          <i class="ti tabler-menu icon-base"></i>
+          <i class="ti tabler-chevron-right icon-base"></i>
+        </a>
+      </div>
+
+      <!-- Layout container -->
+      <div class="layout-page">
+
+        <!-- Navbar -->
+        <nav class="layout-navbar container-xxl navbar-detached navbar navbar-expand-xl align-items-center bg-navbar-theme" id="layout-navbar">
+          <div class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
+            <a class="nav-item nav-link px-0 me-xl-6" href="javascript:void(0)">
+              <i class="icon-base ti tabler-menu-2 icon-md"></i>
+            </a>
+          </div>
+
+          <div class="navbar-nav-right d-flex align-items-center justify-content-end" id="navbar-collapse">
+            <ul class="navbar-nav flex-row align-items-center ms-md-auto">
+              <li class="nav-item navbar-dropdown dropdown-user dropdown">
+                <a class="nav-link dropdown-toggle hide-arrow p-0" href="javascript:void(0);" data-bs-toggle="dropdown">
+                  <div class="avatar avatar-online">
+                    <img src="../../assets/img/avatars/1.png" alt class="rounded-circle" />
+                  </div>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <div class="dropdown-item mt-0" style="cursor: default;">
+                      <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                          <h6 class="mb-0" id="user-name-display">User</h6>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                  <li><div class="dropdown-divider my-1 mx-n2"></div></li>
+                  <li>
+                    <a class="dropdown-item" href="pages-account-settings-account.html">
+                      <i class="icon-base ti tabler-user me-3 icon-md"></i><span class="align-middle">View Profile</span>
+                    </a>
+                  </li>
+                  <li>
+                    <div class="d-grid px-2 pt-2 pb-1">
+                      <a class="btn btn-sm btn-danger d-flex" href="javascript:void(0);"
+                        data-auth-action="logout" data-redirect="auth-login-cover.html">
+                        <small class="align-middle">Logout</small>
+                        <i class="icon-base ti tabler-logout ms-2 icon-14px"></i>
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </nav>
+        <!-- / Navbar -->
+
+        <!-- Content wrapper -->
+        <div class="content-wrapper">
+          <div class="container-xxl flex-grow-1 container-p-y">
+
+            <!-- Page header + global config -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+              <div>
+                <h4 class="mb-1">AI Agent Settings</h4>
+                <p class="text-body-secondary mb-0">
+                  View and edit prompts &amp; metadata for each chat agent, change the global OpenAI model,
+                  and review which agent was invoked per chat request.
+                </p>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <label for="aiModelInput" class="form-label mb-0 me-1 text-body-secondary small">OpenAI model</label>
+                <input type="text" id="aiModelInput" class="form-control form-control-sm" style="width: 180px;" placeholder="gpt-4o-mini" />
+                <button id="aiModelSaveBtn" type="button" class="btn btn-sm btn-primary">Save model</button>
+              </div>
+            </div>
+
+            <div id="adminAccessBanner" class="alert alert-warning d-none" role="alert">
+              <i class="ti tabler-alert-triangle me-1"></i>
+              <span id="adminAccessBannerText">You do not have permission to use this page.</span>
+            </div>
+
+            <div class="row g-4">
+              <!-- Agent list -->
+              <div class="col-lg-4">
+                <div class="card h-100">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Agents</h6>
+                    <button id="refreshAgentsBtn" class="btn btn-sm btn-label-secondary" type="button">
+                      <i class="ti tabler-refresh me-1"></i>Refresh
+                    </button>
+                  </div>
+                  <ul id="agentList" class="list-group list-group-flush agent-list">
+                    <li class="list-group-item text-body-secondary small">Loading agents…</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Editor -->
+              <div class="col-lg-8">
+                <div class="card h-100">
+                  <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                      <li class="nav-item">
+                        <button class="nav-link active" id="tab-prompt" data-bs-toggle="tab" data-bs-target="#pane-prompt" type="button" role="tab">
+                          Prompt
+                        </button>
+                      </li>
+                      <li class="nav-item">
+                        <button class="nav-link" id="tab-config" data-bs-toggle="tab" data-bs-target="#pane-config" type="button" role="tab">
+                          Config
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="card-body">
+                    <div id="editorEmptyState" class="text-body-secondary py-5 text-center">
+                      Select an agent from the list to start editing.
+                    </div>
+
+                    <div id="editorPanel" class="d-none">
+                      <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                        <div>
+                          <h5 class="mb-0" id="editorAgentName">—</h5>
+                          <small class="text-body-secondary">
+                            <span class="badge bg-label-secondary badge-agent-key" id="editorAgentKey">—</span>
+                            <span id="editorAgentUpdatedAt" class="ms-2"></span>
+                          </small>
+                        </div>
+                        <div>
+                          <span class="badge" id="editorAgentStatus">—</span>
+                        </div>
+                      </div>
+
+                      <div class="tab-content pt-2">
+                        <!-- Prompt tab -->
+                        <div class="tab-pane fade show active" id="pane-prompt" role="tabpanel">
+                          <label for="systemPromptInput" class="form-label">System prompt</label>
+                          <textarea id="systemPromptInput" class="form-control" spellcheck="false" placeholder="System prompt sent to OpenAI as the first message."></textarea>
+                          <div class="form-text">
+                            This text is sent to OpenAI as the <code>system</code> message at the start of every conversation with this agent.
+                          </div>
+                          <div class="mt-3 d-flex gap-2">
+                            <button id="savePromptBtn" type="button" class="btn btn-primary">
+                              <i class="ti tabler-device-floppy me-1"></i>Save prompt
+                            </button>
+                            <button id="resetPromptBtn" type="button" class="btn btn-label-secondary">
+                              Reset
+                            </button>
+                          </div>
+                        </div>
+
+                        <!-- Config tab -->
+                        <div class="tab-pane fade" id="pane-config" role="tabpanel">
+                          <div class="row g-3">
+                            <div class="col-md-6">
+                              <label for="agentNameInput" class="form-label">Display name</label>
+                              <input type="text" id="agentNameInput" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                              <label for="agentButtonInput" class="form-label">Button text</label>
+                              <input type="text" id="agentButtonInput" class="form-control" />
+                            </div>
+                            <div class="col-12">
+                              <label for="agentDescriptionInput" class="form-label">Description</label>
+                              <input type="text" id="agentDescriptionInput" class="form-control" />
+                            </div>
+                            <div class="col-12">
+                              <label for="agentInitialMessageInput" class="form-label">Initial greeting (optional)</label>
+                              <textarea id="agentInitialMessageInput" class="form-control" rows="3" placeholder="Leave blank to auto-generate from the agent name + description."></textarea>
+                            </div>
+                            <div class="col-12">
+                              <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="agentActiveInput" />
+                                <label class="form-check-label" for="agentActiveInput">
+                                  Active &mdash; show this agent in the chatbot
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="mt-3 d-flex gap-2">
+                            <button id="saveConfigBtn" type="button" class="btn btn-primary">
+                              <i class="ti tabler-device-floppy me-1"></i>Save config
+                            </button>
+                            <button id="resetConfigBtn" type="button" class="btn btn-label-secondary">
+                              Reset
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Activity logs -->
+            <div class="card mt-4">
+              <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                  <h6 class="mb-0">Agent activity logs</h6>
+                  <small class="text-body-secondary">
+                    Each row is one call to <code>POST /api/chat/message</code>. Shows which agent was picked
+                    for the user's request.
+                  </small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <select id="logFilterAgent" class="form-select form-select-sm" style="width: 200px;">
+                    <option value="">All agents</option>
+                  </select>
+                  <button id="refreshLogsBtn" class="btn btn-sm btn-label-secondary" type="button">
+                    <i class="ti tabler-refresh me-1"></i>Refresh
+                  </button>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-hover logs-table mb-0">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Agent</th>
+                      <th>User</th>
+                      <th>Model</th>
+                      <th>Duration</th>
+                      <th>Message preview</th>
+                    </tr>
+                  </thead>
+                  <tbody id="agentLogsBody">
+                    <tr><td colspan="6" class="text-body-secondary text-center py-4">Loading logs…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+          <!-- / Content -->
+        </div>
+        <!-- / Content wrapper -->
+      </div>
+      <!-- / Layout page -->
+    </div>
+
+    <div class="layout-overlay layout-menu-toggle"></div>
+    <div class="drag-target"></div>
+  </div>
+  <!-- / Layout wrapper -->
+
+  <!-- Toast stack -->
+  <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Core JS -->
+  <script src="../../assets/vendor/libs/jquery/jquery.js"></script>
+  <script src="../../assets/vendor/libs/popper/popper.js"></script>
+  <script src="../../assets/vendor/js/bootstrap.js"></script>
+  <script src="../../assets/vendor/libs/node-waves/node-waves.js"></script>
+  <script src="../../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+  <script src="../../assets/vendor/libs/hammer/hammer.js"></script>
+  <script src="../../assets/vendor/libs/i18n/i18n.js"></script>
+  <script src="../../assets/vendor/js/menu.js"></script>
+
+  <!-- Main JS -->
+  <script src="../../assets/js/main.js"></script>
+  <script src="../../assets/js/user-profile.js"></script>
+  <script src="../../assets/js/admin-nav.js"></script>
+
+  <!-- Page JS -->
+  <script src="../../assets/js/ai-agent-settings.js"></script>
+
+  <!-- Loading Overlay -->
+  <script src="../../assets/js/loading-overlay.js"></script>
+</body>
+
+</html>

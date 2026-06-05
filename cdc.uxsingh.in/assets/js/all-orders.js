@@ -1643,6 +1643,30 @@ document.addEventListener('DOMContentLoaded', () => {
       wch: Math.min(Math.max(12, h.length + 2), 40)
     }));
 
+    // Make TrackingLink cells clickable. SheetJS attaches a hyperlink when
+    // a cell has a `.l` property; Excel renders it as the usual blue
+    // underlined link. Excel only supports one hyperlink per cell, so for
+    // multi-container jobs (pipe-separated URLs in one cell) we link to
+    // the first URL in the list. Any additional URLs are still visible as
+    // text in the cell — the customer can copy/paste them.
+    const trackingColIndex = headers.indexOf('TrackingLink');
+    if (trackingColIndex !== -1) {
+      // Match the first http(s) URL in the cell, stopping at whitespace
+      // or a '|' separator so a trailing pipe doesn't get glued to the
+      // hyperlink target.
+      const FIRST_URL_RE = /https?:\/\/[^\s|]+/i;
+      for (let r = 0; r < rows.length; r++) {
+        // +1 because row 0 in the sheet is the header row.
+        const cellAddr = XLSX.utils.encode_cell({ c: trackingColIndex, r: r + 1 });
+        const cell = sheet[cellAddr];
+        if (!cell || !cell.v) continue;
+        const match = String(cell.v).match(FIRST_URL_RE);
+        if (match) {
+          cell.l = { Target: match[0], Tooltip: 'Click to track shipment' };
+        }
+      }
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, sheet, 'Orders');
     XLSX.writeFile(wb, filename);
