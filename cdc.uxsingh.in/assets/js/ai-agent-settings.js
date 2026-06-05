@@ -123,8 +123,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetConfigBtn = document.getElementById('resetConfigBtn');
 
   const logFilterAgent = document.getElementById('logFilterAgent');
+  const logFilterPhone = document.getElementById('logFilterPhone');
   const refreshLogsBtn = document.getElementById('refreshLogsBtn');
   const agentLogsBody = document.getElementById('agentLogsBody');
+  const waLogsBody = document.getElementById('waLogsBody');
+  const portalLogsTable = document.getElementById('portalLogsTable');
+  const whatsappLogsTable = document.getElementById('whatsappLogsTable');
+  const logsSubtitle = document.getElementById('logsSubtitle');
+
+  // Which source is active: "portal" or "whatsapp"
+  let activeLogSource = 'portal';
 
   // In-memory state
   let agents = [];
@@ -374,8 +382,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   refreshAgentsBtn?.addEventListener('click', loadAgents);
 
-  // ---------- Agent logs ----------
-  async function loadLogs() {
+  // ---------- Portal logs ----------
+  async function loadPortalLogs() {
     const agentKey = logFilterAgent?.value || '';
     const qs = new URLSearchParams({ limit: '100' });
     if (agentKey) qs.set('agentKey', agentKey);
@@ -414,15 +422,100 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ---------- WhatsApp logs ----------
+  async function loadWhatsAppLogs() {
+    const phone = (logFilterPhone?.value || '').trim();
+    const qs = new URLSearchParams({ limit: '100' });
+    if (phone) qs.set('phone', phone);
+    try {
+      waLogsBody.innerHTML =
+        '<tr><td colspan="6" class="text-body-secondary text-center py-4">Loading logs…</td></tr>';
+      const data = await apiFetch(`/admin/whatsapp-logs?${qs.toString()}`);
+      const logs = Array.isArray(data.logs) ? data.logs : [];
+      if (!logs.length) {
+        waLogsBody.innerHTML =
+          '<tr><td colspan="6" class="text-body-secondary text-center py-4">No WhatsApp activity yet.</td></tr>';
+        return;
+      }
+      waLogsBody.innerHTML = logs.map((l) => {
+        const classifierBadge = l.classifierChoice
+          ? `<span class="badge bg-label-secondary me-1">${escapeHtml(l.classifierChoice)}</span>`
+          : '';
+        const agentBadge = l.finalAgentKey
+          ? `<span class="badge bg-label-primary">${escapeHtml(l.finalAgentName || l.finalAgentKey)}</span>`
+          : '—';
+        const errBadge = l.ok === false
+          ? `<span class="badge bg-label-danger ms-1" title="${escapeHtml(l.error || '')}">error</span>`
+          : '';
+        // Show total duration (classifier + agent combined)
+        const totalMs = (l.classifierMs || 0) + (l.agentMs || 0);
+        return `
+        <tr>
+          <td><small>${escapeHtml(formatTs(l.ts))}</small></td>
+          <td>
+            <div class="fw-medium"><i class="ti tabler-device-mobile me-1 text-success"></i>${escapeHtml(l.phone || '—')}</div>
+          </td>
+          <td>
+            <small>${classifierBadge}→ ${agentBadge}${errBadge}</small>
+          </td>
+          <td><small>${escapeHtml(l.agentModel || l.classifierModel || '')}</small></td>
+          <td><small>${escapeHtml(formatDuration(totalMs || null))}</small></td>
+          <td class="preview" title="${escapeHtml(l.messagePreview || '')}">
+            <small>${escapeHtml(l.messagePreview || '')}</small>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch (err) {
+      if (err.message !== 'Unauthorized' && err.message !== 'Forbidden') {
+        waLogsBody.innerHTML =
+          `<tr><td colspan="6" class="text-danger text-center py-4">Failed to load WhatsApp logs: ${escapeHtml(err.message)}</td></tr>`;
+      } else {
+        waLogsBody.innerHTML =
+          '<tr><td colspan="6" class="text-body-secondary text-center py-4">Access denied.</td></tr>';
+      }
+    }
+  }
+
+  function loadLogs() {
+    if (activeLogSource === 'whatsapp') loadWhatsAppLogs();
+    else loadPortalLogs();
+  }
+
+  // ---------- Toggle between Portal and WhatsApp ----------
+  function applyLogSourceToggle(source) {
+    activeLogSource = source;
+    const isWa = source === 'whatsapp';
+
+    // Show/hide the correct table and filter
+    portalLogsTable?.classList.toggle('d-none', isWa);
+    whatsappLogsTable?.classList.toggle('d-none', !isWa);
+    logFilterAgent?.classList.toggle('d-none', isWa);
+    logFilterPhone?.classList.toggle('d-none', !isWa);
+
+    // Update subtitle text
+    if (logsSubtitle) {
+      logsSubtitle.innerHTML = isWa
+        ? 'Each row is one inbound WhatsApp message. Shows the phone number, classifier decision, and final agent.'
+        : 'Each row is one call to <code>POST /api/chat/message</code>. Shows which agent was picked for the user\'s request.';
+    }
+
+    loadLogs();
+  }
+
+  document.querySelectorAll('input[name="logSource"]').forEach((radio) => {
+    radio.addEventListener('change', (e) => applyLogSourceToggle(e.target.value));
+  });
+
   refreshLogsBtn?.addEventListener('click', loadLogs);
-  logFilterAgent?.addEventListener('change', loadLogs);
+  logFilterAgent?.addEventListener('change', loadPortalLogs);
+  logFilterPhone?.addEventListener('change', loadWhatsAppLogs);
 
   // ---------- Boot ----------
   loadAiConfig();
   loadAgents();
   loadLogs();
 
-  // Refresh logs every 15s so admins see new chat activity live.
+  // Refresh logs every 15s so admins see new activity live.
   setInterval(() => {
     if (!document.hidden) loadLogs();
   }, 15000);

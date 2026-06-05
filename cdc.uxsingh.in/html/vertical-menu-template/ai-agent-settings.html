@@ -380,22 +380,37 @@
               <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div>
                   <h6 class="mb-0">Agent activity logs</h6>
-                  <small class="text-body-secondary">
+                  <small class="text-body-secondary" id="logsSubtitle">
                     Each row is one call to <code>POST /api/chat/message</code>. Shows which agent was picked
                     for the user's request.
                   </small>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                  <select id="logFilterAgent" class="form-select form-select-sm" style="width: 200px;">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <!-- Source toggle -->
+                  <div class="btn-group" role="group" aria-label="Log source">
+                    <input type="radio" class="btn-check" name="logSource" id="logSourcePortal" value="portal" checked />
+                    <label class="btn btn-sm btn-outline-primary" for="logSourcePortal">
+                      <i class="ti tabler-browser me-1"></i>Portal
+                    </label>
+                    <input type="radio" class="btn-check" name="logSource" id="logSourceWhatsapp" value="whatsapp" />
+                    <label class="btn btn-sm btn-outline-success" for="logSourceWhatsapp">
+                      <i class="ti tabler-brand-whatsapp me-1"></i>WhatsApp
+                    </label>
+                  </div>
+                  <!-- Portal filter (hidden in WA mode) -->
+                  <select id="logFilterAgent" class="form-select form-select-sm" style="width: 190px;">
                     <option value="">All agents</option>
                   </select>
+                  <!-- WhatsApp filter (hidden in Portal mode) -->
+                  <input type="text" id="logFilterPhone" class="form-control form-control-sm d-none" style="width: 170px;" placeholder="Filter by phone…" />
                   <button id="refreshLogsBtn" class="btn btn-sm btn-label-secondary" type="button">
                     <i class="ti tabler-refresh me-1"></i>Refresh
                   </button>
                 </div>
               </div>
               <div class="table-responsive">
-                <table class="table table-hover logs-table mb-0">
+                <!-- Portal logs table -->
+                <table class="table table-hover logs-table mb-0" id="portalLogsTable">
                   <thead>
                     <tr>
                       <th>Time</th>
@@ -407,6 +422,22 @@
                     </tr>
                   </thead>
                   <tbody id="agentLogsBody">
+                    <tr><td colspan="6" class="text-body-secondary text-center py-4">Loading logs…</td></tr>
+                  </tbody>
+                </table>
+                <!-- WhatsApp logs table (hidden until toggle is switched) -->
+                <table class="table table-hover logs-table mb-0 d-none" id="whatsappLogsTable">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Phone</th>
+                      <th>Classifier → Agent</th>
+                      <th>Model</th>
+                      <th>Duration</th>
+                      <th>Message preview</th>
+                    </tr>
+                  </thead>
+                  <tbody id="waLogsBody">
                     <tr><td colspan="6" class="text-body-secondary text-center py-4">Loading logs…</td></tr>
                   </tbody>
                 </table>
