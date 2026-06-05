@@ -121,13 +121,19 @@ export function extractInboundMessage(raw) {
   if (!phone || !messageId) return null;
 
   let text = "";
+  let audioUrl = null;
+
   if (type === "text") {
     text = String(p?.payload?.text || "").trim();
+  } else if (type === "audio" || type === "voice") {
+    // Gupshup provides the media URL in payload.url for audio/voice messages.
+    audioUrl = String(p?.payload?.url || p?.payload?.mediaUrl || "").trim() || null;
   } else {
-    // For now we only handle text. Audio/voice/media require additional setup.
+    // Image, location, sticker, document, etc. — not handled.
     return { phone, text: "", messageId, type };
   }
-  return { phone, text, messageId, type };
+
+  return { phone, text, messageId, type, audioUrl };
 }
 
 // ---------------------------------------------------------------------------

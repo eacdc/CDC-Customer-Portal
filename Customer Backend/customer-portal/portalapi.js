@@ -220,6 +220,67 @@ async function callLlmPlain(messages, modelOverride) {
 }
 
 /**
+ * Download a WhatsApp audio file from `audioUrl` and transcribe it via
+ * OpenAI Whisper (model: whisper-1). Returns the transcribed text string,
+ * or null on failure (caller should fall back to asking the user to retype).
+ *
+ * Gupshup provides the media URL directly in the webhook payload for
+ * audio / voice messages. The file is streamed into a FormData body and
+ * sent to the OpenAI Audio Transcriptions endpoint — nothing is saved to disk.
+ *
+ * @param {string} audioUrl  Gupshup-provided direct URL to the audio file
+ * @returns {Promise<string|null>}
+ */
+async function transcribeWhatsAppAudio(audioUrl) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key || !String(key).trim()) return null;
+  if (!audioUrl || !String(audioUrl).trim()) return null;
+
+  try {
+    // 1. Download the audio from Gupshup's CDN.
+    const mediaRes = await fetch(String(audioUrl).trim());
+    if (!mediaRes.ok) return null;
+
+    const arrayBuffer = await mediaRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // 2. Detect a reasonable filename/MIME from the URL so Whisper accepts it.
+    //    Gupshup typically serves .ogg (WhatsApp voice notes) or .mp4.
+    //    Whisper accepts: mp3, mp4, mpeg, mpga, m4a, wav, webm, ogg, opus, flac.
+    const urlPath = new URL(audioUrl).pathname;
+    const ext = urlPath.split(".").pop()?.toLowerCase() || "ogg";
+    const supportedExts = ["mp3","mp4","mpeg","mpga","m4a","wav","webm","ogg","opus","flac"];
+    const safeExt = supportedExts.includes(ext) ? ext : "ogg";
+    const filename = `audio.${safeExt}`;
+
+    // 3. Build a multipart/form-data body with the raw buffer.
+    //    Node 18+ has FormData built-in (same as browser); Fastify targets Node 18.
+    const form = new FormData();
+    form.append("model", "whisper-1");
+    form.append(
+      "file",
+      new Blob([buffer], { type: `audio/${safeExt}` }),
+      filename
+    );
+
+    // 4. Call the Whisper endpoint.
+    const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${String(key).trim()}` },
+      // Do NOT set Content-Type manually — fetch sets it with the boundary automatically.
+      body: form,
+    });
+    if (!whisperRes.ok) return null;
+
+    const data = await whisperRes.json();
+    const transcript = String(data?.text || "").trim();
+    return transcript || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Run the WhatsApp classifier and return one of WHATSAPP_ALLOWED_AGENT_KEYS.
  * Falls back to WHATSAPP_DEFAULT_AGENT_KEY when the LLM is unreachable or
  * returns something we don't recognise.
@@ -3821,12 +3882,35 @@ fastify.get("/dashboard", async (req, reply) => {
       // Status updates, message-events, etc. — acknowledge silently.
       return { status: "ignored" };
     }
+    // Handle audio / voice notes: transcribe via Whisper, then treat as text.
+    if ((inbound.type === "audio" || inbound.type === "voice") && inbound.audioUrl) {
+      req.log.info({ phone: inbound.phone, type: inbound.type }, "[WHATSAPP] transcribing audio");
+      const transcript = await transcribeWhatsAppAudio(inbound.audioUrl);
+      if (!transcript) {
+        try {
+          await sendGupshupMessage(
+            inbound.phone,
+            "Sorry, I couldn't understand the audio message. Could you please type your question instead?"
+          );
+        } catch (err) {
+          req.log.error({ err }, "[WHATSAPP] failed to send transcription-failure reply");
+        }
+        return { status: "audio_transcription_failed" };
+      }
+      req.log.info(
+        { phone: inbound.phone, transcriptPreview: transcript.slice(0, 80) },
+        "[WHATSAPP] audio transcribed"
+      );
+      inbound.text = transcript;
+      inbound.type = "text"; // treat as text from this point forward
+    }
+
+    // Non-text, non-audio (image, document, sticker, location, etc.) — politely decline.
     if (!inbound.text || inbound.type !== "text") {
-      // Media or empty message — politely tell the user we only handle text for now.
       try {
         await sendGupshupMessage(
           inbound.phone,
-          "Sorry — I can only read text messages right now. Please type your question and I'll be happy to help."
+          "Sorry — I can only read text and voice messages right now. Please type your question and I'll be happy to help."
         );
       } catch (err) {
         req.log.error({ err }, "[WHATSAPP] failed to send media-rejection reply");
