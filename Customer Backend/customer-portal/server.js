@@ -53,6 +53,8 @@ app.addHook("preHandler", async (req, reply) => {
     "/api/quote-saves/",
     "/api/sales-executives",
     "/api/calculator-clients",
+    // Gupshup webhook — Gupshup cannot send a JWT; route does its own dedupe.
+    "/api/whatsapp/webhook",
   ];
   if (publicApiPrefixes.some((prefix) => req.url.startsWith(prefix))) return;
 
