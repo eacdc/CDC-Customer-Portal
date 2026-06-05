@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const aiModelInput = document.getElementById('aiModelInput');
   const aiModelSaveBtn = document.getElementById('aiModelSaveBtn');
+  const classifierModelInput = document.getElementById('classifierModelInput');
 
   const agentListEl = document.getElementById('agentList');
   const refreshAgentsBtn = document.getElementById('refreshAgentsBtn');
@@ -142,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function disableAll() {
-    [aiModelInput, aiModelSaveBtn, savePromptBtn, resetPromptBtn,
+    [aiModelInput, classifierModelInput, aiModelSaveBtn, savePromptBtn, resetPromptBtn,
      saveConfigBtn, resetConfigBtn, refreshAgentsBtn, refreshLogsBtn, logFilterAgent]
       .forEach((el) => { if (el) el.setAttribute('disabled', 'disabled'); });
   }
@@ -174,14 +175,21 @@ document.addEventListener('DOMContentLoaded', () => {
     return res.json();
   }
 
-  // ---------- Global model ----------
+  // ---------- Global model + WhatsApp classifier model ----------
   async function loadAiConfig() {
     try {
       const data = await apiFetch('/admin/ai-config');
       aiModelInput.value = data.model || '';
       aiModelInput.placeholder = data.envFallback || 'gpt-4o-mini';
+      if (classifierModelInput) {
+        classifierModelInput.value = data.classifier_model || '';
+        classifierModelInput.placeholder = '(uses main model)';
+      }
       if (!data.openAiKeyConfigured) {
         showToast('OPENAI_API_KEY is not set on the backend — agents will not respond.', 'warn');
+      }
+      if (data.gupshupConfigured === false) {
+        showToast('Gupshup credentials are not set on the backend — WhatsApp messaging will be inactive.', 'warn');
       }
     } catch (err) {
       if (err.message !== 'Unauthorized' && err.message !== 'Forbidden') {
@@ -193,17 +201,23 @@ document.addEventListener('DOMContentLoaded', () => {
   async function saveAiConfig() {
     const model = (aiModelInput.value || '').trim();
     if (!model) {
-      showToast('Model name cannot be empty.', 'warn');
+      showToast('Main model name cannot be empty.', 'warn');
       return;
     }
+    // Empty classifier_model is allowed — it means "reuse the main model".
+    const classifierModel = (classifierModelInput?.value || '').trim();
     aiModelSaveBtn.setAttribute('disabled', 'disabled');
     try {
       const data = await apiFetch('/admin/ai-config', {
         method: 'PATCH',
-        body: JSON.stringify({ model }),
+        body: JSON.stringify({ model, classifier_model: classifierModel || null }),
       });
       aiModelInput.value = data.model;
-      showToast(`OpenAI model updated to "${data.model}".`, 'success');
+      if (classifierModelInput) classifierModelInput.value = data.classifier_model || '';
+      const cm = data.classifier_model
+        ? ` Classifier: "${data.classifier_model}".`
+        : ' Classifier: (uses main model).';
+      showToast(`Saved. Main model: "${data.model}".${cm}`, 'success');
     } catch (err) {
       showToast(`Failed to update model: ${err.message}`, 'error');
     } finally {

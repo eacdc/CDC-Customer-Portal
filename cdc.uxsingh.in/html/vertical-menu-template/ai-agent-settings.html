@@ -247,10 +247,12 @@
                   and review which agent was invoked per chat request.
                 </p>
               </div>
-              <div class="d-flex align-items-center gap-2">
+              <div class="d-flex flex-wrap align-items-center gap-2">
                 <label for="aiModelInput" class="form-label mb-0 me-1 text-body-secondary small">OpenAI model</label>
                 <input type="text" id="aiModelInput" class="form-control form-control-sm" style="width: 180px;" placeholder="gpt-4o-mini" />
-                <button id="aiModelSaveBtn" type="button" class="btn btn-sm btn-primary">Save model</button>
+                <label for="classifierModelInput" class="form-label mb-0 ms-2 me-1 text-body-secondary small" title="WhatsApp classifier model (falls back to main model if blank)">Classifier model</label>
+                <input type="text" id="classifierModelInput" class="form-control form-control-sm" style="width: 180px;" placeholder="(uses main model)" />
+                <button id="aiModelSaveBtn" type="button" class="btn btn-sm btn-primary">Save</button>
               </div>
             </div>
 
