@@ -85,33 +85,49 @@ export async function updateChatAgentByKey(agentKey, patch) {
 /**
  * Read the global AI config singleton (key="default") from ai_config.
  * Falls back to env OPENAI_MODEL or "gpt-4o-mini" when no doc exists.
- * @returns {Promise<{model: string}>}
+ *
+ * Returned shape:
+ *   model            : main OpenAI model used by the specialist agents
+ *   classifier_model : optional dedicated model for the WhatsApp classifier;
+ *                      falls back to `model` when unset
+ *
+ * @returns {Promise<{model: string, classifier_model: string|null}>}
  */
 export async function getAiConfig() {
   const db = await getDb();
   const doc = await db.collection("ai_config").findOne({ key: "default" });
   const envModel = (process.env.OPENAI_MODEL || "").trim();
   const model = (doc?.model && String(doc.model).trim()) || envModel || "gpt-4o-mini";
-  return { model };
+  const classifier_model =
+    (doc?.classifier_model && String(doc.classifier_model).trim()) || null;
+  return { model, classifier_model };
 }
 
 /**
  * Upsert the global AI config singleton.
- * @param {{model: string}} patch
- * @returns {Promise<{model: string}>}
+ * Pass classifier_model = "" (empty string) or null to clear the override.
+ * @param {{model?: string, classifier_model?: string|null}} patch
+ * @returns {Promise<{model: string, classifier_model: string|null}>}
  */
 export async function updateAiConfig(patch) {
   const db = await getDb();
   const set = {};
+  const unset = {};
   if (patch && typeof patch.model === "string" && patch.model.trim()) {
     set.model = patch.model.trim();
   }
+  if (patch && Object.prototype.hasOwnProperty.call(patch, "classifier_model")) {
+    const cm = patch.classifier_model;
+    if (cm == null || (typeof cm === "string" && !cm.trim())) {
+      unset.classifier_model = "";
+    } else {
+      set.classifier_model = String(cm).trim();
+    }
+  }
   set.updatedAt = new Date();
-  await db.collection("ai_config").updateOne(
-    { key: "default" },
-    { $set: { key: "default", ...set } },
-    { upsert: true }
-  );
+  const update = { $set: { key: "default", ...set } };
+  if (Object.keys(unset).length > 0) update.$unset = unset;
+  await db.collection("ai_config").updateOne({ key: "default" }, update, { upsert: true });
   return await getAiConfig();
 }
 

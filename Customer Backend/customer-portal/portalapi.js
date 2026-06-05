@@ -16,6 +16,19 @@ import {
 } from "./lib/chat-agents.js";
 import { calculatePricing } from "./pck_est/calculator.js";
 import { calCulate } from "./comm_est/calculator.js";
+import {
+  WHATSAPP_ALLOWED_AGENT_KEYS,
+  WHATSAPP_DEFAULT_AGENT_KEY,
+  sendGupshupMessage,
+  extractInboundMessage,
+  markProcessedOrReturnDuplicate,
+  getWhatsAppHistoryForAgent,
+  getWhatsAppHistoryForClassifier,
+  appendWhatsAppMessages,
+  logWhatsAppInvocation,
+  getWhatsAppLogs,
+  getGupshupConfig,
+} from "./lib/whatsapp.js";
 
 
 // --- helpers
@@ -116,6 +129,124 @@ async function resolveAiModel() {
     }
   } catch (_) {}
   return process.env.OPENAI_MODEL || "gpt-4o-mini";
+}
+
+/**
+ * Resolve the OpenAI model used by the WhatsApp classifier agent.
+ * Falls back to the main model when no override is configured.
+ */
+async function resolveClassifierModel() {
+  try {
+    const cfg = await getAiConfig();
+    if (cfg?.classifier_model && typeof cfg.classifier_model === "string" && cfg.classifier_model.trim()) {
+      return cfg.classifier_model.trim();
+    }
+  } catch (_) {}
+  return await resolveAiModel();
+}
+
+/**
+ * System prompt for the WhatsApp classifier agent.
+ * The classifier MUST respond with one of WHATSAPP_ALLOWED_AGENT_KEYS exactly
+ * (lowercase kebab-case, no extra text). order-status is intentionally absent
+ * until the WhatsApp identity-lookup feature is wired up.
+ */
+const WHATSAPP_CLASSIFIER_SYSTEM_PROMPT = `You are a classifier agent for a WhatsApp business assistant.
+Read the user's latest message together with any recent conversation context, and decide which
+specialist agent should reply. Respond with the EXACT agent key only — no extra text, no
+punctuation, no quotes, no markdown.
+
+Available agents:
+
+1. book-quote — "Book Quote Agent"
+   • Handles pricing and parameter collection for books and advertising materials:
+     magazines, hardcovers, softcovers, diaries, brochures, board books, colouring books,
+     sticker books, etc.
+   • Handles questions about book specifications (paper type, GSM, surface finish, …).
+   • Pick this when the user asks for book-related pricing, or when the recent context shows
+     the user has been discussing a book project.
+
+2. packaging-quote — "Packaging Quote Agent"
+   • Handles pricing and parameter collection for packaging boxes — mono cartons, litho
+     lamination cartons, top-bottom boxes, etc.
+   • Handles questions about packaging specifications (paper type, GSM, surface finish, …).
+   • Pick this when the user asks for packaging-related pricing, or when the recent context
+     shows the user has been discussing a packaging project.
+
+3. cdc-info — "CDC Information Agent"
+   • Handles general inquiries, sales/lead questions, company information, anything that is
+     NOT pricing for books or packaging.
+   • This is the safe default.
+
+Selection rules:
+• If the user explicitly mentions a product (book or packaging), select that estimator.
+• If the user asks for pricing without saying which product, infer from the previous turns:
+    – Book context → book-quote
+    – Packaging context → packaging-quote
+• Never pick cdc-info for an obvious pricing request.
+• Only switch agents when the user clearly shifts topic. If the message is a follow-up
+  (e.g. "yes confirm", "make it 200 gsm", "what about quantity 5000?"), keep the agent
+  used in the previous assistant turn.
+
+Output: a single line containing exactly one of:
+book-quote
+packaging-quote
+cdc-info`;
+
+/**
+ * Call the OpenAI Chat Completions API in plain-text mode (no tools) and return
+ * the trimmed assistant text, or "" on failure. Used by the WhatsApp classifier.
+ */
+async function callLlmPlain(messages, modelOverride) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key || !String(key).trim()) return "";
+  const model = (modelOverride && String(modelOverride).trim()) || (await resolveAiModel());
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${String(key).trim()}`,
+      },
+      body: JSON.stringify({ model, messages }),
+    });
+    if (!res.ok) return "";
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content;
+    return typeof text === "string" ? text.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Run the WhatsApp classifier and return one of WHATSAPP_ALLOWED_AGENT_KEYS.
+ * Falls back to WHATSAPP_DEFAULT_AGENT_KEY when the LLM is unreachable or
+ * returns something we don't recognise.
+ *
+ * @param {string} userText  the latest inbound user message
+ * @param {Array<{role:string,content:string}>} priorHistory recent rolling history (any agent)
+ * @param {string} model     classifier model
+ */
+async function classifyWhatsAppAgent(userText, priorHistory, model) {
+  const trimmed = String(userText || "").trim();
+  if (!trimmed) return WHATSAPP_DEFAULT_AGENT_KEY;
+
+  const messages = [
+    { role: "system", content: WHATSAPP_CLASSIFIER_SYSTEM_PROMPT },
+    ...(Array.isArray(priorHistory) ? priorHistory : []),
+    { role: "user", content: trimmed },
+  ];
+
+  const raw = (await callLlmPlain(messages, model)) || "";
+  const cleaned = raw
+    .toLowerCase()
+    .replace(/[\s`*"'.,!?:;()[\]{}]/g, " ")
+    .trim()
+    .split(/\s+/)
+    .find((token) => WHATSAPP_ALLOWED_AGENT_KEYS.includes(token));
+
+  return cleaned || WHATSAPP_DEFAULT_AGENT_KEY;
 }
 
 /**
@@ -3563,18 +3694,21 @@ fastify.get("/dashboard", async (req, reply) => {
     }
   });
 
-  // GET /api/admin/ai-config — current global OpenAI model.
+  // GET /api/admin/ai-config — current global OpenAI model + classifier override.
   fastify.get("/admin/ai-config", async (req, reply) => {
     if (!(await requireAdmin(req, reply))) return;
     try {
       const cfg = await getAiConfig();
+      const gs = getGupshupConfig();
       return {
         model: cfg.model,
+        classifier_model: cfg.classifier_model,
         envFallback: process.env.OPENAI_MODEL || null,
         openAiKeyConfigured: Boolean(
           process.env.OPENAI_API_KEY &&
           String(process.env.OPENAI_API_KEY).trim().length > 0
         ),
+        gupshupConfigured: Boolean(gs.apiKey && gs.appName && gs.source),
       };
     } catch (err) {
       req.log.error(err, "Error in GET /api/admin/ai-config");
@@ -3584,17 +3718,34 @@ fastify.get("/dashboard", async (req, reply) => {
     }
   });
 
-  // PATCH /api/admin/ai-config — update the global OpenAI model.
+  // PATCH /api/admin/ai-config — update the global OpenAI model and/or classifier model.
+  // Body: { model?: string, classifier_model?: string|null }
+  //  - classifier_model === "" or null clears the override (classifier reuses `model`).
   fastify.patch("/admin/ai-config", async (req, reply) => {
     if (!(await requireAdmin(req, reply))) return;
     try {
       const body = req.body || {};
-      if (typeof body.model !== "string" || !body.model.trim()) {
-        return reply.code(400).send({ error: "model (string) is required" });
+      const patch = {};
+      if (Object.prototype.hasOwnProperty.call(body, "model")) {
+        if (typeof body.model !== "string" || !body.model.trim()) {
+          return reply.code(400).send({ error: "model (string) is required when provided" });
+        }
+        patch.model = body.model;
       }
-      const cfg = await updateAiConfig({ model: body.model });
-      req.log.info({ msg: "[ADMIN] ai-config updated", model: cfg.model, by: req.user.email });
-      return { ok: true, model: cfg.model };
+      if (Object.prototype.hasOwnProperty.call(body, "classifier_model")) {
+        patch.classifier_model = body.classifier_model; // null/""/string all accepted
+      }
+      if (Object.keys(patch).length === 0) {
+        return reply.code(400).send({ error: "Provide at least one of: model, classifier_model" });
+      }
+      const cfg = await updateAiConfig(patch);
+      req.log.info({
+        msg: "[ADMIN] ai-config updated",
+        model: cfg.model,
+        classifier_model: cfg.classifier_model,
+        by: req.user.email,
+      });
+      return { ok: true, model: cfg.model, classifier_model: cfg.classifier_model };
     } catch (err) {
       req.log.error(err, "Error in PATCH /api/admin/ai-config");
       return reply
@@ -3628,6 +3779,233 @@ fastify.get("/dashboard", async (req, reply) => {
       return reply
         .code(500)
         .send({ error: "Failed to load agent logs", details: err.message });
+    }
+  });
+
+  /**
+   * WHATSAPP — Gupshup inbound webhook.
+   *
+   * Public endpoint (no auth) — Gupshup POSTs raw JSON here whenever a user message
+   * arrives. Flow:
+   *   1. Normalise the payload; ignore non-message events.
+   *   2. Deduplicate by Gupshup messageId (Gupshup retries on non-200).
+   *   3. Run the classifier LLM → choose one of WHATSAPP_ALLOWED_AGENT_KEYS.
+   *      order-status is excluded (no WhatsApp identity logic yet); strays fall back to cdc-info.
+   *   4. Look up the chosen agent in chat_agents (system prompt, name).
+   *   5. Build a fresh-per-agent message array (system + that-agent's recent history + new user msg).
+   *   6. Call the specialist LLM (callBookQuoteLlm / callPackagingQuoteLlm / callChatLlm).
+   *   7. Reply to the user via Gupshup; persist both messages to whatsapp_sessions;
+   *      record a row in whatsapp_logs.
+   *
+   * Always returns 200 so Gupshup does not retry on internal errors — errors are logged.
+   */
+  // GET /api/whatsapp/webhook — Gupshup probes the URL with GET when you
+  // hit "Save" in the dashboard. Respond 200 so validation passes.
+  fastify.get("/whatsapp/webhook", async (req, reply) => {
+    return reply
+      .code(200)
+      .type("text/plain")
+      .send("OK - CDC WhatsApp webhook is live. POST inbound messages here.");
+  });
+
+  fastify.post("/whatsapp/webhook", async (req, reply) => {
+    const rawBody = req.body;
+    let inbound = null;
+    try {
+      inbound = extractInboundMessage(rawBody);
+    } catch (err) {
+      req.log.error({ err }, "[WHATSAPP] failed to parse webhook body");
+      return { status: "ignored" };
+    }
+    if (!inbound) {
+      // Status updates, message-events, etc. — acknowledge silently.
+      return { status: "ignored" };
+    }
+    if (!inbound.text || inbound.type !== "text") {
+      // Media or empty message — politely tell the user we only handle text for now.
+      try {
+        await sendGupshupMessage(
+          inbound.phone,
+          "Sorry — I can only read text messages right now. Please type your question and I'll be happy to help."
+        );
+      } catch (err) {
+        req.log.error({ err }, "[WHATSAPP] failed to send media-rejection reply");
+      }
+      return { status: "non_text_ignored" };
+    }
+
+    // Idempotency: never process the same inbound twice.
+    try {
+      if (await markProcessedOrReturnDuplicate(inbound.messageId)) {
+        req.log.info({ messageId: inbound.messageId }, "[WHATSAPP] duplicate webhook ignored");
+        return { status: "duplicate" };
+      }
+    } catch (err) {
+      req.log.error({ err }, "[WHATSAPP] dedupe check failed; continuing");
+    }
+
+    const startedAt = Date.now();
+    let classifierChoice = null;
+    let finalAgentKey = null;
+    let finalAgentName = null;
+    let classifierModelUsed = null;
+    let agentModelUsed = null;
+    let classifierMs = null;
+    let agentMs = null;
+    let assistantContent = "";
+
+    try {
+      // 1) Classifier
+      const classifierModel = await resolveClassifierModel();
+      classifierModelUsed = classifierModel;
+      const classifierHistory = await getWhatsAppHistoryForClassifier(inbound.phone, 10);
+      const cStart = Date.now();
+      classifierChoice = await classifyWhatsAppAgent(inbound.text, classifierHistory, classifierModel);
+      classifierMs = Date.now() - cStart;
+
+      // 2) Resolve final agent (order-status excluded for now)
+      finalAgentKey = WHATSAPP_ALLOWED_AGENT_KEYS.includes(classifierChoice)
+        ? classifierChoice
+        : WHATSAPP_DEFAULT_AGENT_KEY;
+
+      const db = await getDb();
+      const agent = await getChatAgentByKey(finalAgentKey);
+      if (!agent) {
+        // Defensive: agent missing in DB. Reply with a friendly default.
+        assistantContent =
+          "Thanks for your message! Our team will get back to you shortly.";
+        finalAgentName = finalAgentKey;
+      } else {
+        finalAgentName = agent.name || finalAgentKey;
+
+        // 3) Build the per-agent message array
+        const agentHistory = await getWhatsAppHistoryForAgent(inbound.phone, finalAgentKey, 20);
+        const forLlm = [
+          { role: "system", content: agent.systemPrompt || "You are a helpful assistant." },
+          ...agentHistory,
+          { role: "user", content: inbound.text },
+        ];
+
+        // 4) Dispatch to the specialist
+        agentModelUsed = await resolveAiModel();
+        const aStart = Date.now();
+        if (finalAgentKey === "packaging-quote") {
+          assistantContent = await callPackagingQuoteLlm(forLlm, { log: req.log });
+        } else if (finalAgentKey === "book-quote") {
+          assistantContent = await callBookQuoteLlm(forLlm, { log: req.log });
+        } else {
+          assistantContent = await callChatLlm(forLlm);
+        }
+        agentMs = Date.now() - aStart;
+      }
+
+      // 5) Send the reply via Gupshup
+      try {
+        const sendRes = await sendGupshupMessage(inbound.phone, assistantContent);
+        if (!sendRes.ok) {
+          req.log.error(
+            { status: sendRes.status, body: sendRes.body.slice(0, 200) },
+            "[WHATSAPP] Gupshup send returned non-2xx"
+          );
+        }
+      } catch (err) {
+        req.log.error({ err }, "[WHATSAPP] Gupshup send failed");
+      }
+
+      // 6) Persist conversation messages
+      await appendWhatsAppMessages(inbound.phone, [
+        {
+          role: "user",
+          content: inbound.text,
+          agentKey: finalAgentKey,
+          classifierChoice,
+        },
+        {
+          role: "assistant",
+          content: assistantContent,
+          agentKey: finalAgentKey,
+        },
+      ]);
+
+      // 7) Log invocation (best-effort)
+      logWhatsAppInvocation({
+        phone: inbound.phone,
+        messageId: inbound.messageId,
+        messagePreview: inbound.text,
+        classifierChoice,
+        finalAgentKey,
+        finalAgentName,
+        classifierModel: classifierModelUsed,
+        agentModel: agentModelUsed,
+        classifierMs,
+        agentMs,
+        ok: true,
+      });
+
+      req.log.info(
+        {
+          msg: "[WHATSAPP] message handled",
+          phone: inbound.phone,
+          messageId: inbound.messageId,
+          classifierChoice,
+          finalAgentKey,
+          totalMs: Date.now() - startedAt,
+        }
+      );
+      return { status: "ok", agent: finalAgentKey };
+    } catch (err) {
+      req.log.error({ err }, "[WHATSAPP] processing failed");
+      logWhatsAppInvocation({
+        phone: inbound?.phone,
+        messageId: inbound?.messageId,
+        messagePreview: inbound?.text,
+        classifierChoice,
+        finalAgentKey,
+        finalAgentName,
+        classifierModel: classifierModelUsed,
+        agentModel: agentModelUsed,
+        classifierMs,
+        agentMs,
+        ok: false,
+        error: String(err?.message || err),
+      });
+      // Always 200 — Gupshup must not retry.
+      return { status: "error_logged" };
+    }
+  });
+
+  // GET /api/admin/whatsapp-logs?limit=100&phone=91XXXXXXXXXX&finalAgentKey=book-quote
+  fastify.get("/admin/whatsapp-logs", async (req, reply) => {
+    if (!(await requireAdmin(req, reply))) return;
+    try {
+      const { limit, phone, finalAgentKey } = req.query || {};
+      const logs = await getWhatsAppLogs({
+        limit: limit ? Number(limit) : 100,
+        phone: phone || undefined,
+        finalAgentKey: finalAgentKey || undefined,
+      });
+      return {
+        logs: (logs || []).map((l) => ({
+          ts: l.ts,
+          phone: l.phone || null,
+          messageId: l.messageId || null,
+          messagePreview: l.messagePreview || "",
+          classifierChoice: l.classifierChoice || null,
+          finalAgentKey: l.finalAgentKey || null,
+          finalAgentName: l.finalAgentName || null,
+          classifierModel: l.classifierModel || null,
+          agentModel: l.agentModel || null,
+          classifierMs: typeof l.classifierMs === "number" ? l.classifierMs : null,
+          agentMs: typeof l.agentMs === "number" ? l.agentMs : null,
+          ok: l.ok !== false,
+          error: l.error || null,
+        })),
+      };
+    } catch (err) {
+      req.log.error(err, "Error in GET /api/admin/whatsapp-logs");
+      return reply
+        .code(500)
+        .send({ error: "Failed to load WhatsApp logs", details: err.message });
     }
   });
 }
