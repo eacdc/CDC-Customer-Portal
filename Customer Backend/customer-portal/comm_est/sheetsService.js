@@ -1,32 +1,46 @@
-import { createRequire } from 'module';
 import { getPricingTableData } from '../lib/pricingTablesStore.js';
 
-const require = createRequire(import.meta.url);
+/**
+ * Commercial / book master data accessor.
+ *
+ * Source of truth: MongoDB `pricing_tables` doc with _id="comm_masterTable".
+ * No JSON fallback — if the doc is missing, getPricingTableData throws.
+ *
+ * The doc must contain all of:
+ *   costarr, opsTable, opsTable1, opsTable2, mainTable, inputTable, displayTable
+ */
 
-const calculateSheetData = require('./data/calculateSheetData.json');
-const optionsDataRaw = require('./data/optionsData.json');
-const commercialMasterFallback = {
-  ...optionsDataRaw,
-  ...calculateSheetData
-};
+const REQUIRED_KEYS = [
+  'costarr',
+  'opsTable',
+  'opsTable1',
+  'opsTable2',
+  'mainTable',
+  'inputTable',
+  'displayTable'
+];
 
-function isCommercialMasterData(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const requiredArrayKeys = ['costarr', 'opsTable', 'opsTable1', 'opsTable2', 'mainTable', 'inputTable', 'displayTable'];
-  return requiredArrayKeys.every((k) => Array.isArray(value[k]));
-}
-
-function normalizeCommercialMasterData(value) {
-  const merged = {
-    ...commercialMasterFallback,
-    ...(value && typeof value === 'object' && !Array.isArray(value) ? value : {})
-  };
-  return merged;
+function assertCommercialMasterShape(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(
+      'pricing_tables.comm_masterTable.data is not a plain object — ' +
+      'fix the document in MongoDB.'
+    );
+  }
+  for (const k of REQUIRED_KEYS) {
+    if (!Array.isArray(value[k])) {
+      throw new Error(
+        `pricing_tables.comm_masterTable.data is missing required array key "${k}" — ` +
+        `fix the document in MongoDB.`
+      );
+    }
+  }
 }
 
 async function getCommercialMasterData() {
-  const data = await getPricingTableData('comm_masterTable', commercialMasterFallback);
-  return isCommercialMasterData(data) ? normalizeCommercialMasterData(data) : normalizeCommercialMasterData(commercialMasterFallback);
+  const data = await getPricingTableData('comm_masterTable');
+  assertCommercialMasterShape(data);
+  return data;
 }
 
 async function initializeSheets() {}
@@ -45,8 +59,7 @@ async function getCalculateSheetData() {
 }
 
 async function getOptionsSheetData() {
-  const data = await getCommercialMasterData();
-  return data;
+  return await getCommercialMasterData();
 }
 
 export {

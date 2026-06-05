@@ -4,7 +4,16 @@ import sql from "mssql";
 import { getDb } from "./lib/mongo.js";
 import { db1 } from "./lib/db1.js";
 import { db2 } from "./lib/db2.js";
-import { getChatAgentByKey, getAllChatAgents } from "./lib/chat-agents.js";
+import {
+  getChatAgentByKey,
+  getAllChatAgents,
+  getAllChatAgentsAdmin,
+  updateChatAgentByKey,
+  getAiConfig,
+  updateAiConfig,
+  logAgentInvocation,
+  getAgentLogs,
+} from "./lib/chat-agents.js";
 import { calculatePricing } from "./pck_est/calculator.js";
 import { calCulate } from "./comm_est/calculator.js";
 
@@ -95,6 +104,46 @@ const toSpJobNoForm = (s) => {
 const AI_NOT_CONFIGURED_MSG =
   "AI is not configured. Add OPENAI_API_KEY to enable replies.";
 
+/**
+ * Resolve the OpenAI model to use, preferring the DB-stored ai_config value
+ * (editable via the admin UI), falling back to env, then "gpt-4o-mini".
+ */
+async function resolveAiModel() {
+  try {
+    const cfg = await getAiConfig();
+    if (cfg?.model && typeof cfg.model === "string" && cfg.model.trim()) {
+      return cfg.model.trim();
+    }
+  } catch (_) {}
+  return process.env.OPENAI_MODEL || "gpt-4o-mini";
+}
+
+/**
+ * Return the set of admin emails from the ADMIN_EMAILS env var
+ * (comma-separated, case-insensitive).
+ */
+function getAdminEmailsSet() {
+  const raw = process.env.ADMIN_EMAILS || "";
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+/**
+ * Returns true when the request is authenticated and the email is in ADMIN_EMAILS.
+ * When ADMIN_EMAILS is empty (dev), any authenticated user is treated as admin.
+ */
+function isAdminRequest(req) {
+  const email = (req?.user?.email || "").toLowerCase().trim();
+  if (!email) return false;
+  const set = getAdminEmailsSet();
+  if (set.size === 0) return true; // open in dev when not configured
+  return set.has(email);
+}
+
 /** Tool definition for Order Status Agent: get pending and completed job/order details from orders API. */
 const ORDER_STATUS_TOOLS = [
   {
@@ -156,44 +205,221 @@ const PACKAGING_QUOTE_TOOLS = [
   }
 ];
 
-/** Tool for Book Quote Agent: call comm-est to get estimated pricing. Call only after gathering all required parameters and user confirmation. */
+/**
+ * Allowed enum values for each multi-component field in the book quote tool.
+ * Used both in the OpenAI function schema (descriptions) and for validation
+ * inside runBookQuoteTool before calling calCulate.
+ */
+const BOOK_QUOTE_ENUMS = {
+  binding_style: [
+    "PB", "CS", "SS+PB", "HC",
+    "HC + Foam", "HC + Foam + Round Corner",
+    "HC + Round Corner", "HC + Round Back",
+    "HC + Board Book", "HC+Foam+Board Book",
+    "Plain Board Book", "WireO",
+    "Promo Wall Calender", "Flexi Bind",
+  ],
+  components: [
+    "Cover", "Text", "PLC",
+    "Binding Board", "End Paper",
+    "Text - 2", "Sticker Paper",
+    "Foam", "Gate Fold Cover",
+  ],
+  material: [
+    "Binding Board", "FBB",
+    "Maplitho Gr A", "Maplitho Gr B",
+    "Grey Back", "Wh Back",
+    "Sticker Sheet", "Gloss Art", "Matt Art",
+    "Bible Paper", "Foam 3 mm", "Foam 4 mm",
+  ],
+  surface: [
+    "Gloss Aq", "Matt Aq",
+    "Gloss UV", "Matt UV",
+    "Gloss Lam", "Matt Lam",
+    "Matt Lam + Spot UV", "Glitter + UV", "Glitter",
+    "None",
+  ],
+};
+
+/**
+ * Friendly-name → calculator-code aliases. The book-quote prompt offers customers
+ * human-friendly labels (e.g. "Perfect Binding", "Aqueous Gloss"); the comm-est
+ * calculator only understands the codes in BOOK_QUOTE_ENUMS. These maps let the
+ * backend accept either form so a label/code mismatch never silently breaks pricing.
+ * Keys are compared case-insensitively after trimming.
+ */
+const BOOK_QUOTE_ALIASES = {
+  binding_style: {
+    "perfect binding": "PB",
+    "perfect bind": "PB",
+    "sewing + perfect binding": "SS+PB",
+    "sewing + perfect bind": "SS+PB",
+    "sewn + perfect binding": "SS+PB",
+    "center stitch": "CS",
+    "centre stitch": "CS",
+    "saddle stitch": "CS",
+    "hard cover": "HC",
+    "hardcover": "HC",
+    "hard cover board book": "HC + Board Book",
+    "hardcover board book": "HC + Board Book",
+    "flexi bound book": "Flexi Bind",
+    "flexi bound": "Flexi Bind",
+    "flexibound": "Flexi Bind",
+  },
+  components: {
+    "text pages": "Text",
+    "text page": "Text",
+    "text paper": "Text",
+  },
+  material: {
+    "uncoated paper": "Maplitho Gr A",
+    "uncoated paper (maplitho)": "Maplitho Gr A",
+    "maplitho": "Maplitho Gr A",
+    "folding box board": "FBB",
+    "sticker paper": "Sticker Sheet",
+    "sticker paper (sticker sheet)": "Sticker Sheet",
+  },
+  surface: {
+    "aqueous gloss": "Gloss Aq",
+    "aqueous matte": "Matt Aq",
+    "aqueous matt": "Matt Aq",
+    "uv gloss": "Gloss UV",
+    "uv matte": "Matt UV",
+    "uv matt": "Matt UV",
+    "gloss lamination": "Gloss Lam",
+    "matte lamination": "Matt Lam",
+    "matt lamination": "Matt Lam",
+    "matte lamination + spot uv": "Matt Lam + Spot UV",
+    "matt lamination + spot uv": "Matt Lam + Spot UV",
+    "": "None",
+  },
+};
+
+/**
+ * Normalise a single value against a field's alias map + enum list.
+ * Returns the canonical code, or null if it cannot be resolved to an allowed value.
+ */
+function normalizeBookQuoteValue(field, value) {
+  const enumList = BOOK_QUOTE_ENUMS[field] || [];
+  const aliasMap = BOOK_QUOTE_ALIASES[field] || {};
+  const raw = String(value == null ? "" : value).trim();
+  const lower = raw.toLowerCase();
+
+  // exact (case-insensitive) match against allowed codes
+  const direct = enumList.find((v) => v.toLowerCase() === lower);
+  if (direct) return direct;
+
+  // alias match
+  if (Object.prototype.hasOwnProperty.call(aliasMap, lower)) {
+    return aliasMap[lower];
+  }
+  return null;
+}
+
+/**
+ * Tool for Book Quote Agent.
+ * Uses flat #-separated strings matching the comm-est API schema.
+ * Enum constraints are embedded in descriptions so the LLM always picks valid values.
+ * Call only after gathering all required parameters and receiving user confirmation.
+ */
 const BOOK_QUOTE_TOOLS = [
   {
     type: "function",
     function: {
       name: "calculate_book_quote",
-      description: "Calculates the estimated price in Rupees for a book printing quote. Call ONLY after you have gathered all required parameters and the user has confirmed. Components: Text, Cover, End Paper, PLC, Gate Fold Cover, Binding Board, Foam, Sticker Paper, Text - 2. Binding: SS+PB, Plain Board Book, HC + Board Book, HC+Foam+Board Book, etc. Material/paper: FBB, CBB, Maplitho Gr A, Gloss Art, Matt Art, Bible Paper, etc. Surface: Gloss Lam, Matt Lam, None.",
+      // strict mode forces the model to supply EVERY required field and to use only
+      // the declared enum values before it is allowed to emit the tool call.
+      strict: true,
+      description:
+        "Calculates the estimated price in Rupees for a book printing job. " +
+        "Call ONLY after you have collected every required field and the user has confirmed the details. " +
+        "All multi-component fields use # as separator (one value per component, in the same order as 'components').",
       parameters: {
         type: "object",
+        additionalProperties: false,
         properties: {
-          len: { type: "number", description: "Length (trim size) in mm" },
-          brd: { type: "number", description: "Breadth in mm" },
-          Qty: { type: "number", description: "Quantity" },
-          binding_style: { type: "string", description: "Binding style e.g. SS+PB, Plain Board Book, HC + Board Book" },
-          no_of_titles: { type: "number", description: "Number of titles, default 1" },
-          parts: {
-            type: "array",
-            description: "Each component: comp, gsm, material, pages, and optionally front_print, back_print, front_surface, back_surface",
-            items: {
-              type: "object",
-              properties: {
-                comp: { type: "string", description: "Component: Text, Cover, End Paper, PLC, Gate Fold Cover, Binding Board, Foam, Sticker Paper, Text - 2" },
-                gsm: { type: "number", description: "GSM for this component" },
-                material: { type: "string", description: "Paper type: FBB, CBB, Maplitho Gr A, Gloss Art, Matt Art, etc." },
-                pages: { type: "integer", description: "Page count for this component" },
-                front_print: { type: "integer", description: "Front print colors, default 0" },
-                back_print: { type: "integer", description: "Back print colors, default 0" },
-                front_surface: { type: "string", description: "Front surface e.g. Gloss Lam, Matt Lam, None" },
-                back_surface: { type: "string", description: "Back surface, default None" }
-              },
-              required: ["comp", "gsm", "material", "pages"]
-            }
-          }
+          no_of_titles: {
+            type: "number",
+            description: "Number of different titles in this print run (usually 1).",
+          },
+          dim: {
+            type: "string",
+            description:
+              "Trim size of the book in Length×Breadth mm format, e.g. '210x297'. " +
+              "Ask the user for the finished book size if not given.",
+          },
+          Qty: {
+            type: "number",
+            description:
+              "Quantity PER TITLE (number of copies of a single title), NOT the grand total. " +
+              "If the user says '6 titles x 10000 each', Qty is 10000 and no_of_titles is 6.",
+          },
+          binding_style: {
+            type: "string",
+            enum: BOOK_QUOTE_ENUMS.binding_style,
+            description:
+              "Binding style. Must be exactly one of: " +
+              BOOK_QUOTE_ENUMS.binding_style.join(", ") + ".",
+          },
+          components: {
+            type: "string",
+            description:
+              "Component names separated by #. Each must be one of: " +
+              BOOK_QUOTE_ENUMS.components.join(", ") +
+              ". Example: 'Cover#Text#End Paper'.",
+          },
+          gsm: {
+            type: "string",
+            description:
+              "GSM of each component separated by # (same order as components). Example: '300#80#80'.",
+          },
+          material: {
+            type: "string",
+            description:
+              "Material/paper type for each component separated by #. Each segment must be one of: " +
+              BOOK_QUOTE_ENUMS.material.join(", ") +
+              ". Example: 'FBB#Maplitho Gr A#Maplitho Gr A'.",
+          },
+          front_print: {
+            type: "string",
+            description:
+              "Number of front-side print colors for each component separated by #. Example: '4#4#0'.",
+          },
+          back_print: {
+            type: "string",
+            description:
+              "Number of back-side print colors for each component separated by #. Example: '0#0#0'.",
+          },
+          front_surface: {
+            type: "string",
+            description:
+              "Front surface finish for each component separated by #. Each segment must be one of: " +
+              BOOK_QUOTE_ENUMS.surface.join(", ") +
+              ". Use 'None' when no finish applies. Example: 'Gloss Lam#None'.",
+          },
+          back_surface: {
+            type: "string",
+            description:
+              "Back surface finish for each component separated by #. Each segment must be one of: " +
+              BOOK_QUOTE_ENUMS.surface.join(", ") +
+              ". Use 'None' when no finish applies. Example: 'None#None'.",
+          },
+          page_number: {
+            type: "string",
+            description:
+              "Page count for each component separated by #. Example: '4#120#4'.",
+          },
         },
-        required: ["len", "brd", "Qty", "binding_style", "parts"]
-      }
-    }
-  }
+        required: [
+          "no_of_titles", "dim", "Qty", "binding_style",
+          "components", "gsm", "material",
+          "front_print", "back_print",
+          "front_surface", "back_surface",
+          "page_number",
+        ],
+      },
+    },
+  },
 ];
 
 /**
@@ -306,7 +532,7 @@ async function callChatLlm(messages) {
   if (!key || typeof key !== "string" || !key.trim()) {
     return AI_NOT_CONFIGURED_MSG;
   }
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const model = await resolveAiModel();
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -412,7 +638,14 @@ async function runPackagingQuoteTool(name, args) {
 }
 
 /**
- * Run Book Quote tool: map LLM args to comm-est input, call calCulate, return price in Rupees.
+ * Run Book Quote tool: map flat LLM args (new # -separated format) to comm-est input,
+ * call calCulate, return price in Rupees.
+ *
+ * The tool schema now uses flat strings separated by # (one segment per component).
+ * calCulate() expects the same fields but split on $ internally (via convertStringToArray).
+ * This function converts # → $ before passing to calCulate.
+ *
+ * dim format: "LxB" e.g. "210x297" → len=210, brd=297
  */
 async function runBookQuoteTool(name, args) {
   if (name !== "calculate_book_quote") {
@@ -420,38 +653,135 @@ async function runBookQuoteTool(name, args) {
   }
   try {
     const a = args || {};
-    const parts = Array.isArray(a.parts) ? a.parts : [];
-    if (parts.length === 0) {
-      return JSON.stringify({ error: "At least one component (part) is required" });
+
+    // --- Scalar field validation ---------------------------------------------
+
+    // Parse dim "LxB" → len, brd
+    const dimStr = String(a.dim || "").trim();
+    const dimMatch = dimStr.match(/^(\d+(?:\.\d+)?)\s*[xX×]\s*(\d+(?:\.\d+)?)$/);
+    if (!dimMatch) {
+      return JSON.stringify({
+        error: `Invalid dim format "${dimStr}". Expected LxB in mm e.g. "210x297". Ask the user for the trim size.`,
+      });
     }
+    const len = Number(dimMatch[1]);
+    const brd = Number(dimMatch[2]);
+
     const noOfTitles = Number(a.no_of_titles) || 1;
     const Qty = Number(a.Qty);
     if (!Qty || Qty < 1) {
-      return JSON.stringify({ error: "Valid quantity is required" });
+      return JSON.stringify({ error: "A valid Qty (quantity per title) is required. Ask the user." });
     }
-    const build = (fn) => parts.map((p) => String(fn(p) ?? "")).join("$");
-    const input = {
-      len: Number(a.len),
-      brd: Number(a.brd),
-      Qty: String(Qty),
-      binding_style: String(a.binding_style || ""),
-      no_of_titles: String(noOfTitles),
-      components: build((p) => p.comp),
-      gsm: build((p) => p.gsm),
-      material: build((p) => p.material),
-      page_number: build((p) => p.pages),
-      front_print: build((p) => (p.front_print != null ? p.front_print : 0)),
-      back_print: build((p) => (p.back_print != null ? p.back_print : 0)),
-      front_surface: build((p) => (p.front_surface != null && p.front_surface !== "" ? p.front_surface : "None")),
-      back_surface: build((p) => (p.back_surface != null && p.back_surface !== "" ? p.back_surface : "None"))
+
+    const binding = normalizeBookQuoteValue("binding_style", a.binding_style);
+    if (!binding) {
+      return JSON.stringify({
+        error: `Unknown binding_style "${a.binding_style}". Allowed: ${BOOK_QUOTE_ENUMS.binding_style.join(", ")}. ` +
+               `Ask the user to pick a supported binding type.`,
+      });
+    }
+
+    // --- Per-component (#-separated) field validation -------------------------
+
+    const splitHash = (s) => String(s == null ? "" : s).split("#").map((v) => v.trim());
+
+    const comps = splitHash(a.components);
+    const n = comps.length;
+    if (n === 0 || (n === 1 && comps[0] === "")) {
+      return JSON.stringify({ error: "At least one component is required in 'components'. Ask the user." });
+    }
+
+    // 1) Every per-component field must have exactly n segments (no missing values).
+    const perComponentFields = {
+      gsm: a.gsm,
+      material: a.material,
+      page_number: a.page_number,
+      front_print: a.front_print,
+      back_print: a.back_print,
+      front_surface: a.front_surface,
+      back_surface: a.back_surface,
     };
+    for (const [field, val] of Object.entries(perComponentFields)) {
+      const segs = splitHash(val);
+      if (segs.length !== n) {
+        return JSON.stringify({
+          error: `Field "${field}" has ${segs.length} value(s) but there are ${n} component(s) ` +
+                 `(${comps.join(", ")}). Provide exactly one "${field}" value per component, in the same order. ` +
+                 `Ask the user for the missing value(s).`,
+        });
+      }
+    }
+
+    // 2) Normalise enum-constrained fields and reject anything unsupported.
+    const normComps = [];
+    for (const c of comps) {
+      const v = normalizeBookQuoteValue("components", c);
+      if (!v) {
+        return JSON.stringify({
+          error: `Unknown component "${c}". Allowed: ${BOOK_QUOTE_ENUMS.components.join(", ")}.`,
+        });
+      }
+      normComps.push(v);
+    }
+
+    const normMaterial = [];
+    for (const m of splitHash(a.material)) {
+      const v = normalizeBookQuoteValue("material", m);
+      if (!v) {
+        return JSON.stringify({
+          error: `Unknown material "${m}". Allowed: ${BOOK_QUOTE_ENUMS.material.join(", ")}. ` +
+                 `(Note: "Drip Off Coating" and "Soft Touch Coating" are not supported by the calculator.)`,
+        });
+      }
+      normMaterial.push(v);
+    }
+
+    const normSurface = (label, str) => {
+      const out = [];
+      for (const s of splitHash(str)) {
+        const v = normalizeBookQuoteValue("surface", s);
+        if (!v) {
+          return {
+            error: `Unknown ${label} finish "${s}". Allowed: ${BOOK_QUOTE_ENUMS.surface.join(", ")}. ` +
+                   `(Note: "Drip Off Coating" and "Soft Touch Coating" are not supported by the calculator.)`,
+          };
+        }
+        out.push(v);
+      }
+      return { values: out };
+    };
+    const fs = normSurface("front_surface", a.front_surface);
+    if (fs.error) return JSON.stringify({ error: fs.error });
+    const bs = normSurface("back_surface", a.back_surface);
+    if (bs.error) return JSON.stringify({ error: bs.error });
+
+    // --- Build calCulate input (calCulate splits on $ internally) -------------
+
+    const joinDollar = (arr) => arr.join("$");
+
+    const input = {
+      len,
+      brd,
+      Qty: String(Qty),
+      binding_style: binding,
+      no_of_titles: String(noOfTitles),
+      components: joinDollar(normComps),
+      gsm:         joinDollar(splitHash(a.gsm)),
+      material:    joinDollar(normMaterial),
+      page_number: joinDollar(splitHash(a.page_number)),
+      front_print: joinDollar(splitHash(a.front_print)),
+      back_print:  joinDollar(splitHash(a.back_print)),
+      front_surface: joinDollar(fs.values),
+      back_surface:  joinDollar(bs.values),
+    };
+
     const result = await calCulate(input);
     const pricePerUnit = Number(result?.price_per_unit) || 0;
     const totalRupees = Math.round(pricePerUnit * (Qty / noOfTitles) * 100) / 100;
     return JSON.stringify({
       total_price_rupees: totalRupees,
       price_per_unit: pricePerUnit,
-      note: "Price per unit for the book."
+      note: "Price per unit for the book.",
     });
   } catch (e) {
     return JSON.stringify({ error: String(e?.message || "Book pricing calculation failed") });
@@ -471,7 +801,7 @@ async function callOrderStatusLlm(messages, ctx) {
   if (!key || typeof key !== "string" || !key.trim()) {
     return AI_NOT_CONFIGURED_MSG;
   }
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const model = await resolveAiModel();
   const maxRounds = 5;
   let current = [...messages];
   let lastContent = "";
@@ -543,7 +873,7 @@ async function callPackagingQuoteLlm(messages, ctx) {
   if (!key || typeof key !== "string" || !key.trim()) {
     return AI_NOT_CONFIGURED_MSG;
   }
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const model = await resolveAiModel();
   const maxRounds = 5;
   let current = [...messages];
   let lastContent = "";
@@ -611,7 +941,7 @@ async function callBookQuoteLlm(messages, ctx) {
   if (!key || typeof key !== "string" || !key.trim()) {
     return AI_NOT_CONFIGURED_MSG;
   }
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const model = await resolveAiModel();
   const maxRounds = 5;
   let current = [...messages];
   let lastContent = "";
@@ -3074,6 +3404,18 @@ fastify.get("/dashboard", async (req, reply) => {
         { role: "user", content: userContent },
       ];
 
+      const llmStart = Date.now();
+      const resolvedModel = await resolveAiModel();
+      req.log.info(
+        {
+          msg: "[CHAT] selected agent for /api/chat/message",
+          agentKey,
+          agentName: agent.name,
+          model: resolvedModel,
+          userId,
+        }
+      );
+
       const assistantContent =
         agentKey === "order-status"
           ? await callOrderStatusLlm(forLlm, { mongo: db, email: userId, log: req.log })
@@ -3083,6 +3425,17 @@ fastify.get("/dashboard", async (req, reply) => {
           ? await callBookQuoteLlm(forLlm, { log: req.log })
           : await callChatLlm(forLlm);
       const assistantMsg = { role: "assistant", content: assistantContent, ts: new Date() };
+
+      // Persist a row in agent_logs so the admin UI can show which agent ran.
+      // Never let logging failures break the chat response.
+      logAgentInvocation({
+        userId,
+        agentKey,
+        agentName: agent.name,
+        messagePreview: userContent,
+        model: resolvedModel,
+        durationMs: Date.now() - llmStart,
+      });
 
       const toPush = !session ? [initialMsg, userMsg, assistantMsg] : [userMsg, assistantMsg];
 
@@ -3102,6 +3455,179 @@ fastify.get("/dashboard", async (req, reply) => {
       return reply
         .code(500)
         .send({ error: "Failed to save chat message", details: err.message });
+    }
+  });
+
+  /**
+   * ADMIN — AI AGENT SETTINGS
+   *
+   * All routes below require an authenticated user whose email is in
+   * ADMIN_EMAILS (comma-separated env var). When ADMIN_EMAILS is empty
+   * (dev), any authenticated user is treated as admin.
+   *
+   * Collections used:
+   *   - chat_agents (existing) — agent metadata + systemPrompt
+   *   - ai_config (new, singleton key="default") — global model
+   *   - agent_logs (new) — one doc per LLM-driven /api/chat/message
+   */
+
+  async function requireAdmin(req, reply) {
+    if (!req.user || !req.user.email) {
+      reply.code(401).send({ error: "Not authenticated" });
+      return false;
+    }
+    if (!isAdminRequest(req)) {
+      reply.code(403).send({ error: "Forbidden — admin access required" });
+      return false;
+    }
+    return true;
+  }
+
+  // GET /api/admin/me — used by the sidebar to decide whether to show admin links.
+  // Requires authentication, but does NOT 403 for non-admins; instead returns
+  // { isAdmin: false } so the frontend can simply hide admin-only UI.
+  fastify.get("/admin/me", async (req, reply) => {
+    if (!req.user || !req.user.email) {
+      return reply.code(401).send({ error: "Not authenticated" });
+    }
+    return {
+      email: req.user.email,
+      isAdmin: isAdminRequest(req),
+    };
+  });
+
+  // GET /api/admin/chat-agents — list every agent (incl. inactive) for the admin UI.
+  fastify.get("/admin/chat-agents", async (req, reply) => {
+    if (!(await requireAdmin(req, reply))) return;
+    try {
+      const agents = await getAllChatAgentsAdmin();
+      return {
+        agents: (agents || []).map((a) => ({
+          agentKey: a.agentKey,
+          name: a.name || "",
+          buttonText: a.buttonText || "",
+          description: a.description || "",
+          initialMessage: a.initialMessage || "",
+          systemPrompt: a.systemPrompt || "",
+          isActive: a.isActive !== false,
+          updatedAt: a.updatedAt || null,
+        })),
+      };
+    } catch (err) {
+      req.log.error(err, "Error in GET /api/admin/chat-agents");
+      return reply
+        .code(500)
+        .send({ error: "Failed to load chat agents", details: err.message });
+    }
+  });
+
+  // PATCH /api/admin/chat-agents/:agentKey — update any subset of editable fields.
+  fastify.patch("/admin/chat-agents/:agentKey", async (req, reply) => {
+    if (!(await requireAdmin(req, reply))) return;
+    try {
+      const { agentKey } = req.params || {};
+      if (!agentKey || typeof agentKey !== "string") {
+        return reply.code(400).send({ error: "agentKey is required" });
+      }
+      const body = req.body || {};
+      const updated = await updateChatAgentByKey(agentKey, body);
+      if (!updated) {
+        return reply.code(404).send({ error: "Agent not found or no editable fields supplied" });
+      }
+      req.log.info(
+        {
+          msg: "[ADMIN] chat agent updated",
+          agentKey,
+          fields: Object.keys(body),
+          by: req.user.email,
+        }
+      );
+      return {
+        ok: true,
+        agent: {
+          agentKey: updated.agentKey,
+          name: updated.name || "",
+          buttonText: updated.buttonText || "",
+          description: updated.description || "",
+          initialMessage: updated.initialMessage || "",
+          systemPrompt: updated.systemPrompt || "",
+          isActive: updated.isActive !== false,
+          updatedAt: updated.updatedAt || null,
+        },
+      };
+    } catch (err) {
+      req.log.error(err, "Error in PATCH /api/admin/chat-agents/:agentKey");
+      return reply
+        .code(500)
+        .send({ error: "Failed to update chat agent", details: err.message });
+    }
+  });
+
+  // GET /api/admin/ai-config — current global OpenAI model.
+  fastify.get("/admin/ai-config", async (req, reply) => {
+    if (!(await requireAdmin(req, reply))) return;
+    try {
+      const cfg = await getAiConfig();
+      return {
+        model: cfg.model,
+        envFallback: process.env.OPENAI_MODEL || null,
+        openAiKeyConfigured: Boolean(
+          process.env.OPENAI_API_KEY &&
+          String(process.env.OPENAI_API_KEY).trim().length > 0
+        ),
+      };
+    } catch (err) {
+      req.log.error(err, "Error in GET /api/admin/ai-config");
+      return reply
+        .code(500)
+        .send({ error: "Failed to load AI config", details: err.message });
+    }
+  });
+
+  // PATCH /api/admin/ai-config — update the global OpenAI model.
+  fastify.patch("/admin/ai-config", async (req, reply) => {
+    if (!(await requireAdmin(req, reply))) return;
+    try {
+      const body = req.body || {};
+      if (typeof body.model !== "string" || !body.model.trim()) {
+        return reply.code(400).send({ error: "model (string) is required" });
+      }
+      const cfg = await updateAiConfig({ model: body.model });
+      req.log.info({ msg: "[ADMIN] ai-config updated", model: cfg.model, by: req.user.email });
+      return { ok: true, model: cfg.model };
+    } catch (err) {
+      req.log.error(err, "Error in PATCH /api/admin/ai-config");
+      return reply
+        .code(500)
+        .send({ error: "Failed to update AI config", details: err.message });
+    }
+  });
+
+  // GET /api/admin/agent-logs?limit=100&agentKey=packaging-quote
+  fastify.get("/admin/agent-logs", async (req, reply) => {
+    if (!(await requireAdmin(req, reply))) return;
+    try {
+      const { limit, agentKey } = req.query || {};
+      const logs = await getAgentLogs({
+        limit: limit ? Number(limit) : 100,
+        agentKey: agentKey || undefined,
+      });
+      return {
+        logs: (logs || []).map((l) => ({
+          ts: l.ts,
+          userId: l.userId || null,
+          agentKey: l.agentKey || null,
+          agentName: l.agentName || null,
+          messagePreview: l.messagePreview || "",
+          model: l.model || null,
+          durationMs: typeof l.durationMs === "number" ? l.durationMs : null,
+        })),
+      };
+    } catch (err) {
+      req.log.error(err, "Error in GET /api/admin/agent-logs");
+      return reply
+        .code(500)
+        .send({ error: "Failed to load agent logs", details: err.message });
     }
   });
 }
