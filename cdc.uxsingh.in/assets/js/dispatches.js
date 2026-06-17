@@ -213,7 +213,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const containerNo = (dispatch.ContainerNo ?? dispatch.containerno ?? '').toString().trim();
     const showTrack = containerNo.length > 5;
     const jobId = dispatch.JobBookingId ?? dispatch.JobBookingID ?? dispatch.jobbookingid ?? '';
-    const source = dispatch.source || dispatch.sourceTag || dispatch._source || '';
+    // Match the Orders page exactly: the Shipment Details modal there reads
+    // `order.source` (which the API doesn't emit — it returns `_source`), so it
+    // sends no source and the backend defaults to db1 (KOL), where the
+    // dbo.ShipmentETA tracking rows live. Dispatches must do the same;
+    // forwarding the dispatch row's `_source` (e.g. db2/AHM) made the backend
+    // query the wrong database and return no shipment rows.
+    const source = dispatch.source || dispatch.sourceTag || '';
 
     const trackButtonHtml = showTrack
       ? ` <a href="javascript:void(0);" class="btn btn-sm btn-label-primary dispatch-track-btn ms-2" data-jobid="${jobId}" data-container-no="${containerNo}" data-source="${source}" title="Track"><i class="icon-base ti tabler-map-pin me-1"></i>Track</a>`
