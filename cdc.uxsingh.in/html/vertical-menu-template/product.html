@@ -664,8 +664,23 @@
           <div class="container-xxl flex-grow-1 container-p-y">
             <div class="row g-6">
 
+              <!-- Monthly Order Quantity Chart -->
+              <div class="col-12 order-0">
+                <div class="card">
+                  <div class="card-header d-flex align-items-center justify-content-between">
+                    <div class="card-title mb-0">
+                      <h5 class="m-0 me-2">Monthly Order Quantity</h5>
+                      <small class="text-muted">Total order quantity by month</small>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <div id="productOrderHistoryChart"></div>
+                  </div>
+                </div>
+              </div>
+              <!--/ Monthly Order Quantity Chart -->
 
-              <!-- Approvals Table -->
+              <!-- Products Table -->
               <div class="col-12 order-5 custom-tl dispatches-table">
                 <div class="card">
                   <div class="card-header custom-res-card-header d-flex align-items-center justify-content-between">
@@ -674,20 +689,6 @@
                     </div>
                     <div class="card-title mb-0 d-flex align-items-center custom-snb">
                       <div class="search-here me-4 cus-search-here"></div>
-                      <div class="main-btn-gp">
-                        <div class="btn-group">
-                          <button type="button" class="btn btn-label-primary">New To Old</button>
-                          <button type="button" class="btn btn-label-primary dropdown-toggle dropdown-toggle-split"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                            <span class="visually-hidden">Toggle Dropdown</span>
-                          </button>
-                          <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="javascript:void(0);">Old To New</a></li>
-                            <li><a class="dropdown-item" href="javascript:void(0);">Last 6 Month</a></li>
-                            <li><a class="dropdown-item" href="javascript:void(0);">Last 1 year</a></li>
-                          </ul>
-                        </div>
-                      </div>
                     </div>
                   </div>
                   <div class="card-datatable border-top">
@@ -695,12 +696,13 @@
                       <thead>
                         <tr>
                           <th></th>
-                          <!-- <th></th> -->
-                          <th>PRODUCT</th>
-                          <th>DELIVERED IN LAST 6 MONTHS</th>
-                          <th>AVERAGE MONTHLY CONSUMPTION</th>
-                          <th>LAST ORDER RECEIVED</th>
-                          <th>LAST DELIVERED</th>
+                          <th>JOB NAME</th>
+                          <th>DIMENSION (L x W)</th>
+                          <th>FRONT COLOR</th>
+                          <th>BACK COLOR</th>
+                          <th>OPERATIONS</th>
+                          <th>BOARD QUALITY</th>
+                          <th>BOARD GSM</th>
                         </tr>
                       </thead>
                     </table>
@@ -710,7 +712,7 @@
 
                 </div>
               </div>
-              <!--/ Approvals Table -->
+              <!--/ Products Table -->
 
             </div>
           </div>

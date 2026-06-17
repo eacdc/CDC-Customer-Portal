@@ -42,11 +42,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!btn) return;
     e.preventDefault();
     e.stopPropagation();
-    const jobId = btn.getAttribute('data-job-id') || '0';
+    const jobId = btn.getAttribute('data-jobid');
+    const source = btn.getAttribute('data-source');
     const containerNo = (btn.getAttribute('data-container-no') || '').trim();
-    const source = btn.getAttribute('data-source') || 'db1';
     if (!containerNo) {
-      alert('No container number for this dispatch.');
+      alert('No container number for this dispatch. Shipment details are not available.');
+      return;
+    }
+    if (!jobId || jobId.trim() === '') {
+      alert('Order identifier is missing. Cannot load shipment details.');
       return;
     }
     try {
@@ -208,11 +212,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const containerNo = (dispatch.ContainerNo ?? dispatch.containerno ?? '').toString().trim();
     const showTrack = containerNo.length > 5;
-    const jobId = dispatch.JobBookingId ?? dispatch.jobbookingid ?? 0;
-    const source = dispatch._source ?? 'db1';
+    const jobId = dispatch.JobBookingId ?? dispatch.JobBookingID ?? dispatch.jobbookingid ?? '';
+    const source = dispatch.source || dispatch.sourceTag || dispatch._source || '';
 
     const trackButtonHtml = showTrack
-      ? ` <a href="javascript:void(0);" class="btn btn-sm btn-label-primary dispatch-track-btn ms-2" data-job-id="${jobId}" data-container-no="${containerNo}" data-source="${source}" title="Track"><i class="icon-base ti tabler-map-pin me-1"></i>Track</a>`
+      ? ` <a href="javascript:void(0);" class="btn btn-sm btn-label-primary dispatch-track-btn ms-2" data-jobid="${jobId}" data-container-no="${containerNo}" data-source="${source}" title="Track"><i class="icon-base ti tabler-map-pin me-1"></i>Track</a>`
       : '';
 
     col.innerHTML = `
@@ -563,11 +567,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function buildAuthHeaders() {
     const headers = {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
+      Accept: 'application/json'
     };
     if (session?.token) {
       headers['Authorization'] = `Bearer ${session.token}`;
+    }
+    if (session?.sessionId) {
+      headers['X-Session-Id'] = session.sessionId;
     }
     return headers;
   }
@@ -593,7 +599,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadShipmentDetails(jobId, containerNo, source) {
-    if (!containerNo) throw userFacingError('Container number is missing.');
+    if (!jobId || !containerNo) {
+      throw userFacingError('Order identifier or container number is missing.');
+    }
     const apiBase = getApiBase();
     let url = `${apiBase}/orders/${encodeURIComponent(jobId)}/shipment-details?containerNo=${encodeURIComponent(containerNo)}`;
     if (source) url += `&source=${encodeURIComponent(source)}`;
@@ -611,16 +619,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalElement = document.getElementById('shipmentDetailsModal');
     const headerRow = document.getElementById('shipmentDetailsTableHeader');
     const tbody = document.getElementById('shipmentDetailsContent');
-    if (!modalElement || !headerRow || !tbody) return;
+
+    if (!modalElement || !headerRow || !tbody) {
+      console.error('Shipment details modal elements not found');
+      alert('Modal elements not found. Please refresh the page.');
+      return;
+    }
 
     if (!Array.isArray(rows) || rows.length === 0) {
       headerRow.innerHTML = '<th>Container Number</th>';
-      tbody.innerHTML = `<tr><td class="text-center">${containerNo ? escapeHtml(String(containerNo).trim()) : '—'}</td></tr>`;
+      const displayNo = containerNo ? escapeHtml(String(containerNo).trim()) : '—';
+      tbody.innerHTML = `<tr><td class="text-center">${displayNo}</td></tr>`;
     } else {
-      const first = rows[0];
-      const keys = Object.keys(first).filter(k => first[k] !== undefined && first[k] !== null && typeof first[k] !== 'object');
-      if (keys.length === 0) keys.push(...Object.keys(first));
-      const toLabel = (k) => (k && String(k).toLowerCase() === 'link') ? 'Track' : k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+      const HIDDEN_SHIPMENT_KEYS = new Set(['id', 'status']);
+      const orderedKeys = [];
+      const seenKeys = new Set();
+      rows.forEach((row) => {
+        Object.keys(row).forEach((k) => {
+          if (HIDDEN_SHIPMENT_KEYS.has(String(k).toLowerCase())) return;
+          if (seenKeys.has(k)) return;
+          const v = row[k];
+          if (v === undefined || v === null) return;
+          if (typeof v === 'object' && !(v instanceof Date)) return;
+          seenKeys.add(k);
+          orderedKeys.push(k);
+        });
+      });
+      const keys = orderedKeys.length > 0
+        ? orderedKeys
+        : Object.keys(rows[0]).filter(k => !HIDDEN_SHIPMENT_KEYS.has(String(k).toLowerCase()));
+      const toLabel = (k) => {
+        if (k && String(k).toLowerCase() === 'link') return 'Track';
+        return k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+      };
       const isLinkKey = (k) => k && String(k).toLowerCase() === 'link';
       const isUrl = (v) => typeof v === 'string' && /^https?:\/\/\S+/i.test(v.trim());
       headerRow.innerHTML = keys.map(k => `<th>${toLabel(k)}</th>`).join('');
@@ -629,7 +660,8 @@ document.addEventListener('DOMContentLoaded', () => {
           const v = row[k];
           if (isLinkKey(k) && isUrl(v)) {
             const url = String(v).trim();
-            return `<td><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="d-inline-flex align-items-center gap-1 text-primary" title="Track"><i class="icon-base ti tabler-map-pin"></i> Track</a></td>`;
+            const safeUrl = escapeHtml(url);
+            return `<td><a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="d-inline-flex align-items-center gap-1 text-primary" title="Track"><i class="icon-base ti tabler-map-pin"></i> Track</a></td>`;
           }
           const display = v === undefined || v === null ? '-' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
           const formatted = (v instanceof Date || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v))) ? formatDate(v) : display;
@@ -637,9 +669,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('')}</tr>`;
       }).join('');
     }
-    let modal = bootstrap.Modal.getInstance(modalElement);
-    if (!modal) modal = new bootstrap.Modal(modalElement);
-    modal.show();
+
+    try {
+      let modal = bootstrap.Modal.getInstance(modalElement);
+      if (!modal) {
+        modal = new bootstrap.Modal(modalElement);
+      }
+      modal.show();
+    } catch (error) {
+      console.error('Error showing shipment details modal:', error);
+      alert('Failed to display shipment details modal');
+    }
   }
 
   function escapeHtml(str) {
