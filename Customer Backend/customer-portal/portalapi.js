@@ -1656,6 +1656,94 @@ fastify.get("/dashboard", async (req, reply) => {
     return response;
   });
 
+  // GET /api/products
+  // Returns two datasets for the Products screen, both keyed off the tenant's
+  // ledger IDs (db1 = KOL, db2 = AHM):
+  //   1. chart    -> month-wise total order qty, aggregated across all products
+  //                  and both DBs. Source: dbo.portal_order_history_chart.
+  //   2. products -> per-product summary rows. Source: dbo.portal_products_list.
+  fastify.get("/products", async (req, reply) => {
+    const mongo = await getDb();
+    const tenant = await mongo
+      .collection("tenants")
+      .findOne({ email: req.user.email });
+    if (!tenant) {
+      return reply.code(400).send({ error: "Tenant binding missing" });
+    }
+
+    const ids1 = tenant.ledgerIds_db1 || [];
+    const ids2 = tenant.ledgerIds_db2 || [];
+
+    // Run a stored proc that only needs the @LedgerIds TVP on one DB.
+    const execProc = async (pool, ids, procName, sourceTag) => {
+      if (!ids || !ids.length) return [];
+      const r = (await pool).request();
+      r.input("LedgerIds", toIdListTVP(ids));
+      const rs = await r.execute(procName);
+      const rows = rs.recordset || [];
+      rows.forEach((row) => {
+        row._source = sourceTag;
+      });
+      return rows;
+    };
+
+    let chartRows = [];
+    let productRows = [];
+    try {
+      const [chart1, chart2, prod1, prod2] = await Promise.all([
+        execProc(db1(), ids1, "dbo.portal_order_history_chart", "db1"),
+        execProc(db2(), ids2, "dbo.portal_order_history_chart", "db2"),
+        execProc(db1(), ids1, "dbo.portal_products_list", "db1"),
+        execProc(db2(), ids2, "dbo.portal_products_list", "db2"),
+      ]);
+      chartRows = [...chart1, ...chart2];
+      productRows = [...prod1, ...prod2];
+    } catch (err) {
+      req.log.error(err, "[PRODUCTS API] stored procedure call failed");
+      return reply.code(500).send({ error: "Unable to load products data." });
+    }
+
+    // Aggregate chart rows month-wise. The proc returns one row per product
+    // per month; the column chart wants a single total order qty per month.
+    const monthMap = new Map();
+    chartRows.forEach((row) => {
+      const monthStart = row.MonthStart
+        ? new Date(row.MonthStart).toISOString().slice(0, 10)
+        : null;
+      if (!monthStart) return;
+      if (!monthMap.has(monthStart)) {
+        monthMap.set(monthStart, {
+          MonthStart: monthStart,
+          MonthLabel: row.MonthLabel || "",
+          TotalOrderQty: 0,
+          NumberOfOrders: 0,
+        });
+      }
+      const agg = monthMap.get(monthStart);
+      agg.TotalOrderQty += Number(row.TotalOrderQty || 0);
+      agg.NumberOfOrders += Number(row.NumberOfOrders || 0);
+    });
+
+    const chart = Array.from(monthMap.values()).sort(
+      (a, b) => new Date(a.MonthStart) - new Date(b.MonthStart)
+    );
+
+    // Sort the product list newest-ordered first.
+    const products = productRows.sort((a, b) => {
+      const da = a.LastOrderedDate ? new Date(a.LastOrderedDate).getTime() : 0;
+      const dbb = b.LastOrderedDate ? new Date(b.LastOrderedDate).getTime() : 0;
+      return dbb - da;
+    });
+
+    req.log.info({
+      msg: "[PRODUCTS API] response",
+      chartMonths: chart.length,
+      productCount: products.length,
+    });
+
+    return { chart, products };
+  });
+
   // GET /api/paper-ledger?range=30d|90d|180d|365d&from=ISO&to=ISO
   // Same behaviour as orders: run GetPaperLedger_ByClient_Manu on both DBs with corresponding ledger IDs.
   fastify.get("/paper-ledger", async (req, reply) => {
