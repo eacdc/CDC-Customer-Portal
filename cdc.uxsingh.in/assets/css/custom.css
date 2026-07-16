@@ -1011,7 +1011,126 @@ h6,
 
 .last-status-pt.dd .modal-dialog {
     max-width: 1000px;
-    ;
+}
+
+/* ===== Shipment Details modal ===== */
+#shipmentDetailsModal .shipment-details-dialog {
+    max-width: min(1200px, 96vw);
+    margin: 1rem auto;
+}
+
+#shipmentDetailsModal .shipment-details-body {
+    padding: 1rem 1.25rem 1.25rem;
+}
+
+#shipmentDetailsModal .shipment-details-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#shipmentDetailsModal .shipment-details-table {
+    width: 100%;
+    min-width: 980px;
+    table-layout: auto;
+    margin: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+#shipmentDetailsModal .shipment-details-table thead th {
+    white-space: nowrap;
+    vertical-align: middle;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #5e5873;
+    background: #f8f7fa;
+    border-bottom: 1px solid #ebe9f1;
+    padding: 0.75rem 1rem;
+}
+
+#shipmentDetailsModal .shipment-details-table tbody td {
+    white-space: nowrap;
+    vertical-align: middle;
+    font-size: 0.875rem;
+    color: #6e6b7b;
+    border-bottom: 1px solid #ebe9f1;
+    padding: 0.85rem 1rem;
+}
+
+#shipmentDetailsModal .shipment-details-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+@media (max-width: 767.98px) {
+    #shipmentDetailsModal .shipment-details-dialog {
+        max-width: 100%;
+        margin: 0.5rem;
+    }
+
+    #shipmentDetailsModal .shipment-details-body {
+        padding: 0.75rem;
+    }
+
+    /* Stack each shipment row as a card on small screens */
+    #shipmentDetailsModal .shipment-details-scroll {
+        overflow-x: visible;
+    }
+
+    #shipmentDetailsModal .shipment-details-table {
+        min-width: 0;
+        width: 100%;
+    }
+
+    #shipmentDetailsModal .shipment-details-table thead {
+        display: none;
+    }
+
+    #shipmentDetailsModal .shipment-details-table tbody {
+        display: block;
+    }
+
+    #shipmentDetailsModal .shipment-details-table tbody tr {
+        display: block;
+        margin-bottom: 0.85rem;
+        border: 1px solid #ebe9f1;
+        border-radius: 0.5rem;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    #shipmentDetailsModal .shipment-details-table tbody tr:last-child {
+        margin-bottom: 0;
+    }
+
+    #shipmentDetailsModal .shipment-details-table tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.75rem;
+        width: 100%;
+        white-space: normal;
+        border-bottom: 1px solid #f0eef5;
+        padding: 0.65rem 0.85rem;
+        text-align: right;
+    }
+
+    #shipmentDetailsModal .shipment-details-table tbody td:last-child {
+        border-bottom: none;
+    }
+
+    #shipmentDetailsModal .shipment-details-table tbody td::before {
+        content: attr(data-label);
+        flex: 0 0 42%;
+        max-width: 42%;
+        text-align: left;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: #5e5873;
+    }
 }
 
 .btn-ls {

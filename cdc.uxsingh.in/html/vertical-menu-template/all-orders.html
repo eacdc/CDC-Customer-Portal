@@ -924,20 +924,22 @@
     </div>
 
     <div class="modal fade last-status-pt dd" id="shipmentDetailsModal">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-dialog modal-dialog-centered modal-xl shipment-details-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5>Shipment Details</h5><button class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <table class="table">
-                        <thead>
-                            <tr id="shipmentDetailsTableHeader">
-                                <!-- Headers generated from ShipmentETA data -->
-                            </tr>
-                        </thead>
-                        <tbody id="shipmentDetailsContent"></tbody>
-                    </table>
+                <div class="modal-body shipment-details-body">
+                    <div class="table-responsive shipment-details-scroll">
+                        <table class="table shipment-details-table">
+                            <thead>
+                                <tr id="shipmentDetailsTableHeader">
+                                    <!-- Headers generated from ShipmentETA data -->
+                                </tr>
+                            </thead>
+                            <tbody id="shipmentDetailsContent"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

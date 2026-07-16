@@ -727,7 +727,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function formatDate(dateString) {
     if (!dateString) return '-';
     try {
-      const date = new Date(dateString);
+      const date = dateString instanceof Date ? dateString : new Date(dateString);
+      if (isNaN(date.getTime())) return String(dateString);
       const day = String(date.getDate()).padStart(2, '0');
       const month = date.toLocaleString('en-US', { month: 'short' });
       const year = date.getFullYear();
@@ -1284,56 +1285,53 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // Fixed column order + customer-facing labels. Keys match the explicit
+    // SELECT from GET /orders/:jobId/shipment-details.
+    const SHIPMENT_COLUMNS = [
+      { key: 'ContainerNumber', label: 'Container Number' },
+      { key: 'DestinationPort', label: 'Destination Port' },
+      { key: 'OriginDepartureActualDate', label: 'Original sailing date', isDate: true },
+      { key: 'DestinationArrivalOriginalPlannedDate', label: 'ETA', isDate: true },
+      { key: 'DestinationArrivalActualDate', label: 'Destination Arrival Actual', isDate: true },
+      { key: 'DestinationArrivalPlannedDate', label: 'Revised ETA', isDate: true },
+      { key: 'GateInDate', label: 'Gate In Date', isDate: true },
+      { key: 'DepartureDate', label: 'Departure Date', isDate: true },
+      { key: 'Link', label: 'Track', isLink: true },
+      { key: 'CreatedAt', label: 'Created At', isDate: true }
+    ];
+
+    const pickRowValue = (row, key) => {
+      if (!row || typeof row !== 'object') return null;
+      if (row[key] !== undefined && row[key] !== null) return row[key];
+      const lower = String(key).toLowerCase();
+      const match = Object.keys(row).find((k) => String(k).toLowerCase() === lower);
+      return match ? row[match] : null;
+    };
+
     if (!Array.isArray(rows) || rows.length === 0) {
       headerRow.innerHTML = '<th>Container Number</th>';
       const displayNo = containerNo ? escapeHtml(String(containerNo).trim()) : '—';
-      tbody.innerHTML = `<tr><td class="text-center">${displayNo}</td></tr>`;
+      tbody.innerHTML = `<tr><td data-label="Container Number" class="text-center">${displayNo}</td></tr>`;
     } else {
-      // Internal columns we don't want surfaced to customers. `Id` is the
-      // ShipmentETA primary key, `Status` is an internal integer flag whose
-      // codes aren't documented for end users — both add noise without
-      // telling them anything useful.
-      const HIDDEN_SHIPMENT_KEYS = new Set(['id', 'status']);
-      // Collect the union of non-null keys across all rows. Using the
-      // first row alone breaks when that row is a placeholder for a
-      // container without ShipmentETA data yet (it would hide every
-      // other column because the placeholder only has containernumber).
-      const orderedKeys = [];
-      const seenKeys = new Set();
-      rows.forEach((row) => {
-        Object.keys(row).forEach((k) => {
-          if (HIDDEN_SHIPMENT_KEYS.has(String(k).toLowerCase())) return;
-          if (seenKeys.has(k)) return;
-          const v = row[k];
-          if (v === undefined || v === null) return;
-          if (typeof v === 'object' && !(v instanceof Date)) return;
-          seenKeys.add(k);
-          orderedKeys.push(k);
-        });
-      });
-      // If every row was a placeholder (no real shipment data at all),
-      // still show the container number column so the modal isn't empty.
-      const keys = orderedKeys.length > 0
-        ? orderedKeys
-        : Object.keys(rows[0]).filter(k => !HIDDEN_SHIPMENT_KEYS.has(String(k).toLowerCase()));
-      const toLabel = (k) => {
-        if (k && String(k).toLowerCase() === 'link') return 'Track';
-        return k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
-      };
-      const isLinkKey = (k) => k && String(k).toLowerCase() === 'link';
       const isUrl = (v) => typeof v === 'string' && /^https?:\/\/\S+/i.test(v.trim());
-      headerRow.innerHTML = keys.map(k => `<th>${toLabel(k)}</th>`).join('');
-      tbody.innerHTML = rows.map(row => {
-        return `<tr>${keys.map(k => {
-          const v = row[k];
-          if (isLinkKey(k) && isUrl(v)) {
+      headerRow.innerHTML = SHIPMENT_COLUMNS.map((c) => `<th>${escapeHtml(c.label)}</th>`).join('');
+      tbody.innerHTML = rows.map((row) => {
+        return `<tr>${SHIPMENT_COLUMNS.map((col) => {
+          const v = pickRowValue(row, col.key);
+          const labelAttr = ` data-label="${escapeHtml(col.label)}"`;
+          if (col.isLink && isUrl(v)) {
             const url = String(v).trim();
             const safeUrl = escapeHtml(url);
-            return `<td><a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="d-inline-flex align-items-center gap-1 text-primary" title="Track"><i class="icon-base ti tabler-map-pin"></i> Track</a></td>`;
+            return `<td${labelAttr}><a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="d-inline-flex align-items-center gap-1 text-primary" title="Track"><i class="icon-base ti tabler-map-pin"></i> Track</a></td>`;
           }
-          const display = v === undefined || v === null ? '-' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
-          const formatted = (v instanceof Date || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v))) ? formatDate(v) : display;
-          return `<td>${escapeHtml(formatted)}</td>`;
+          if (v === undefined || v === null || v === '') {
+            return `<td${labelAttr}>-</td>`;
+          }
+          if (col.isDate || v instanceof Date) {
+            return `<td${labelAttr}>${escapeHtml(formatDate(v))}</td>`;
+          }
+          const display = typeof v === 'object' ? JSON.stringify(v) : String(v);
+          return `<td${labelAttr}>${escapeHtml(display)}</td>`;
         }).join('')}</tr>`;
       }).join('');
     }
