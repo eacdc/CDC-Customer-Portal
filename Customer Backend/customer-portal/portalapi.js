@@ -2016,6 +2016,8 @@ fastify.get("/dashboard", async (req, reply) => {
   // ContainerNo from portal_orders_list2 can be a single container OR a
   // pipe-separated list, and each entry may carry a trailing quantity
   // annotation: e.g. "HASU4793320 (135000) | TGBU5365049 (130260)".
+  // Some jobs also include placeholder tokens like "-" or "_" in the
+  // pipe list — those are stripped before the SQL lookup.
   // We split on '|', strip the "(qty)" suffix from each piece (so it
   // matches what dbo.ShipmentETA stores — the bare container code), and
   // return rows in the input order so the modal lists them the same way
@@ -2030,10 +2032,21 @@ fastify.get("/dashboard", async (req, reply) => {
         .replace(/\s*\([^)]*\)\s*$/, "")
         .trim();
 
+    // portal_orders_list2 sometimes emits placeholder segments like "-"
+    // or "_" in a multi-container string. Those are not real container
+    // numbers and must not be queried against ShipmentETA.
+    const isValidContainer = (c) => {
+      const s = String(c || "").trim();
+      if (!s) return false;
+      if (/^[-_—–.]+$/.test(s)) return false;
+      // Real ISO container codes are alphanumeric (e.g. MRSU2101280).
+      return /[A-Za-z0-9]{4,}/.test(s);
+    };
+
     const containers = String(containerNo || "")
       .split("|")
       .map(stripQty)
-      .filter(Boolean);
+      .filter(isValidContainer);
     // Dedupe while preserving the order they came in on the order card.
     const seenContainers = new Set();
     const uniqueContainers = [];
@@ -2057,6 +2070,57 @@ fastify.get("/dashboard", async (req, reply) => {
 
     const pool = source === "db2" ? db2() : db1();
 
+    // Pull a field from a SQL row case-insensitively so we don't depend
+    // on the exact casing the mssql driver returns for each column.
+    const pickCol = (row, ...names) => {
+      if (!row || typeof row !== "object") return null;
+      const lowerMap = {};
+      Object.keys(row).forEach((k) => {
+        lowerMap[String(k).toLowerCase()] = row[k];
+      });
+      for (const name of names) {
+        const v = lowerMap[String(name).toLowerCase()];
+        if (v !== undefined && v !== null && v !== "") return v;
+      }
+      // Still return null (vs undefined) so the key is present for placeholders.
+      for (const name of names) {
+        if (lowerMap[String(name).toLowerCase()] !== undefined) {
+          return lowerMap[String(name).toLowerCase()];
+        }
+      }
+      return null;
+    };
+
+    // Normalize any ShipmentETA row into the stable shape the modal expects.
+    // SELECT * is used below so missing/renamed optional columns never 500
+    // the endpoint; absent fields simply come back as null.
+    const normalizeShipmentRow = (row, fallbackContainerNo = null) => ({
+      ContainerNumber:
+        pickCol(row, "ContainerNumber", "containernumber") ||
+        fallbackContainerNo ||
+        null,
+      DestinationPort: pickCol(row, "DestinationPort"),
+      GateInDate: pickCol(row, "GateInDate"),
+      DepartureDate: pickCol(row, "DepartureDate"),
+      OriginDepartureActualDate: pickCol(row, "OriginDepartureActualDate"),
+      DestinationArrivalOriginalPlannedDate: pickCol(
+        row,
+        "DestinationArrivalOriginalPlannedDate"
+      ),
+      DestinationArrivalActualDate: pickCol(
+        row,
+        "DestinationArrivalActualDate"
+      ),
+      DestinationArrivalPlannedDate: pickCol(
+        row,
+        "DestinationArrivalPlannedDate"
+      ),
+      Link: pickCol(row, "Link", "TrackingLink"),
+      CreatedAt: pickCol(row, "CreatedAt"),
+    });
+
+    const blankTemplate = normalizeShipmentRow({});
+
     try {
       const r = (await pool).request();
       const placeholders = uniqueContainers
@@ -2065,6 +2129,8 @@ fastify.get("/dashboard", async (req, reply) => {
       uniqueContainers.forEach((c, i) =>
         r.input(`c${i}`, sql.NVarChar(100), c)
       );
+      // SELECT * — column availability varies across DBs / schema versions.
+      // We project the customer-facing fields in normalizeShipmentRow.
       const rs = await r.query(
         `SELECT * FROM dbo.ShipmentETA WHERE containernumber IN (${placeholders})`
       );
@@ -2074,35 +2140,12 @@ fastify.get("/dashboard", async (req, reply) => {
       const byContainer = new Map();
       rawRows.forEach((row) => {
         const cn = String(
-          row.containernumber || row.ContainerNumber || ""
+          pickCol(row, "ContainerNumber", "containernumber") || ""
         ).trim();
         if (!cn) return;
         if (!byContainer.has(cn)) byContainer.set(cn, []);
-        byContainer.get(cn).push(row);
+        byContainer.get(cn).push(normalizeShipmentRow(row, cn));
       });
-
-      // Template object so placeholder rows for containers without a
-      // ShipmentETA entry have the same column shape as real ones. Without
-      // this, the modal (which derives its header row from the first row
-      // it gets) could end up missing columns or, conversely, hiding the
-      // real shipment info when the placeholder happens to be first.
-      const blankTemplate = rawRows[0]
-        ? Object.fromEntries(
-            Object.keys(rawRows[0]).map((k) => [k, null])
-          )
-        : { containernumber: null };
-
-      // The mssql driver returns column names in whatever case the schema
-      // defines them as (e.g. "ContainerNumber"). When we add the
-      // container number to a placeholder we must reuse the exact same
-      // key as the real rows, otherwise the modal sees two different
-      // keys ("ContainerNumber" + "containernumber") and renders the
-      // column twice.
-      const containerKey = rawRows[0]
-        ? Object.keys(rawRows[0]).find(
-            (k) => k.toLowerCase() === "containernumber"
-          ) || "containernumber"
-        : "containernumber";
 
       // Emit one row per requested container, in input order. Containers
       // not yet present in ShipmentETA show up as a row with just the
@@ -2113,7 +2156,7 @@ fastify.get("/dashboard", async (req, reply) => {
         if (byContainer.has(cn)) {
           ordered.push(...byContainer.get(cn));
         } else {
-          ordered.push({ ...blankTemplate, [containerKey]: cn });
+          ordered.push({ ...blankTemplate, ContainerNumber: cn });
         }
       });
       return ordered;
