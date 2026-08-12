@@ -72,6 +72,7 @@ async function calculatePricing(input, requestStartTime = null) {
     const kraftGsmIn = Number(input.kraftGsmIn || 0);
     const windowIn = Number(input.windowIn || 0);
     const foilIn = Number(input.fooinIn || 0);
+    const embossIn = Number(input.embossIn || 0);
 
     const paperTypeBotOrOuter = String(input.matBot || '');
     const gsmBot = Number(input.gsmBot || 0);
@@ -83,6 +84,7 @@ async function calculatePricing(input, requestStartTime = null) {
     const kraftGsmBot = Number(input.kraftGsmBot || 0);
     const windowBot = Number(input.windowBot || 0);
     const foilBot = Number(input.fooinBot != null ? input.fooinBot : 0) || 0;
+    const embossBot = Number(input.embossBot != null ? input.embossBot : 0) || 0;
     const isTopBottom = productType === "Top Bottom";
 
     stepTime = Date.now();
@@ -132,7 +134,8 @@ async function calculatePricing(input, requestStartTime = null) {
       orderSz, boxPerOuter, lenOuter, brdOuter, heightOuter, frontColIn, backColIn,
       frontSurIn, backSurIn, kraftGsmIn, windowIn, foilIn, paperTypeBotOrOuter, gsmBot,
       frontColBot, frontSurBot, backColBot, backSurBot, corrLayBot, kraftGsmBot, windowBot, foilBot,
-      pricePerKGIn, kraftRateCustomer, kraftRateActual, pricePerKGOut, delCost, overhead
+      pricePerKGIn, kraftRateCustomer, kraftRateActual, pricePerKGOut, delCost, overhead,
+      embossIn, embossBot
     ];
 
     stepTime = Date.now();
@@ -290,8 +293,8 @@ async function calculatePricing(input, requestStartTime = null) {
     const printPerunitIn = printPerunit(frontSurIn, backSurIn, frontColIn, backColIn, qty, maxUps, masterTable[3][1], masterTable[0][43]);
     const surfacePerUnitIn = surfacePerUnit(bestBrd, bestLen, maxUps, frontSurIn, backSurIn, masterTable, 2);
     const kraftPerunitIn = kraftPerunit(bestBrd, bestLen, maxUps, corrLayerInn, kraftGsmIn, kraftRateCustomer);
-    const diceCostIn = diceCost(foilIn, masterTable[2][17], masterTable[1][17], qty);
-    const window_foil_Cost_In = window_foil_Cost(windowIn, foilIn, masterTable);
+    const diceCostIn = diceCost(foilIn, masterTable[2][17], masterTable[1][17], qty, embossIn);
+    const window_foil_emboss_Cost_In = window_foil_emboss_Cost(windowIn, foilIn, embossIn, masterTable);
     const punch_paste_In = punch_paste(
       maxUps,
       masterTable[5][1],
@@ -301,7 +304,8 @@ async function calculatePricing(input, requestStartTime = null) {
       masterTable[7][1],
       masterTable[6][1],
       masterTable,
-      kraftRateCustomer
+      kraftRateCustomer,
+      embossIn
     );
     const pack_del_In = pack_del(paperweightIn, kraftWeightIn, delCost, masterTable[8][1], qty);
     const Corr_conv_In = Corr_conv(kraftWeightIn, masterTable[12][1], qty);
@@ -322,8 +326,8 @@ async function calculatePricing(input, requestStartTime = null) {
     const varIn_print = Number(printPerunitActual(frontSurIn, backSurIn, frontColIn, backColIn, maxUps, masterTable[3][3]) || 0);
     const varIn_surface = Number(surfacePerUnit(bestBrd, bestLen, maxUps, frontSurIn, backSurIn, masterTable, 4) || 0);
     const varIn_kraft = Number(kraftPerunit(bestBrd, bestLen, maxUps, corrLayerInn, kraftGsmIn, kraftRateActual) || 0);
-    const varIn_dice = Number(diceCost(foilIn, masterTable[2][17], masterTable[1][17], qty) || 0);
-    const varIn_windowFoil = Number(window_foil_Cost(windowIn, foilIn, masterTable) || 0);
+    const varIn_dice = Number(diceCost(foilIn, masterTable[2][17], masterTable[1][17], qty, embossIn) || 0);
+    const varIn_windowFoilEmboss = Number(window_foil_emboss_Cost(windowIn, foilIn, embossIn, masterTable) || 0);
     const varIn_punchPaste = Number(
       punch_paste(
         maxUps,
@@ -334,7 +338,8 @@ async function calculatePricing(input, requestStartTime = null) {
         masterTable[7][3],
         masterTable[6][3],
         masterTable,
-        kraftRateActual
+        kraftRateActual,
+        embossIn
       ) || 0
     );
     const varIn_packDel = Number(pack_del(paperweightIn, kraftWeightIn, masterTable[13][3], masterTable[8][3], qty) || 0);
@@ -347,7 +352,7 @@ async function calculatePricing(input, requestStartTime = null) {
       varIn_surface +
       varIn_kraft +
       varIn_dice +
-      varIn_windowFoil +
+      varIn_windowFoilEmboss +
       varIn_punchPaste +
       varIn_packDel +
       varIn_corrConv;
@@ -360,7 +365,7 @@ async function calculatePricing(input, requestStartTime = null) {
       'Surface / unit (var basis)': varIn_surface,
       'Kraft / unit': varIn_kraft,
       'Dice / unit': varIn_dice,
-      'Window & Foil / unit': varIn_windowFoil,
+      'Window, Foil & Emboss / unit': varIn_windowFoilEmboss,
       'Punch & Paste / unit': varIn_punchPaste,
       'Pack & Del / unit': varIn_packDel,
       'Corr Conv / unit': varIn_corrConv,
@@ -381,7 +386,7 @@ async function calculatePricing(input, requestStartTime = null) {
       'Surface / unit': surfacePerUnitIn,
       'Kraft/Unit': kraftPerunitIn,
       'Dice Cost': diceCostIn,
-      'Window & Foil Cost/unit': window_foil_Cost_In,
+      'Window, Foil & Emboss Cost/unit': window_foil_emboss_Cost_In,
       'Punch & Paste Cost/unit': punch_paste_In,
       'Pack & Del Cost/unit': pack_del_In,
       'Corr Conv': Corr_conv_In,
@@ -393,7 +398,7 @@ async function calculatePricing(input, requestStartTime = null) {
     stepTime = Date.now();
     logStep('>>> Calculating final pricing for inner', stepTime, requestStartTime);
     const price_per_unit_In = (Number(paperPerUnitIn || 0) + Number(ctpPerUnitIn || 0) + Number(printPerunitIn || 0) + Number(surfacePerUnitIn || 0) +
-      Number(kraftPerunitIn || 0) + Number(diceCostIn || 0) + Number(window_foil_Cost_In || 0) + Number(punch_paste_In || 0) + Number(pack_del_In || 0) + Number(Corr_conv_In || 0)) * (1 + overhead);
+      Number(kraftPerunitIn || 0) + Number(diceCostIn || 0) + Number(window_foil_emboss_Cost_In || 0) + Number(punch_paste_In || 0) + Number(pack_del_In || 0) + Number(Corr_conv_In || 0)) * (1 + overhead);
     const varCostInNum = Number(varCostIn) || 0;
     const gpPerIn = varCostInNum > 0 ? (price_per_unit_In / varCostInNum) - 1 : 0;
     const gpPerImpIn = (price_per_unit_In - varCostInNum) * maxUps;
@@ -449,9 +454,11 @@ async function calculatePricing(input, requestStartTime = null) {
       kraftRateCustomer
     );
     const diceCostOut = isTopBottom
-      ? diceCost(foilBot, masterTable[2][17], masterTable[1][17], qty)
+      ? diceCost(foilBot, masterTable[2][17], masterTable[1][17], qty, embossBot)
       : diceCostIn;
-    const window_foil_Cost_Out = isTopBottom ? window_foil_Cost(windowBot, foilBot, masterTable) : 0;
+    const window_foil_emboss_Cost_Out = isTopBottom
+      ? window_foil_emboss_Cost(windowBot, foilBot, embossBot, masterTable)
+      : 0;
     const punch_paste_Out = punch_paste(
       maxUpsOuter,
       masterTable[5][1],
@@ -461,7 +468,8 @@ async function calculatePricing(input, requestStartTime = null) {
       masterTable[7][1],
       masterTable[6][1],
       masterTable,
-      kraftRateCustomer
+      kraftRateCustomer,
+      isTopBottom ? embossBot : 0
     );
     const pack_del_Out = pack_del(paperweightOut, kraftWeightOut, delCost, masterTable[8][1], qty / boxPerOuter);
     const Corr_conv_Out = Corr_conv(kraftWeightOut, masterTable[12][1], qty / boxPerOuter);
@@ -514,11 +522,13 @@ async function calculatePricing(input, requestStartTime = null) {
     );
     const varOut_dice = Number(
       (isTopBottom
-        ? diceCost(foilBot, masterTable[2][17], masterTable[1][17], qty)
-        : diceCost(0, masterTable[2][17], masterTable[1][17], qty)) || 0
+        ? diceCost(foilBot, masterTable[2][17], masterTable[1][17], qty, embossBot)
+        : diceCost(0, masterTable[2][17], masterTable[1][17], qty, 0)) || 0
     );
-    const varOut_windowFoil = Number(
-      (isTopBottom ? window_foil_Cost(windowBot, foilBot, masterTable) : window_foil_Cost(0, 0, masterTable)) || 0
+    const varOut_windowFoilEmboss = Number(
+      (isTopBottom
+        ? window_foil_emboss_Cost(windowBot, foilBot, embossBot, masterTable)
+        : window_foil_emboss_Cost(0, 0, 0, masterTable)) || 0
     );
     const varOut_punchPaste = Number(
       punch_paste(
@@ -530,7 +540,8 @@ async function calculatePricing(input, requestStartTime = null) {
         masterTable[7][3],
         masterTable[6][3],
         masterTable,
-        kraftRateActual
+        kraftRateActual,
+        isTopBottom ? embossBot : 0
       ) || 0
     );
     const varOut_packDel = Number(pack_del(paperweightOut, kraftWeightOut, masterTable[13][3], masterTable[8][3], qty) || 0);
@@ -542,7 +553,7 @@ async function calculatePricing(input, requestStartTime = null) {
       varOut_surface +
       varOut_kraft +
       varOut_dice +
-      varOut_windowFoil +
+      varOut_windowFoilEmboss +
       varOut_punchPaste +
       varOut_packDel +
       varOut_corrConv;
@@ -555,7 +566,7 @@ async function calculatePricing(input, requestStartTime = null) {
       'Surface / unit (var basis)': varOut_surface,
       'Kraft / unit': varOut_kraft,
       'Dice / unit': varOut_dice,
-      'Window & Foil / unit': varOut_windowFoil,
+      'Window, Foil & Emboss / unit': varOut_windowFoilEmboss,
       'Punch & Paste / unit': varOut_punchPaste,
       'Pack & Del / unit': varOut_packDel,
       'Corr Conv / unit': varOut_corrConv,
@@ -576,7 +587,7 @@ async function calculatePricing(input, requestStartTime = null) {
       'Surface / unit': surfacePerUnitOut,
       'Kraft/Unit': kraftPerunitOut,
       'Dice Cost': diceCostOut,
-      'Window & Foil Cost/unit': window_foil_Cost_Out,
+      'Window, Foil & Emboss Cost/unit': window_foil_emboss_Cost_Out,
       'Punch & Paste Cost/unit': punch_paste_Out,
       'Pack & Del Cost/unit': pack_del_Out,
       'Corr Conv': Corr_conv_Out,
@@ -586,7 +597,7 @@ async function calculatePricing(input, requestStartTime = null) {
     stepTime = Date.now();
     logStep('>>> Calculating final pricing for outer', stepTime, requestStartTime);
     const price_per_unit_Out = (Number(paperPerUnitOut || 0) + Number(ctpPerUnitOut || 0) + Number(printPerunitOut || 0) + Number(surfacePerUnitOut || 0) +
-      Number(kraftPerunitOut || 0) + Number(diceCostOut || 0) + Number(window_foil_Cost_Out || 0) + Number(punch_paste_Out || 0) + Number(pack_del_Out || 0) + Number(Corr_conv_Out || 0)) * (1 + overhead);
+      Number(kraftPerunitOut || 0) + Number(diceCostOut || 0) + Number(window_foil_emboss_Cost_Out || 0) + Number(punch_paste_Out || 0) + Number(pack_del_Out || 0) + Number(Corr_conv_Out || 0)) * (1 + overhead);
     const varCostOutNum = Number(varCostOut) || 0;
     const gpPerOut = varCostOutNum > 0 ? (price_per_unit_Out / varCostOutNum) - 1 : 0;
     const gpPerImpOut = (price_per_unit_Out - varCostOutNum) * maxUpsOuter;
@@ -613,10 +624,10 @@ async function calculatePricing(input, requestStartTime = null) {
     const final_output_data = [flatten([
       formattedDate, inputData, calculateTable1,
       [wasteIn, paperweightIn, kraftWeightIn, paperPerUnitIn, ctpPerUnitIn, printPerunitIn,
-        surfacePerUnitIn, kraftPerunitIn, diceCostIn, window_foil_Cost_In, punch_paste_In,
+        surfacePerUnitIn, kraftPerunitIn, diceCostIn, window_foil_emboss_Cost_In, punch_paste_In,
         pack_del_In, Corr_conv_In],
       [wasteOut, paperweightOut, kraftWeightOut, paperPerUnitOut, ctpPerUnitOut, printPerunitOut,
-        surfacePerUnitOut, kraftPerunitOut, diceCostOut, window_foil_Cost_Out, punch_paste_Out,
+        surfacePerUnitOut, kraftPerunitOut, diceCostOut, window_foil_emboss_Cost_Out, punch_paste_Out,
         pack_del_Out, Corr_conv_Out],
       [varCostIn, gpPerIn, gpPerImpIn, varCostOut, gpPerOut, gpPerImpOut],
       [price_per_unit_In, (productType === "Top Bottom" ? price_per_unit_Out : 0)]
@@ -649,7 +660,9 @@ async function calculatePricing(input, requestStartTime = null) {
         surfacePerUnit: surfacePerUnitIn,
         kraftPerunit: kraftPerunitIn,
         diceCost: diceCostIn,
-        window_foil_Cost: window_foil_Cost_In,
+        window_foil_emboss_Cost: window_foil_emboss_Cost_In,
+        // Deprecated alias kept for existing consumers; same value as window_foil_emboss_Cost.
+        window_foil_Cost: window_foil_emboss_Cost_In,
         punch_paste: punch_paste_In,
         pack_del: pack_del_In,
         Corr_conv: Corr_conv_In
@@ -664,7 +677,9 @@ async function calculatePricing(input, requestStartTime = null) {
         surfacePerUnit: surfacePerUnitOut,
         kraftPerunit: kraftPerunitOut,
         diceCost: diceCostOut,
-        window_foil_Cost: window_foil_Cost_Out,
+        window_foil_emboss_Cost: window_foil_emboss_Cost_Out,
+        // Deprecated alias kept for existing consumers; same value as window_foil_emboss_Cost.
+        window_foil_Cost: window_foil_emboss_Cost_Out,
         punch_paste: punch_paste_Out,
         pack_del: pack_del_Out,
         Corr_conv: Corr_conv_Out
@@ -693,6 +708,8 @@ async function calculatePricing(input, requestStartTime = null) {
       },
       metadata: {
         foilIn: foilIn,
+        embossIn: embossIn,
+        embossBot: embossBot,
         windowIn: windowIn,
         kraft_rate_customer: kraftRateCustomer,
         kraft_rate_actual: kraftRateActual
@@ -1089,10 +1106,16 @@ function kraftPerunit(bestBrd, bestLen, ups, corrLayer, kraftGsm, kraftRate) {
   return isNaN(kpu) ? 0 : kpu;
 }
 
-function diceCost(foil, dc1, dc2, qty) {
+/**
+ * Dice / block cost per unit. Selecting foil OR emboss swaps in the higher
+ * "process selected" block rate (dc2); selecting both is the same as one.
+ */
+function diceCost(foil, dc1, dc2, qty, emboss) {
   const qtyNum = Number(qty) || 1;
   if (qtyNum === 0) return 0;
-  if (foil === "" || foil === 0 || !foil) {
+  const hasFoil = !(foil === "" || foil === 0 || !foil);
+  const hasEmboss = !(emboss === "" || emboss === 0 || !emboss);
+  if (!hasFoil && !hasEmboss) {
     const dCost = Number(dc1) / qtyNum;
     return isNaN(dCost) ? 0 : dCost;
   } else {
@@ -1101,18 +1124,21 @@ function diceCost(foil, dc1, dc2, qty) {
   }
 }
 
-function window_foil_Cost(window, foil, lookupArray) {
+function window_foil_emboss_Cost(window, foil, emboss, lookupArray) {
   // Excel parity:
   // =IF(B15="","", XLOOKUP(H8,Master!$AE$2:$AE$7,Master!$AF$2:$AF$7,"")+XLOOKUP(J8,Master!$AB$2:$AB$7,Master!$AC$2:$AC$7,""))
+  // Emboss is rated off the SAME master columns as foil (AB->AC), per spec.
   if (window === "" || window === null || window === undefined) {
     return 0;
   }
 
   const windowLookup = XLOOKUP(window, lookupArray, 31, 32, "", 0);
   const foilLookup = XLOOKUP(foil, lookupArray, 28, 29, "", 0);
+  const embossLookup = XLOOKUP(emboss, lookupArray, 28, 29, "", 0);
   const windowCost = Number(windowLookup) || 0;
   const foilCost = Number(foilLookup) || 0;
-  const total = windowCost + foilCost;
+  const embossCost = Number(embossLookup) || 0;
+  const total = windowCost + foilCost + embossCost;
   return isNaN(total) ? 0 : total;
 }
 
@@ -1152,10 +1178,13 @@ function deliveryRateFromMaster(masterTable) {
   return !isNaN(n) && isFinite(n) && n >= 0 ? n : 2;
 }
 
-function punch_paste(ups, punch, kraftGsm, bestBrd, bestLen, paste1, paste2, masterTable, kraftRateForPaste) {
+function punch_paste(ups, punch, kraftGsm, bestBrd, bestLen, paste1, paste2, masterTable, kraftRateForPaste, emboss) {
   const upsNum = Number(ups) || 1;
   if (upsNum === 0) return 0;
-  const punchNum = Number(punch) || 0;
+  // Embossing needs a second pass through the punching operation, so the
+  // punch rate doubles when emboss is selected (foil alone does not).
+  const hasEmboss = !(emboss === "" || emboss === 0 || !emboss);
+  const punchNum = (Number(punch) || 0) * (hasEmboss ? 2 : 1);
   const kraftGsmNum = Number(kraftGsm) || 0;
   const bestLenNum = Number(bestLen) || 0;
   const bestBrdNum = Number(bestBrd) || 0;

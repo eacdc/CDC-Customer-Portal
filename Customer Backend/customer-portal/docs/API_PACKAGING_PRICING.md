@@ -52,6 +52,7 @@ This document describes how to call the **Packaging Pricing** API (packaging box
   "kraftGsmIn": 0,
   "windowIn": 0,
   "fooinIn": 0,
+  "embossIn": 0,
   "matBot": "FBB",
   "gsmBot": 300,
   "frontColBot": 4,
@@ -78,6 +79,8 @@ This document describes how to call the **Packaging Pricing** API (packaging box
 | `kraftGsmIn`   | number | No       | Kraft GSM when corrugation is used. Default: `0`. |
 | `windowIn`     | number | No       | Window patching sq in: `0`, `4`, `8`, `12`, `20`, `40`. Default: `0`. |
 | `fooinIn`      | number | No       | Foil stamping sq in: `0`, `4`, `15`, `25`, `50`, `75`. Default: `0`. |
+| `embossIn`     | number | No       | Embossing sq in: `0`, `4`, `15`, `25`, `50`, `75`. Default: `0`. Rated off the same master columns as foil. |
+| `embossBot`    | number | No       | Embossing sq in for the Top-Bottom bottom tray. Default: `0`. |
 | `matBot`       | string | No       | Paper type for bottom (Top-Bottom Box) or outer box. Default: `""`. |
 | `gsmBot`       | number | No       | GSM for bottom/outer. Default: `0`. |
 | `frontColBot`  | number | No       | Front print color count for bottom/outer. Default: `0`. |
@@ -111,6 +114,7 @@ This document describes how to call the **Packaging Pricing** API (packaging box
       "surfacePerUnit": 0.012,
       "kraftPerunit": 0,
       "diceCost": 0.001,
+      "window_foil_emboss_Cost": 0,
       "window_foil_Cost": 0,
       "punch_paste": 0.002,
       "pack_del": 0.005,
@@ -126,6 +130,7 @@ This document describes how to call the **Packaging Pricing** API (packaging box
       "surfacePerUnit": 0.001,
       "kraftPerunit": 0,
       "diceCost": 0.001,
+      "window_foil_emboss_Cost": 0,
       "window_foil_Cost": 0,
       "punch_paste": 0.0002,
       "pack_del": 0.0005,

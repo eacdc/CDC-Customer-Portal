@@ -73,6 +73,7 @@ Authorization: Bearer YOUR_JWT_TOKEN_HERE
   "kraftGsmIn": 0,
   "windowIn": 0,
   "fooinIn": 4,
+  "embossIn": 0,
   "matBot": "FBB",
   "gsmBot": 300,
   "frontColBot": 4,
@@ -104,6 +105,8 @@ Authorization: Bearer YOUR_JWT_TOKEN_HERE
 | `kraftGsmIn` | number | Kraft GSM inner | `0` |
 | `windowIn` | number | Window inner | `0` |
 | `fooinIn` | number | Foil inner | `0` |
+| `embossIn` | number | Emboss inner | `0` |
+| `embossBot` | number | Emboss bottom (Top Bottom only) | `0` |
 | `matBot` | string | Material type (bottom/outer) | `""` |
 | `gsmBot` | number | GSM for bottom/outer | `0` |
 | `frontColBot` | number | Front color bottom | `0` |
@@ -126,6 +129,7 @@ Authorization: Bearer YOUR_JWT_TOKEN_HERE
       "surfacePerUnit": 0.012,
       "kraftPerunit": 0,
       "diceCost": 0.001,
+      "window_foil_emboss_Cost": 0,
       "window_foil_Cost": 0,
       "punch_paste": 0.002,
       "pack_del": 0.005,
@@ -141,6 +145,7 @@ Authorization: Bearer YOUR_JWT_TOKEN_HERE
       "surfacePerUnit": 0.001,
       "kraftPerunit": 0,
       "diceCost": 0.001,
+      "window_foil_emboss_Cost": 0,
       "window_foil_Cost": 0,
       "punch_paste": 0.0002,
       "pack_del": 0.0005,
