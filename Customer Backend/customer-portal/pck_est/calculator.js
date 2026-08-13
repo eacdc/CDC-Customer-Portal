@@ -304,8 +304,7 @@ async function calculatePricing(input, requestStartTime = null) {
       masterTable[7][1],
       masterTable[6][1],
       masterTable,
-      kraftRateCustomer,
-      embossIn
+      kraftRateCustomer
     );
     const pack_del_In = pack_del(paperweightIn, kraftWeightIn, delCost, masterTable[8][1], qty);
     const Corr_conv_In = Corr_conv(kraftWeightIn, masterTable[12][1], qty);
@@ -338,8 +337,7 @@ async function calculatePricing(input, requestStartTime = null) {
         masterTable[7][3],
         masterTable[6][3],
         masterTable,
-        kraftRateActual,
-        embossIn
+        kraftRateActual
       ) || 0
     );
     const varIn_packDel = Number(pack_del(paperweightIn, kraftWeightIn, masterTable[13][3], masterTable[8][3], qty) || 0);
@@ -468,8 +466,7 @@ async function calculatePricing(input, requestStartTime = null) {
       masterTable[7][1],
       masterTable[6][1],
       masterTable,
-      kraftRateCustomer,
-      isTopBottom ? embossBot : 0
+      kraftRateCustomer
     );
     const pack_del_Out = pack_del(paperweightOut, kraftWeightOut, delCost, masterTable[8][1], qty / boxPerOuter);
     const Corr_conv_Out = Corr_conv(kraftWeightOut, masterTable[12][1], qty / boxPerOuter);
@@ -540,8 +537,7 @@ async function calculatePricing(input, requestStartTime = null) {
         masterTable[7][3],
         masterTable[6][3],
         masterTable,
-        kraftRateActual,
-        isTopBottom ? embossBot : 0
+        kraftRateActual
       ) || 0
     );
     const varOut_packDel = Number(pack_del(paperweightOut, kraftWeightOut, masterTable[13][3], masterTable[8][3], qty) || 0);
@@ -1178,13 +1174,10 @@ function deliveryRateFromMaster(masterTable) {
   return !isNaN(n) && isFinite(n) && n >= 0 ? n : 2;
 }
 
-function punch_paste(ups, punch, kraftGsm, bestBrd, bestLen, paste1, paste2, masterTable, kraftRateForPaste, emboss) {
+function punch_paste(ups, punch, kraftGsm, bestBrd, bestLen, paste1, paste2, masterTable, kraftRateForPaste) {
   const upsNum = Number(ups) || 1;
   if (upsNum === 0) return 0;
-  // Embossing needs a second pass through the punching operation, so the
-  // punch rate doubles when emboss is selected (foil alone does not).
-  const hasEmboss = !(emboss === "" || emboss === 0 || !emboss);
-  const punchNum = (Number(punch) || 0) * (hasEmboss ? 2 : 1);
+  const punchNum = Number(punch) || 0;
   const kraftGsmNum = Number(kraftGsm) || 0;
   const bestLenNum = Number(bestLen) || 0;
   const bestBrdNum = Number(bestBrd) || 0;
