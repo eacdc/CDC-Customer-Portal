@@ -340,8 +340,10 @@ async function calculatePricing(input, requestStartTime = null) {
         kraftRateActual
       ) || 0
     );
-    const varIn_packDel = Number(pack_del(paperweightIn, kraftWeightIn, masterTable[13][3], masterTable[8][3], qty) || 0);
-    console.log('varIn_packDel', [paperweightIn, kraftWeightIn, masterTable[13][3], masterTable[8][3], qty]);
+    // Delivery is a user-entered order-level charge, so the variable-cost basis
+    // uses the same delCost as the quote basis; only the packing rate differs.
+    const varIn_packDel = Number(pack_del(paperweightIn, kraftWeightIn, delCost, masterTable[8][3], qty) || 0);
+    console.log('varIn_packDel', [paperweightIn, kraftWeightIn, delCost, masterTable[8][3], qty]);
     const varIn_corrConv = Number(Corr_conv(kraftWeightIn, masterTable[12][3], qty) || 0);
     const varCostIn =
       varIn_paper +
@@ -540,7 +542,7 @@ async function calculatePricing(input, requestStartTime = null) {
         kraftRateActual
       ) || 0
     );
-    const varOut_packDel = Number(pack_del(paperweightOut, kraftWeightOut, masterTable[13][3], masterTable[8][3], qty) || 0);
+    const varOut_packDel = Number(pack_del(paperweightOut, kraftWeightOut, delCost, masterTable[8][3], qty) || 0);
     const varOut_corrConv = Number(Corr_conv(kraftWeightOut, masterTable[12][3], qty) || 0);
     const varCostOut =
       varOut_paper +
