@@ -104,11 +104,18 @@ async function calculatePricing(input, requestStartTime = null) {
     const manualPriceIn = parsePositiveOverride(input.manual_price_per_kg_in);
     const manualPriceOut = parsePositiveOverride(input.manual_price_per_kg_out);
     const manualKraftRate = parsePositiveOverride(input.manual_kraft_rate_per_kg);
+    // A manually entered rate replaces the master lookup on BOTH bases, the
+    // way the manual kraft rate already does: it is the price actually being
+    // paid for this job, so the variable cost has to use it too, otherwise
+    // the override moves the quote while var cost keeps the master rate and
+    // GP is computed against a price nobody is paying.
     if (manualPriceIn != null) {
       pricePerKGIn = manualPriceIn;
+      pricePerKGInActual = manualPriceIn;
     }
     if (manualPriceOut != null) {
       pricePerKGOut = manualPriceOut;
+      pricePerKGOutActual = manualPriceOut;
     }
     if (manualKraftRate != null) {
       kraftRateCustomer = manualKraftRate;
