@@ -33,6 +33,35 @@ function flexNumericQuery(value) {
   return { $in: [...variants] };
 }
 
+/**
+ * Per-quantity rows of a multiple-quantity quote. One quotation covers several
+ * order quantities of the same spec, and each row carries its own inputs,
+ * product summary and price so the saved doc can be redrawn without
+ * recalculating. Absent or empty for an ordinary single-quantity quote.
+ */
+function normalizeQuantityVariants(raw) {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const qty = parseOptionalNumber(entry.qty);
+    if (qty == null || !(qty > 0)) continue;
+    if (seen.has(qty)) continue;
+    seen.add(qty);
+    out.push({
+      qty,
+      inputs: entry.inputs && typeof entry.inputs === "object" ? entry.inputs : {},
+      product: entry.product && typeof entry.product === "object" ? entry.product : {},
+      components: Array.isArray(entry.components) ? entry.components : [],
+      price_per_unit: parseOptionalNumber(entry.price_per_unit),
+      price_per_unit_foreign: parseOptionalNumber(entry.price_per_unit_foreign),
+      currency: entry.currency != null ? String(entry.currency) : null
+    });
+  }
+  return out;
+}
+
 /** Demo login may differ in casing from legacy saved docs — match case-insensitively. */
 function usernameFilter(usernameRaw) {
   const u = String(usernameRaw || "").trim();
@@ -104,6 +133,7 @@ export default async function quoteSavesPlugin(fastify) {
         body.price_per_unit_foreign != null ? Number(body.price_per_unit_foreign) : null,
       exchange_rate_inr_per_fc:
         body.exchange_rate_inr_per_fc != null ? Number(body.exchange_rate_inr_per_fc) : null,
+      quantity_variants: normalizeQuantityVariants(body.quantity_variants),
       estimation_number: estimation.estimation_number,
       estimation_seq: estimation.estimation_seq,
       estimation_fiscal_year: estimation.estimation_fiscal_year
@@ -158,6 +188,7 @@ export default async function quoteSavesPlugin(fastify) {
         body.price_per_unit_foreign != null ? Number(body.price_per_unit_foreign) : null,
       exchange_rate_inr_per_fc:
         body.exchange_rate_inr_per_fc != null ? Number(body.exchange_rate_inr_per_fc) : null,
+      quantity_variants: normalizeQuantityVariants(body.quantity_variants),
       estimation_number: estimation.estimation_number,
       estimation_seq: estimation.estimation_seq,
       estimation_fiscal_year: estimation.estimation_fiscal_year
@@ -216,6 +247,7 @@ export default async function quoteSavesPlugin(fastify) {
         body.price_per_unit_foreign != null ? Number(body.price_per_unit_foreign) : null,
       exchange_rate_inr_per_fc:
         body.exchange_rate_inr_per_fc != null ? Number(body.exchange_rate_inr_per_fc) : null,
+      quantity_variants: normalizeQuantityVariants(body.quantity_variants),
       updatedAt
     };
     if (!existing.createdAt) {
@@ -268,6 +300,7 @@ export default async function quoteSavesPlugin(fastify) {
         body.price_per_unit_foreign != null ? Number(body.price_per_unit_foreign) : null,
       exchange_rate_inr_per_fc:
         body.exchange_rate_inr_per_fc != null ? Number(body.exchange_rate_inr_per_fc) : null,
+      quantity_variants: normalizeQuantityVariants(body.quantity_variants),
       updatedAt
     };
     if (!existing.createdAt) {
@@ -318,11 +351,15 @@ export default async function quoteSavesPlugin(fastify) {
     if (qty != null) {
       const qFlex = flexNumericQuery(qty);
       if (qFlex) {
-        if (segment === "packaging") {
-          filter["inputs.qty"] = qFlex;
-        } else {
-          filter["inputs.Qty"] = qFlex;
-        }
+        // A multiple-quantity quote stores only its first quantity in `inputs`;
+        // the rest live in quantity_variants, so both have to be searched or
+        // the quote is invisible when looked up by its second slab.
+        const primaryField = segment === "packaging" ? "inputs.qty" : "inputs.Qty";
+        const qtyClause = {
+          $or: [{ [primaryField]: qFlex }, { "quantity_variants.qty": qFlex }]
+        };
+        // Merged under $and: the database clause may already own the top-level $or.
+        filter.$and = (filter.$and || []).concat([qtyClause]);
       }
     }
 
@@ -364,6 +401,7 @@ export default async function quoteSavesPlugin(fastify) {
         segment: 1,
         inputs: 1,
         product: 1,
+        quantity_variants: 1,
         estimation_number: 1,
         estimation_seq: 1,
         estimation_fiscal_year: 1
@@ -394,7 +432,8 @@ export default async function quoteSavesPlugin(fastify) {
       estimation_number:
         doc.estimation_number != null ? String(doc.estimation_number) : "",
       inputs: doc.inputs || {},
-      product: doc.product || {}
+      product: doc.product || {},
+      quantity_variants: Array.isArray(doc.quantity_variants) ? doc.quantity_variants : []
     }));
 
     return reply.send({
