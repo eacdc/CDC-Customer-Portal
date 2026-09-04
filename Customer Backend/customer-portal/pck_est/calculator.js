@@ -134,6 +134,22 @@ async function calculatePricing(input, requestStartTime = null) {
         ? Number(overheadRaw)
         : 0.1;
     const overhead = !isNaN(overheadParsed) && overheadParsed >= 0 ? overheadParsed : 0.1;
+    // Order-level additional cost: a lump sum in rupees for the whole job (tooling,
+    // a bought-out item, a one-off charge). It is a pass-through, so it is spread
+    // over the order quantity and added to BOTH the quote basis and the variable
+    // cost at the same value, and no profit % is applied to it. GP in rupees is
+    // therefore unchanged by it; only GP% dilutes, which is the honest treatment.
+    const additionalCostRaw = input.additional_cost;
+    const additionalCostParsed =
+      additionalCostRaw !== undefined && additionalCostRaw !== null && String(additionalCostRaw).trim() !== ''
+        ? Number(additionalCostRaw)
+        : 0;
+    const additionalCost =
+      !isNaN(additionalCostParsed) && isFinite(additionalCostParsed) && additionalCostParsed > 0
+        ? additionalCostParsed
+        : 0;
+    const additionalCostRemark = String(input.additional_cost_remark || '').trim();
+    const additionalCostPerUnit = qty > 0 ? additionalCost / qty : 0;
     stepTime = logStep('>>> Paper price lookup completed', stepTime, requestStartTime);
 
     const inputData = [
@@ -362,7 +378,8 @@ async function calculatePricing(input, requestStartTime = null) {
       varIn_windowFoilEmboss +
       varIn_punchPaste +
       varIn_packDel +
-      varIn_corrConv;
+      varIn_corrConv +
+      additionalCostPerUnit;
     stepTime = logStep('>>> Variable costs for inner calculated', stepTime, requestStartTime);
 
     console.log('[pck-est] varCostIn components', {
@@ -376,6 +393,7 @@ async function calculatePricing(input, requestStartTime = null) {
       'Punch & Paste / unit': varIn_punchPaste,
       'Pack & Del / unit': varIn_packDel,
       'Corr Conv / unit': varIn_corrConv,
+      'Additional cost / unit': additionalCostPerUnit,
       'Var Cost (sum)': varCostIn
     });
 
@@ -405,7 +423,8 @@ async function calculatePricing(input, requestStartTime = null) {
     stepTime = Date.now();
     logStep('>>> Calculating final pricing for inner', stepTime, requestStartTime);
     const price_per_unit_In = (Number(paperPerUnitIn || 0) + Number(ctpPerUnitIn || 0) + Number(printPerunitIn || 0) + Number(surfacePerUnitIn || 0) +
-      Number(kraftPerunitIn || 0) + Number(diceCostIn || 0) + Number(window_foil_emboss_Cost_In || 0) + Number(punch_paste_In || 0) + Number(pack_del_In || 0) + Number(Corr_conv_In || 0)) * (1 + overhead);
+      Number(kraftPerunitIn || 0) + Number(diceCostIn || 0) + Number(window_foil_emboss_Cost_In || 0) + Number(punch_paste_In || 0) + Number(pack_del_In || 0) + Number(Corr_conv_In || 0)) * (1 + overhead)
+      + additionalCostPerUnit;
     const varCostInNum = Number(varCostIn) || 0;
     const gpPerIn = varCostInNum > 0 ? (price_per_unit_In / varCostInNum) - 1 : 0;
     const gpPerImpIn = (price_per_unit_In - varCostInNum) * maxUps;
@@ -709,7 +728,12 @@ async function calculatePricing(input, requestStartTime = null) {
         gp_percent_in: gpPercentIn,
         gp_percent_out: productType === "Top Bottom" ? gpPercentOut : null,
         gp_percent_combined: gpPercentCombined,
-        gp_per_imp_combined: gpPerImpCombined
+        gp_per_imp_combined: gpPerImpCombined,
+        // Order-level lump sum, and the per-piece share of it that is already
+        // included in price_per_unit_In / varCostIn above (inner only, so a
+        // Top Bottom combined figure counts it exactly once).
+        additional_cost: additionalCost,
+        additional_cost_per_unit: additionalCostPerUnit
       },
       metadata: {
         foilIn: foilIn,
@@ -734,7 +758,9 @@ async function calculatePricing(input, requestStartTime = null) {
         generic_sheet_ups: genericSheetUpsOverride,
         manual_price_per_kg_in: manualPriceIn,
         manual_price_per_kg_out: manualPriceOut,
-        manual_kraft_rate_per_kg: manualKraftRate
+        manual_kraft_rate_per_kg: manualKraftRate,
+        additional_cost: additionalCost,
+        additional_cost_remark: additionalCostRemark
       }
     };
     stepTime = logStep('>>> Response object built', stepTime, requestStartTime);

@@ -55,7 +55,11 @@ function parseCommercialOverheadPercentInput(raw) {
 }
 
 /**
- * GP% = (1 - (varCostActual + packing) / total) × 100 with total = baseCust×(1+r)+packing+shipping+addl.
+ * GP% = (1 - (varCostActual + packing + additionalCost) / total) × 100 with
+ * total = baseCust×(1+r)+packing+shipping+addl+additionalCost.
+ * The order-level additional cost is a pass-through: it is added to the customer
+ * total and to the actual variable cost at the same value, so it appears on both
+ * sides here and the solver has to net it out of the margin part too.
  * Solve for r given target GP when mode is auto; manual uses fixed r from overhead_percent.
  */
 function resolveCommercialOverheadPercent(ctx) {
@@ -67,7 +71,8 @@ function resolveCommercialOverheadPercent(ctx) {
     bindcost,
     packing,
     shipping_fob,
-    addlOrderCosts
+    addlOrderCosts,
+    additionalCost
   } = ctx;
 
   const manual = parseCommercialOverheadPercentInput(quoteinfo.overhead_percent);
@@ -95,9 +100,9 @@ function resolveCommercialOverheadPercent(ctx) {
     };
   }
 
-  const A = varCostActual + packing;
+  const A = varCostActual + packing + additionalCost;
   const requiredTotal = A / denom;
-  const marginPart = requiredTotal - packing - shipping_fob - addlOrderCosts;
+  const marginPart = requiredTotal - packing - shipping_fob - addlOrderCosts - additionalCost;
 
   if (baseCust <= 0 || !isFinite(marginPart)) {
     return {
@@ -640,6 +645,18 @@ async function calCulate(quoteinfo, requestStartTime = null) {
     const addlBindLabourCost = Number(quoteinfo.addl_binding_labour_cost) || 0;
     const diceBlockCost = Number(quoteinfo.dice_block_cost) || 0;
     const addlOrderCosts = addlBindMatCost + addlBindLabourCost + diceBlockCost;
+    // Order-level additional cost: unlike the addl binding / dice lines above, which
+    // only load the customer total, this one is added to the actual variable cost as
+    // well, at the same value and with no profit % on it. It is a real cost being
+    // passed straight through, so GP in rupees is unchanged and only GP% dilutes.
+    const additionalCostRaw = quoteinfo.additional_cost;
+    const additionalCostParsed = Number(additionalCostRaw);
+    const additionalCost =
+      additionalCostRaw !== undefined && additionalCostRaw !== null && String(additionalCostRaw).trim() !== '' &&
+      !isNaN(additionalCostParsed) && isFinite(additionalCostParsed) && additionalCostParsed > 0
+        ? additionalCostParsed
+        : 0;
+    const additionalCostRemark = String(quoteinfo.additional_cost_remark || '').trim();
 
     const overheadResolved = resolveCommercialOverheadPercent({
       quoteinfo,
@@ -649,15 +666,16 @@ async function calCulate(quoteinfo, requestStartTime = null) {
       bindcost,
       packing,
       shipping_fob,
-      addlOrderCosts
+      addlOrderCosts,
+      additionalCost
     });
     const overheadPercent3 = overheadResolved.rate;
     const overheads = overheadPercent3 * baseCust;
     const overheadsActual = overheadPercent3 * (componentsActualSubtotal + bindcost[1]);
     const varCost = baseCust + overheads;
     const varCostActual = componentsActualSubtotal + bindcost[1];
-    const totalVarCustomer = varCost + packing + shipping_fob;
-    const totalVar = varCostActual + packing + shipping_fob;
+    const totalVarCustomer = varCost + packing + shipping_fob + additionalCost;
+    const totalVar = varCostActual + packing + shipping_fob + additionalCost;
 
     const total = totalVarCustomer + addlOrderCosts;
 
@@ -673,7 +691,7 @@ async function calCulate(quoteinfo, requestStartTime = null) {
           ? Math.round((price_per_unit / fxInrPerFc) * 100) / 100
           : null;
     /** Total VAR for GP (matches UI): actual variable cost + packing; excludes shipping. */
-    const totalVarForGp = varCostActual + packing;
+    const totalVarForGp = varCostActual + packing + additionalCost;
     const gpPercent =
       total > 0 && isFinite(total) && isFinite(totalVarForGp)
         ? (1 - totalVarForGp / total) * 100
@@ -693,6 +711,7 @@ async function calCulate(quoteinfo, requestStartTime = null) {
       var_cost_actual: varCostActual,
       packing,
       shipping_fob,
+      additional_cost: additionalCost,
       total_var: totalVar,
       total_var_customer: totalVarCustomer,
       total,
@@ -706,6 +725,8 @@ async function calCulate(quoteinfo, requestStartTime = null) {
       addl_binding_labour_description: String(quoteinfo.addl_binding_labour_description || '').trim(),
       addl_binding_labour_cost: addlBindLabourCost,
       dice_block_cost: diceBlockCost,
+      additional_cost: additionalCost,
+      additional_cost_remark: additionalCostRemark,
       cif_fob_per_kg: !isNaN(cifFobPerKg) && cifFobPerKg >= 0 ? cifFobPerKg : null,
       packing_applied: packing,
       packing_lookup: packingLookup,
@@ -722,6 +743,7 @@ async function calCulate(quoteinfo, requestStartTime = null) {
         components_plus_binding: varCostActual,
         packing,
         shipping_fob,
+        additional_cost: additionalCost,
         total_var: totalVar,
         per_unit_components_binding: varCostActual / (Qty / noOfTitles),
         per_unit_with_logistics: totalVar / (Qty / noOfTitles)
@@ -750,6 +772,7 @@ async function calCulate(quoteinfo, requestStartTime = null) {
       var_cost_actual: varCostActual,
       packing,
       shipping_fob,
+      additional_cost: additionalCost,
       total_var: totalVar,
       total_var_customer: totalVarCustomer,
       total,
