@@ -23,6 +23,21 @@ function parseOptionalNumber(value) {
   return isNaN(n) ? null : n;
 }
 
+/**
+ * Quotation numbers read as 516/CDC/2627. Each run of letters and digits the
+ * user typed has to appear in order, with anything in between, so "516",
+ * "516/2627" and "516 cdc 2627" all reach the same document while a bare "17"
+ * still does not.
+ */
+function quotationNumberRegex(value) {
+  const parts = String(value || "")
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map(escapeRegex);
+  if (!parts.length) return null;
+  return parts.join(".*");
+}
+
 /** Mongo may store calculator fields as Number or String — match both. */
 function flexNumericQuery(value) {
   const n = parseOptionalNumber(value);
@@ -339,6 +354,14 @@ export default async function quoteSavesPlugin(fastify) {
         $options: "i"
       };
     }
+    const estimationNumber = String(body.estimation_number || "").trim();
+    if (estimationNumber) {
+      const estRegex = quotationNumberRegex(estimationNumber);
+      if (estRegex) {
+        filter.estimation_number = { $regex: estRegex, $options: "i" };
+      }
+    }
+
     const skuName = String(body.sku_name || "").trim();
     if (skuName) {
       filter["inputs.sku_name"] = {
