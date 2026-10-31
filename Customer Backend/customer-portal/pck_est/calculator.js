@@ -149,7 +149,24 @@ async function calculatePricing(input, requestStartTime = null) {
         ? additionalCostParsed
         : 0;
     const additionalCostRemark = String(input.additional_cost_remark || '').trim();
-    const additionalCostPerUnit = qty > 0 ? additionalCost / qty : 0;
+    // The same pass-through charge can also be entered per piece (0.35 a box) instead
+    // of as an order lump sum. Both may be given at once; they add up.
+    const additionalCostPerUnitRaw = input.additional_cost_per_unit;
+    const additionalCostPerUnitParsed =
+      additionalCostPerUnitRaw !== undefined &&
+      additionalCostPerUnitRaw !== null &&
+      String(additionalCostPerUnitRaw).trim() !== ''
+        ? Number(additionalCostPerUnitRaw)
+        : 0;
+    const additionalCostPerUnitInput =
+      !isNaN(additionalCostPerUnitParsed) && isFinite(additionalCostPerUnitParsed) && additionalCostPerUnitParsed > 0
+        ? additionalCostPerUnitParsed
+        : 0;
+    const additionalCostOrderShare = qty > 0 ? additionalCost / qty : 0;
+    const additionalCostPerUnit = additionalCostOrderShare + additionalCostPerUnitInput;
+    /** What the per-piece entry adds up to across the order, for display and reporting. */
+    const additionalCostPerUnitTotal = additionalCostPerUnitInput * (qty > 0 ? qty : 0);
+    const additionalCostTotalEffective = additionalCost + additionalCostPerUnitTotal;
     stepTime = logStep('>>> Paper price lookup completed', stepTime, requestStartTime);
 
     const inputData = [
@@ -641,6 +658,77 @@ async function calculatePricing(input, requestStartTime = null) {
     const gpPerImpCombined =
       productType === "Top Bottom" ? Number(gpPerImpIn || 0) + Number(gpPerImpOut || 0) : gpPerImpIn;
 
+    // ---- Manual rate override -------------------------------------------------
+    // The sales executive may quote a HIGHER per-piece rate than the one the sheet
+    // works out. The difference is margin, not cost: it loads the customer price
+    // only and is left out of the variable cost, so GP in rupees and GP% both rise.
+    // A manual rate at or below the calculated one is ignored, never applied.
+    // Everything the calculated sheet produced is kept alongside the final figures
+    // so a saved quote carries both sets.
+    const manualPriceRaw = input.manual_price_per_unit;
+    const manualPriceParsed =
+      manualPriceRaw !== undefined && manualPriceRaw !== null && String(manualPriceRaw).trim() !== ''
+        ? Number(manualPriceRaw)
+        : null;
+    const manualPriceRequested =
+      manualPriceParsed != null && !isNaN(manualPriceParsed) && isFinite(manualPriceParsed) && manualPriceParsed > 0
+        ? manualPriceParsed
+        : null;
+    const manualRateApplied = manualPriceRequested != null && manualPriceRequested > priceCombinedNum + 1e-9;
+    const manualRateRejected = manualPriceRequested != null && !manualRateApplied;
+    const manualUpliftPerUnit = manualRateApplied ? manualPriceRequested - priceCombinedNum : 0;
+    const orderQtyForValue = qty > 0 ? qty : 0;
+
+    // The uplift rides on the inner/top line, so a Top Bottom combined figure
+    // counts it exactly once — the same convention as the additional cost.
+    const finalPriceIn = Number(price_per_unit_In || 0) + manualUpliftPerUnit;
+    const finalPriceOut = Number(price_per_unit_Out || 0);
+    const finalPriceCombined = priceCombinedNum + manualUpliftPerUnit;
+    const finalGpPerIn = varCostInNum > 0 ? (finalPriceIn / varCostInNum) - 1 : 0;
+    const finalGpPercentIn = varCostInNum > 0 ? ((finalPriceIn / varCostInNum) - 1) * 100 : null;
+    const finalGpPerImpIn = (finalPriceIn - varCostInNum) * maxUps;
+    const finalGpPercentCombined =
+      varCostCombinedNum > 0 ? (finalPriceCombined / varCostCombinedNum - 1) * 100 : null;
+    const finalGpPerImpCombined =
+      productType === "Top Bottom" ? Number(finalGpPerImpIn || 0) + Number(gpPerImpOut || 0) : finalGpPerImpIn;
+
+    const rateOverride = {
+      applied: manualRateApplied,
+      rejected: manualRateRejected,
+      requested_price_per_unit: manualPriceRequested,
+      manual_price_per_unit: manualRateApplied ? manualPriceRequested : null,
+      calculated_price_per_unit: priceCombinedNum,
+      uplift_per_unit: manualUpliftPerUnit,
+      uplift_total: manualUpliftPerUnit * orderQtyForValue,
+      // Shown in the additional cost section of the quote under this remark, but
+      // unlike a pass-through cost it is NOT part of the variable cost.
+      remark: manualRateApplied ? 'Manual rate increase' : '',
+      calculated: {
+        price_per_unit_In: price_per_unit_In,
+        price_per_unit_Out: price_per_unit_Out,
+        price_per_unit_combined: priceCombinedNum,
+        gp_percent_in: gpPercentIn,
+        gp_percent_out: productType === "Top Bottom" ? gpPercentOut : null,
+        gp_percent_combined: gpPercentCombined,
+        gp_per_imp_in: gpPerImpIn,
+        gp_per_imp_out: productType === "Top Bottom" ? gpPerImpOut : null,
+        gp_per_imp_combined: gpPerImpCombined,
+        total_order_value: priceCombinedNum * orderQtyForValue
+      },
+      manual: {
+        price_per_unit_In: finalPriceIn,
+        price_per_unit_Out: finalPriceOut,
+        price_per_unit_combined: finalPriceCombined,
+        gp_percent_in: finalGpPercentIn,
+        gp_percent_out: productType === "Top Bottom" ? gpPercentOut : null,
+        gp_percent_combined: finalGpPercentCombined,
+        gp_per_imp_in: finalGpPerImpIn,
+        gp_per_imp_out: productType === "Top Bottom" ? gpPerImpOut : null,
+        gp_per_imp_combined: finalGpPerImpCombined,
+        total_order_value: finalPriceCombined * orderQtyForValue
+      }
+    };
+
     stepTime = Date.now();
     logStep('>>> Preparing final output data', stepTime, requestStartTime);
     const formattedDate = new Date().toISOString().split('T')[0];
@@ -653,8 +741,8 @@ async function calculatePricing(input, requestStartTime = null) {
       [wasteOut, paperweightOut, kraftWeightOut, paperPerUnitOut, ctpPerUnitOut, printPerunitOut,
         surfacePerUnitOut, kraftPerunitOut, diceCostOut, window_foil_emboss_Cost_Out, punch_paste_Out,
         pack_del_Out, Corr_conv_Out],
-      [varCostIn, gpPerIn, gpPerImpIn, varCostOut, gpPerOut, gpPerImpOut],
-      [price_per_unit_In, (productType === "Top Bottom" ? price_per_unit_Out : 0)]
+      [varCostIn, finalGpPerIn, finalGpPerImpIn, varCostOut, gpPerOut, gpPerImpOut],
+      [finalPriceIn, (productType === "Top Bottom" ? finalPriceOut : 0)]
     ])];
 
     // Write to database (optional - can be disabled)
@@ -708,32 +796,38 @@ async function calculatePricing(input, requestStartTime = null) {
         pack_del: pack_del_Out,
         Corr_conv: Corr_conv_Out
       },
+      // Every field here is the FINAL quoted figure: it already carries the manual
+      // rate increase when one was applied. The calculated-sheet figures are kept
+      // under rate_override.calculated.
       pricing: {
-        price_per_unit_In: price_per_unit_In,
+        price_per_unit_In: finalPriceIn,
         price_per_unit_Out: price_per_unit_Out,
         varCostIn: varCostIn,
         varCostOut: varCostOut,
-        gpPerIn: gpPerIn,
+        gpPerIn: finalGpPerIn,
         gpPerOut: gpPerOut,
-        gpPerImpIn: gpPerImpIn,
+        gpPerImpIn: finalGpPerImpIn,
         gpPerImpOut: gpPerImpOut,
-        price_per_unit_combined:
-          productType === "Top Bottom"
-            ? Number(price_per_unit_In || 0) + Number(price_per_unit_Out || 0)
-            : price_per_unit_In,
+        price_per_unit_combined: finalPriceCombined,
         var_cost_combined:
           productType === "Top Bottom"
             ? Number(varCostIn || 0) + Number(varCostOut || 0)
             : varCostIn,
-        gp_percent_in: gpPercentIn,
+        gp_percent_in: finalGpPercentIn,
         gp_percent_out: productType === "Top Bottom" ? gpPercentOut : null,
-        gp_percent_combined: gpPercentCombined,
-        gp_per_imp_combined: gpPerImpCombined,
-        // Order-level lump sum, and the per-piece share of it that is already
-        // included in price_per_unit_In / varCostIn above (inner only, so a
-        // Top Bottom combined figure counts it exactly once).
+        gp_percent_combined: finalGpPercentCombined,
+        gp_per_imp_combined: finalGpPerImpCombined,
+        total_order_value: finalPriceCombined * orderQtyForValue,
+        // Pass-through additional cost: the order lump sum, the per-piece entry, and
+        // the combined per-piece figure already included in price_per_unit_In /
+        // varCostIn above (inner only, so a Top Bottom combined figure counts it
+        // exactly once).
         additional_cost: additionalCost,
-        additional_cost_per_unit: additionalCostPerUnit
+        additional_cost_per_unit_input: additionalCostPerUnitInput,
+        additional_cost_per_unit_total: additionalCostPerUnitTotal,
+        additional_cost_total_effective: additionalCostTotalEffective,
+        additional_cost_per_unit: additionalCostPerUnit,
+        rate_override: rateOverride
       },
       metadata: {
         foilIn: foilIn,
@@ -760,7 +854,9 @@ async function calculatePricing(input, requestStartTime = null) {
         manual_price_per_kg_out: manualPriceOut,
         manual_kraft_rate_per_kg: manualKraftRate,
         additional_cost: additionalCost,
-        additional_cost_remark: additionalCostRemark
+        additional_cost_per_unit: additionalCostPerUnitInput,
+        additional_cost_remark: additionalCostRemark,
+        manual_price_per_unit: manualRateApplied ? manualPriceRequested : null
       }
     };
     stepTime = logStep('>>> Response object built', stepTime, requestStartTime);

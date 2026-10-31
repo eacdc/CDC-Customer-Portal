@@ -651,11 +651,28 @@ async function calCulate(quoteinfo, requestStartTime = null) {
     // passed straight through, so GP in rupees is unchanged and only GP% dilutes.
     const additionalCostRaw = quoteinfo.additional_cost;
     const additionalCostParsed = Number(additionalCostRaw);
-    const additionalCost =
+    const additionalCostOrderLevel =
       additionalCostRaw !== undefined && additionalCostRaw !== null && String(additionalCostRaw).trim() !== '' &&
       !isNaN(additionalCostParsed) && isFinite(additionalCostParsed) && additionalCostParsed > 0
         ? additionalCostParsed
         : 0;
+    // The same pass-through charge can also be entered per piece (0.35 a copy)
+    // instead of as an order lump sum. Both may be given at once; they add up.
+    const additionalCostPerUnitRaw = quoteinfo.additional_cost_per_unit;
+    const additionalCostPerUnitParsed = Number(additionalCostPerUnitRaw);
+    const additionalCostPerUnitInput =
+      additionalCostPerUnitRaw !== undefined &&
+      additionalCostPerUnitRaw !== null &&
+      String(additionalCostPerUnitRaw).trim() !== '' &&
+      !isNaN(additionalCostPerUnitParsed) &&
+      isFinite(additionalCostPerUnitParsed) &&
+      additionalCostPerUnitParsed > 0
+        ? additionalCostPerUnitParsed
+        : 0;
+    /** Billable units: one quote can cover several titles of the same spec. */
+    const billableUnits = noOfTitles > 0 ? Qty / noOfTitles : Qty;
+    const additionalCostPerUnitTotal = additionalCostPerUnitInput * (billableUnits > 0 ? billableUnits : 0);
+    const additionalCost = additionalCostOrderLevel + additionalCostPerUnitTotal;
     const additionalCostRemark = String(quoteinfo.additional_cost_remark || '').trim();
 
     const overheadResolved = resolveCommercialOverheadPercent({
@@ -679,7 +696,27 @@ async function calCulate(quoteinfo, requestStartTime = null) {
 
     const total = totalVarCustomer + addlOrderCosts;
 
-    const price_per_unit = total / (Qty / noOfTitles);
+    const calculatedPricePerUnit = total / (Qty / noOfTitles);
+
+    // ---- Manual rate override -------------------------------------------------
+    // The sales executive may quote a HIGHER per-unit rate than the one the sheet
+    // works out. The difference is margin, not cost: it loads the customer total
+    // only and is left out of the variable cost, so GP in rupees and GP% both rise.
+    // A manual rate at or below the calculated one is ignored, never applied.
+    const manualPriceRaw = quoteinfo.manual_price_per_unit;
+    const manualPriceParsed = Number(manualPriceRaw);
+    const manualPriceRequested =
+      manualPriceRaw !== undefined && manualPriceRaw !== null && String(manualPriceRaw).trim() !== '' &&
+      !isNaN(manualPriceParsed) && isFinite(manualPriceParsed) && manualPriceParsed > 0
+        ? manualPriceParsed
+        : null;
+    const manualRateApplied = manualPriceRequested != null && manualPriceRequested > calculatedPricePerUnit + 1e-9;
+    const manualRateRejected = manualPriceRequested != null && !manualRateApplied;
+    const manualUpliftPerUnit = manualRateApplied ? manualPriceRequested - calculatedPricePerUnit : 0;
+    const manualUpliftTotal = manualUpliftPerUnit * (billableUnits > 0 ? billableUnits : 0);
+
+    const price_per_unit = calculatedPricePerUnit + manualUpliftPerUnit;
+    const totalFinal = total + manualUpliftTotal;
 
     const currency = String(quoteinfo.currency || 'INR').trim() || 'INR';
     const fxInrPerFc = Number(quoteinfo.exchange_rate_inr_per_fc);
@@ -692,10 +729,44 @@ async function calCulate(quoteinfo, requestStartTime = null) {
           : null;
     /** Total VAR for GP (matches UI): actual variable cost + packing; excludes shipping. */
     const totalVarForGp = varCostActual + packing + additionalCost;
-    const gpPercent =
+    const calculatedGpPercent =
       total > 0 && isFinite(total) && isFinite(totalVarForGp)
         ? (1 - totalVarForGp / total) * 100
         : null;
+    // The uplift is pure margin, so the variable cost basis is unchanged.
+    const gpPercent =
+      totalFinal > 0 && isFinite(totalFinal) && isFinite(totalVarForGp)
+        ? (1 - totalVarForGp / totalFinal) * 100
+        : null;
+    const rateOverride = {
+      applied: manualRateApplied,
+      rejected: manualRateRejected,
+      requested_price_per_unit: manualPriceRequested,
+      manual_price_per_unit: manualRateApplied ? manualPriceRequested : null,
+      calculated_price_per_unit: calculatedPricePerUnit,
+      uplift_per_unit: manualUpliftPerUnit,
+      uplift_total: manualUpliftTotal,
+      // Shown in the additional cost section of the quote under this remark, but
+      // unlike a pass-through cost it is NOT part of the variable cost.
+      remark: manualRateApplied ? 'Manual rate increase' : '',
+      calculated: {
+        price_per_unit: calculatedPricePerUnit,
+        gp_percent: calculatedGpPercent,
+        total_order_value: total,
+        quoted_price_in_currency:
+          currency === 'INR'
+            ? calculatedPricePerUnit
+            : !isNaN(fxInrPerFc) && fxInrPerFc > 0
+              ? Math.round((calculatedPricePerUnit / fxInrPerFc) * 100) / 100
+              : null
+      },
+      manual: {
+        price_per_unit: price_per_unit,
+        gp_percent: gpPercent,
+        total_order_value: totalFinal,
+        quoted_price_in_currency: quotedPriceInCurrency
+      }
+    };
     console.log('[COMMERCIAL_COST_SUMMARY]', {
       book_wt: bookWt,
       total_paper_cost: totalPaperCost,
@@ -714,7 +785,10 @@ async function calCulate(quoteinfo, requestStartTime = null) {
       additional_cost: additionalCost,
       total_var: totalVar,
       total_var_customer: totalVarCustomer,
-      total,
+      total: totalFinal,
+      total_calculated: total,
+      manual_rate_applied: manualRateApplied,
+      manual_uplift_per_unit: manualUpliftPerUnit,
       quoted_price_in_inr: quotedPriceInInr,
       quoted_price_in_currency: quotedPriceInCurrency,
       gp_percent: gpPercent
@@ -726,7 +800,11 @@ async function calCulate(quoteinfo, requestStartTime = null) {
       addl_binding_labour_cost: addlBindLabourCost,
       dice_block_cost: diceBlockCost,
       additional_cost: additionalCost,
+      additional_cost_order_level: additionalCostOrderLevel,
+      additional_cost_per_unit_input: additionalCostPerUnitInput,
+      additional_cost_per_unit_total: additionalCostPerUnitTotal,
       additional_cost_remark: additionalCostRemark,
+      rate_override: rateOverride,
       cif_fob_per_kg: !isNaN(cifFobPerKg) && cifFobPerKg >= 0 ? cifFobPerKg : null,
       packing_applied: packing,
       packing_lookup: packingLookup,
@@ -775,10 +853,15 @@ async function calCulate(quoteinfo, requestStartTime = null) {
       additional_cost: additionalCost,
       total_var: totalVar,
       total_var_customer: totalVarCustomer,
-      total,
+      // Final quoted order value: carries the manual rate increase when applied.
+      // The calculated-sheet value stays alongside it.
+      total: totalFinal,
+      total_calculated: total,
       quoted_price_in_inr: quotedPriceInInr,
       quoted_price_in_currency: quotedPriceInCurrency,
-      gp_percent: gpPercent
+      gp_percent: gpPercent,
+      gp_percent_calculated: calculatedGpPercent,
+      rate_override: rateOverride
     };
 
     const result = {
@@ -795,7 +878,11 @@ async function calCulate(quoteinfo, requestStartTime = null) {
         target_gp_percent:
           overheadResolved.targetGpDecimal != null
             ? Math.round(overheadResolved.targetGpDecimal * 10000) / 100
-            : null
+            : null,
+        additional_cost: additionalCostOrderLevel,
+        additional_cost_per_unit: additionalCostPerUnitInput,
+        additional_cost_remark: additionalCostRemark,
+        manual_price_per_unit: manualRateApplied ? manualPriceRequested : null
       }
     };
 
