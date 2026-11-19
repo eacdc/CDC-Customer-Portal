@@ -104,6 +104,16 @@ async function calculatePricing(input, requestStartTime = null) {
     const manualPriceIn = parsePositiveOverride(input.manual_price_per_kg_in);
     const manualPriceOut = parsePositiveOverride(input.manual_price_per_kg_out);
     const manualKraftRate = parsePositiveOverride(input.manual_kraft_rate_per_kg);
+    // Manual wastage replaces the Wastage Matrix lookup for that component.
+    // Unlike the rate overrides, 0 is a meaningful value here ("no wastage at
+    // all"), so this parser accepts zero and only rejects blanks and negatives.
+    const parseWastagePercentOverride = (raw) => {
+      if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+      const n = Number(raw);
+      return !isNaN(n) && isFinite(n) && n >= 0 ? n : null;
+    };
+    const manualWastagePercentIn = parseWastagePercentOverride(input.manual_wastage_percent_in);
+    const manualWastagePercentOut = parseWastagePercentOverride(input.manual_wastage_percent_out);
     // A manually entered rate replaces the master lookup on BOTH bases, the
     // way the manual kraft rate already does: it is the price actually being
     // paid for this job, so the variable cost has to use it too, otherwise
@@ -325,7 +335,11 @@ async function calculatePricing(input, requestStartTime = null) {
     stepTime = Date.now();
     logStep('>>> Calculating inner costs', stepTime, requestStartTime);
     // Calculate costs for inner
-    const wasteIn = wastage(qty, maxUps, masterTable);
+    const wasteMatrixIn = wastage(qty, maxUps, masterTable);
+    // The matrix returns a multiplier (1.08 for 8% wastage); a manual entry is
+    // a plain percentage, so 8 becomes 1.08 and replaces the lookup outright.
+    const wasteIn =
+      manualWastagePercentIn != null ? 1 + manualWastagePercentIn / 100 : wasteMatrixIn;
     const paperweightIn = paperWt(qty, maxUps, bestLen, bestBrd, gsmTopOrInner, wasteIn);
     const kraftWeightIn = kraftWt(bestBrd, bestLen, maxUps, corrLayerInn, kraftGsmIn, qty);
     const paperPerUnitIn = paperPerUnit(paperweightIn, pricePerKGIn, qty);
@@ -450,7 +464,9 @@ async function calculatePricing(input, requestStartTime = null) {
 
     stepTime = Date.now();
     logStep('>>> Calculating outer costs', stepTime, requestStartTime);
-    const wasteOut = wastage(qty / boxPerOuter, maxUpsOuter, masterTable);
+    const wasteMatrixOut = wastage(qty / boxPerOuter, maxUpsOuter, masterTable);
+    const wasteOut =
+      manualWastagePercentOut != null ? 1 + manualWastagePercentOut / 100 : wasteMatrixOut;
     const paperweightOut = paperWt(qty / boxPerOuter, maxUpsOuter, bestLenOuter, bestBrdOuter, gsmBot, wasteOut);
     const kraftWeightOut = kraftWt(
       bestBrdOuter,
@@ -841,6 +857,27 @@ async function calculatePricing(input, requestStartTime = null) {
         inner: pricePerKGIn,
         outer: pricePerKGOut
       },
+      // What wastage each component ended up with, and what the matrix would
+      // have given, so the breakdown can show the override and the saved quote
+      // keeps both numbers.
+      wastage_override: {
+        inner: {
+          applied: manualWastagePercentIn != null,
+          manual_percent: manualWastagePercentIn,
+          matrix_multiplier: wasteMatrixIn,
+          matrix_percent: (Number(wasteMatrixIn) || 1) * 100 - 100,
+          used_multiplier: wasteIn,
+          used_percent: (Number(wasteIn) || 1) * 100 - 100
+        },
+        outer: {
+          applied: manualWastagePercentOut != null,
+          manual_percent: manualWastagePercentOut,
+          matrix_multiplier: wasteMatrixOut,
+          matrix_percent: (Number(wasteMatrixOut) || 1) * 100 - 100,
+          used_multiplier: wasteOut,
+          used_percent: (Number(wasteOut) || 1) * 100 - 100
+        }
+      },
       quote_context: {
         client_name: String(input.client_name || "").trim(),
         sku_name: String(input.sku_name || "").trim(),
@@ -853,6 +890,8 @@ async function calculatePricing(input, requestStartTime = null) {
         manual_price_per_kg_in: manualPriceIn,
         manual_price_per_kg_out: manualPriceOut,
         manual_kraft_rate_per_kg: manualKraftRate,
+        manual_wastage_percent_in: manualWastagePercentIn,
+        manual_wastage_percent_out: manualWastagePercentOut,
         additional_cost: additionalCost,
         additional_cost_per_unit: additionalCostPerUnitInput,
         additional_cost_remark: additionalCostRemark,

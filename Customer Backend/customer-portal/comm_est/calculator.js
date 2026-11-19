@@ -169,6 +169,11 @@ async function calCulate(quoteinfo, requestStartTime = null) {
     const web_or_sheet_col = dollarFieldToCols(quoteinfo, 'web_or_sheet');
     const force_paper_col = dollarFieldToCols(quoteinfo, 'force_paper');
     const manual_price_per_kg_col = dollarFieldToCols(quoteinfo, 'manual_price_per_kg');
+    const manual_wastage_percent_col = dollarFieldToCols(quoteinfo, 'manual_wastage_percent');
+    // One entry per component: the default wastage, any manual override, and
+    // what was actually used. Reported and saved so a reopened quote shows
+    // which rows were overridden.
+    const wastageOverrides = [];
     const right_add_col = dollarFieldToCols(quoteinfo, 'right_add');
     const left_add_col = dollarFieldToCols(quoteinfo, 'left_add');
     const complexity_col = dollarFieldToCols(quoteinfo, 'complexity');
@@ -435,10 +440,34 @@ async function calCulate(quoteinfo, requestStartTime = null) {
             throw new Error(`maxUps is not defined for component: ${comp}. Please check the component type and input data.`);
           }
           
+          // Wastage: 7% on paper, 15% on foam by default. A manual wastage %
+          // on this component's row replaces that default outright (0 is a
+          // valid entry, so only blanks and negatives fall back).
+          const defaultWastagePercent = comp !== "Foam" ? 7 : 15;
+          const manualWastageSeg = dollarCell(manual_wastage_percent_col, i);
+          let manualWastagePercent = null;
+          if (manualWastageSeg !== '') {
+            const mw = Number(manualWastageSeg);
+            if (!isNaN(mw) && isFinite(mw) && mw >= 0) {
+              manualWastagePercent = mw;
+            }
+          }
+          const wastagePercentUsed =
+            manualWastagePercent != null ? manualWastagePercent : defaultWastagePercent;
+          const wastageMultiplier = 1 + wastagePercentUsed / 100;
+          wastageOverrides.push({
+            component_index: i,
+            component: comp,
+            default_percent: defaultWastagePercent,
+            manual_percent: manualWastagePercent,
+            used_percent: wastagePercentUsed,
+            applied: manualWastagePercent != null
+          });
+
           // Calculate paper weight with proper validation
-          const paperWt = comp !== "Foam" ? 
-            (Number(SheetLen) / 1000 * Number(SheetWid) / 1000 * Number(gsm) / 1000 * Number(noOfPages) / Number(maxUps) * Number(Qty) / Number(noOfTitles)) * (1 + 0.07) / 2 : 
-            (Number(noOfPages) / Number(maxUps) * Number(Qty) / Number(noOfTitles) * (1.15) / 2);
+          const paperWt = comp !== "Foam" ?
+            (Number(SheetLen) / 1000 * Number(SheetWid) / 1000 * Number(gsm) / 1000 * Number(noOfPages) / Number(maxUps) * Number(Qty) / Number(noOfTitles)) * wastageMultiplier / 2 :
+            (Number(noOfPages) / Number(maxUps) * Number(Qty) / Number(noOfTitles) * wastageMultiplier / 2);
           const paperPriceRaw = XLOOKUP(paperType, opsTable1, 2, 3, "");
           // Convert empty string to 0 for numeric calculations
 
@@ -805,6 +834,7 @@ async function calCulate(quoteinfo, requestStartTime = null) {
       additional_cost_per_unit_total: additionalCostPerUnitTotal,
       additional_cost_remark: additionalCostRemark,
       rate_override: rateOverride,
+      wastage_overrides: wastageOverrides,
       cif_fob_per_kg: !isNaN(cifFobPerKg) && cifFobPerKg >= 0 ? cifFobPerKg : null,
       packing_applied: packing,
       packing_lookup: packingLookup,
@@ -861,7 +891,8 @@ async function calCulate(quoteinfo, requestStartTime = null) {
       quoted_price_in_currency: quotedPriceInCurrency,
       gp_percent: gpPercent,
       gp_percent_calculated: calculatedGpPercent,
-      rate_override: rateOverride
+      rate_override: rateOverride,
+      wastage_overrides: wastageOverrides
     };
 
     const result = {
@@ -882,7 +913,8 @@ async function calCulate(quoteinfo, requestStartTime = null) {
         additional_cost: additionalCostOrderLevel,
         additional_cost_per_unit: additionalCostPerUnitInput,
         additional_cost_remark: additionalCostRemark,
-        manual_price_per_unit: manualRateApplied ? manualPriceRequested : null
+        manual_price_per_unit: manualRateApplied ? manualPriceRequested : null,
+        manual_wastage_percent: String(quoteinfo.manual_wastage_percent || '').trim()
       }
     };
 
